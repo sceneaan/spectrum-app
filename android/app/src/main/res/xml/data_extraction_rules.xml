@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <!-- Cloud backup rules -->
+    <cloud-backup>
+        <include domain="sharedpref" path="." />
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+
+        <exclude domain="sharedpref" path="auth_tokens.xml" />
+        <exclude domain="sharedpref" path="RN_*.xml" />
+        <exclude domain="database" path="RKStorage" />
+        <exclude domain="file" path="cache/" />
+        <exclude domain="file" path="temp/" />
+        <exclude domain="file" path="tmp/" />
+        <exclude domain="file" path="logs/" />
+        <exclude domain="file" path="medical_records/" />
+        <exclude domain="database" path="health_data.db" />
+        <exclude domain="sharedpref" path="payment_*.xml" />
+    </cloud-backup>
+
+    <!-- Device-to-device transfer rules -->
+    <device-transfer>
+        <include domain="sharedpref" path="." />
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+
+        <exclude domain="sharedpref" path="auth_tokens.xml" />
+        <exclude domain="sharedpref" path="RN_*.xml" />
+        <exclude domain="database" path="RKStorage" />
+        <exclude domain="file" path="cache/" />
+        <exclude domain="file" path="medical_records/" />
+        <exclude domain="database" path="health_data.db" />
+        <exclude domain="sharedpref" path="payment_*.xml" />
+    </device-transfer>
+</data-extraction-rules>

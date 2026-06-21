@@ -1,0 +1,111 @@
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { HttpStatusCode } from 'axios';
+import { getRequest, postRequest } from '@api';
+import { ErrorMessages } from '@api/messages/generic';
+import { throwServerError } from '@api/messages/error';
+
+const MODEL_NAME = '/refill';
+
+export const useCreateRefillRequestFromPatient = () => {
+    return useMutation({
+        mutationFn: async (payload) => {
+            try {
+                const result = await postRequest(`${MODEL_NAME}/patient/request-refill`, payload);
+
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+};
+
+export const useProcessRefillRequest = () => {
+    return useMutation({
+        mutationFn: async ({ id, payload }: { id: string, payload: any }) => {
+            try {
+                const result = await postRequest(`${MODEL_NAME}/provider/process-refill/${id}`, payload);
+
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+};
+
+export const usePatientToProviderRequests = () => {
+    return useQuery({
+        queryKey: ['patientRefillRequests'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/provider/patient-requests`);
+
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+};
+
+export const usePendingMedications = () => {
+    return useQuery({
+        queryKey: ['pendingMedications'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/patient/pending-medications`);
+
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+};
+
+// Additional utility functions for direct API calls (if needed)
+export const RefillRequestService = {
+    createFromPatient: async (payload: any) => {
+        try {
+            const result = await postRequest(`${MODEL_NAME}/patient/request-refill`, payload);
+            return result.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    processRequest: async (id: string, payload: any) => {
+        try {
+            const result = await postRequest(`${MODEL_NAME}/provider/process-refill/${id}`, payload);
+            return result.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    getPatientRequests: async () => {
+        try {
+            const result = await getRequest(`${MODEL_NAME}/provider/patient-requests`);
+            return result.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+};

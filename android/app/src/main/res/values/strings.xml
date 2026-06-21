@@ -1,0 +1,48 @@
+<resources>
+    <string name="app_name">Spectrum</string>
+
+    <!-- Permission Rationale Descriptions (shown to users when requesting permissions) -->
+
+    <!-- Camera Permission -->
+    <string name="permission_camera_title">Camera Access Required</string>
+    <string name="permission_camera_message">Spectrum needs camera access for video consultations with your healthcare provider. This allows you to have face-to-face telemedicine appointments from anywhere.</string>
+    <string name="permission_camera_denied">Camera permission is required for video consultations. Please enable it in Settings.</string>
+
+    <!-- Microphone Permission -->
+    <string name="permission_microphone_title">Microphone Access Required</string>
+    <string name="permission_microphone_message">Spectrum needs microphone access to enable audio during your video consultations. This ensures your doctor can hear you clearly during appointments.</string>
+    <string name="permission_microphone_denied">Microphone permission is required for audio during consultations. Please enable it in Settings.</string>
+
+    <!-- Storage/Photos Permission -->
+    <string name="permission_storage_title">Photo Library Access Required</string>
+    <string name="permission_storage_message">Spectrum needs access to your photos to upload medical documents, prescriptions, and other health-related images for your medical records.</string>
+    <string name="permission_storage_denied">Storage permission is required to upload documents. Please enable it in Settings.</string>
+
+    <!-- Notifications Permission -->
+    <string name="permission_notifications_title">Enable Notifications</string>
+    <string name="permission_notifications_message">Stay informed about your appointments, messages from doctors, and important health updates. We\'ll only send notifications that matter to you.</string>
+    <string name="permission_notifications_denied">Notifications are disabled. You may miss important appointment reminders and messages.</string>
+
+    <!-- Location Permission (if needed) -->
+    <string name="permission_location_title">Location Access</string>
+    <string name="permission_location_message">Spectrum uses your location to find nearby healthcare providers and clinics, making it easier to book in-person appointments.</string>
+    <string name="permission_location_denied">Location permission helps find nearby providers. Enable it in Settings for better recommendations.</string>
+
+    <!-- General Permission Dialog -->
+    <string name="permission_settings_button">Open Settings</string>
+    <string name="permission_cancel_button">Cancel</string>
+    <string name="permission_allow_button">Allow</string>
+    <string name="permission_deny_button">Deny</string>
+
+    <!-- Notification Channel Names (shown in Android Settings) -->
+    <string name="notification_channel_default">General Notifications</string>
+    <string name="notification_channel_appointments">Appointment Reminders</string>
+    <string name="notification_channel_chat">Messages from Doctors</string>
+    <string name="notification_channel_payments">Payment Updates</string>
+
+    <!-- Notification Channel Descriptions -->
+    <string name="notification_channel_default_desc">General notifications from Spectrum</string>
+    <string name="notification_channel_appointments_desc">Reminders and updates for your upcoming appointments</string>
+    <string name="notification_channel_chat_desc">New messages from your healthcare providers</string>
+    <string name="notification_channel_payments_desc">Payment confirmations and billing updates</string>
+</resources>

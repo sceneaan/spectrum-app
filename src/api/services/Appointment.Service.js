@@ -1,0 +1,267 @@
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { HttpStatusCode } from 'axios';
+import { getRequest, postRequest, putRequest } from '@api';
+import { throwServerError } from '@api/messages/error';
+import { ErrorMessages } from '@api/messages/generic';
+
+const MODEL_NAME = '/appointment';
+
+// Hook to create an appointment
+export function useCreateAppointment() {
+    return useMutation({
+        mutationFn: async (payload) => {
+            try {
+                const result = await postRequest(`${MODEL_NAME}/create`, payload);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to get all appointments
+export function useGetAllAppointments(query) {
+    return useQuery({
+        queryKey: ['appointments'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/appointments`, query);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to get appointments count
+export function useGetAppointmentsCount() {
+    return useQuery({
+        queryKey: ['appointmentsCount'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/appointments-count`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to get pending appointments grouped by doctor
+export function useGetPendingAppointmentsGroupedByDoctor() {
+    return useQuery({
+        queryKey: ['pendingAppointmentsGroupedByDoctor'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/pending/grouped/by/doctor`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to check room ID
+export function useCheckRoomId(id) {
+    return useQuery({
+        queryKey: ['checkRoomId', id],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/check-roomId/${id}`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+        enabled: !!id, // Only run query if `id` is provided
+        refetchOnMount: 'always', // Always refetch when component mounts (for rejoin)
+        staleTime: 0, // Data is immediately stale (force refetch)
+    });
+}
+
+// Hook to get associated patients
+export function useGetAssociatedPatients() {
+    return useQuery({
+        queryKey: ['associatedPatients'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/associated-patients`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to create a recurring appointment
+export function useCreateRecurringAppointment() {
+    return useMutation({
+        mutationFn: async (payload) => {
+            try {
+                const result = await postRequest('recurring/create', payload);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+export function useCancelAppointment() {
+    return useMutation({
+        mutationFn: async ({ id, payload }) => {
+
+            try {
+                const result = await putRequest(`${MODEL_NAME}/cancel/${id}`, payload);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+export function useRescheduleAppointment() {
+    return useMutation({
+        mutationFn: async (payload) => {
+            try {
+                const result = await putRequest(`${MODEL_NAME}/reschedule`, payload);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+export function useGetAppointmentStatus(id) {
+    return useQuery({
+        queryKey: ['appointmentStatus', id],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/status/${id}`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+export function useGetPendingAppointmentsByDoctorId(id) {
+    return useQuery({
+        queryKey: ['pendingAppointmentsByDoctorId', id],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/pending/${id}`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+export function useGetUpcomingAppointments() {
+    return useQuery({
+        queryKey: ['upcomingAppointments'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/upcoming`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to send invitation
+export function useSendInvitation() {
+    return useMutation({
+        mutationFn: async (payload) => {
+            try {
+                const result = await postRequest(`${MODEL_NAME}/invite`, payload);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+// Hook to get completed appointments for medical reports
+export function useGetCompletedAppointments() {
+    return useQuery({
+        queryKey: ['completedAppointments'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/completed`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                } else {
+                    throw new Error(ErrorMessages.generalMessage);
+                }
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}

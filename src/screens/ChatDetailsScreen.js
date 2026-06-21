@@ -1,0 +1,731 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, FlatList, ActivityIndicator, Alert, Linking, ActionSheetIOS, Modal } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useLanguage } from '../store/LanguageContext';
+import COLORS from '../constants/colors';
+import ICONS from '../constants/icons';
+import { useGetThreadMessages, useSendThreadReply } from '@api/services/Thread.Service';
+import { useGetCurrentUser } from '@api/services/User.Service';
+import { useGetCompletedAppointments } from '@api/services/Appointment.Service';
+import socketService from '@utils/socket';
+import { formatFileSize, getFileSize } from '@utils/fileUtils';
+import DocumentPicker from 'react-native-document-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
+import {
+  uploadAttachment,
+  validateFile,
+  getPrivateFileAsBase64,
+} from '@api/services/Upload.Service';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import DocumentViewer from '../components/DocumentViewer';
+import moment from 'moment';
+
+const ChatDetailsScreen = () => {
+   const navigation = useNavigation();
+   const route = useRoute();
+   const { t, isRTL } = useLanguage();
+
+   // Get thread item from navigation params
+   const { thread } = route.params || {};
+
+   // Validate thread data
+   if (!thread || !thread.provider) {
+      Alert.alert(
+         isRTL ? 'خطأ' : 'Error',
+         isRTL ? 'معلومات المحادثة غير متوفرة' : 'Chat information not available',
+         [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+      return null;
+   }
+
+   const provider = thread.provider;
+   const providerId = provider?._id || provider?.id;
+
+   // Fetch completed appointments to check 30-day restriction
+   const { data: appointments } = useGetCompletedAppointments();
+
+   // Check if patient has a completed appointment with this provider within the last 30 days
+   const hasRecentAppointment = () => {
+      // If appointments haven't loaded yet or no provider ID, allow messaging (optimistic)
+      if (!appointments || appointments.length === 0 || !providerId) {
+         return true;
+      }
+
+      const thirtyDaysAgo = moment().subtract(30, 'days').startOf('day');
+      const today = moment().endOf('day');
+
+      return appointments.some(apt => {
+         // Get provider ID from appointment (handle different formats)
+         const aptProviderId = apt.provider?._id || apt.provider?.id || apt.provider;
+         const aptProviderIdStr = String(aptProviderId);
+         const targetProviderIdStr = String(providerId);
+
+         // Check if this appointment is with the same provider
+         const isSameProvider = aptProviderIdStr === targetProviderIdStr;
+         if (!isSameProvider) return false;
+
+         // Check if appointment end time is within last 30 days
+         const appointmentDate = moment(apt.endTime || apt.startTime);
+         const isWithin30Days = appointmentDate.isSameOrAfter(thirtyDaysAgo) && appointmentDate.isSameOrBefore(today);
+
+         return isWithin30Days;
+      });
+   };
+
+   // Check if messaging is disabled (no recent appointment within 30 days)
+   const isThreadExpired = !hasRecentAppointment();
+
+   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+   }
+
+   const [messages, setMessages] = useState([]);
+   const [inputText, setInputText] = useState('');
+   const flatListRef = useRef(null);
+   
+   // Get Current User to identify "My" messages
+   const { data: loggedInUser } = useGetCurrentUser();
+
+   // API Hooks
+   const { 
+     data: threadMessages, 
+     error: threadMessagesError,
+     isLoading: isLoadingMessages
+   } = useGetThreadMessages(thread?._id);
+
+   const { mutate: sendMessage } = useSendThreadReply();
+   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+   // Attachment viewer state
+   const [attachmentViewerVisible, setAttachmentViewerVisible] = useState(false);
+   const [attachmentViewerContent, setAttachmentViewerContent] = useState('');
+   const [attachmentViewerTitle, setAttachmentViewerTitle] = useState('');
+
+   // Attachment menu state (for Android)
+   const [attachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
+
+   // Load messages
+   useEffect(() => {
+    if (threadMessages) {
+      console.log('📨 [ChatDetails] Thread messages received:', threadMessages);
+      console.log('📨 [ChatDetails] Number of messages:', threadMessages.length);
+      setMessages(threadMessages);
+      // Scroll to bottom when messages first load
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 300);
+    }
+   }, [threadMessages]);
+
+   // Socket Connection
+   useEffect(() => {
+    if (loggedInUser?.id && thread?._id) {
+      const handleNewMessage = (message) => {
+        console.log('🔔 [ChatDetails] New message received via socket:', message);
+
+        // Only add message if it belongs to this thread
+        const messageThreadId = message?.thread?._id || message?.thread;
+        if (messageThreadId === thread._id) {
+          console.log('🔔 [ChatDetails] Message belongs to this thread, adding to state');
+          setMessages(prevMessages => {
+            // Check if message already exists (prevent duplicates)
+            const exists = prevMessages.some(m => m._id === message._id);
+            if (exists) {
+              console.log('🔔 [ChatDetails] Message already exists, skipping');
+              return prevMessages;
+            }
+            return [...prevMessages, message];
+          });
+          scrollToBottom();
+        } else {
+          console.log('🔔 [ChatDetails] Message belongs to different thread:', messageThreadId);
+        }
+      };
+
+      // Connect and set up listener
+      socketService.connect(loggedInUser.id)
+        .then(() => {
+          console.log('🔔 [ChatDetails] Socket connected, setting up listener');
+          socketService.on('newMessage', handleNewMessage);
+        })
+        .catch((error) => {
+          console.warn('🔔 [ChatDetails] Socket connection failed:', error.message);
+        });
+
+      return () => {
+        socketService.off('newMessage', handleNewMessage);
+      };
+    }
+  }, [loggedInUser, thread?._id]);
+
+   const scrollToBottom = () => {
+       setTimeout(() => {
+           flatListRef.current?.scrollToEnd({ animated: true });
+       }, 200);
+   };
+
+   const handleSend = () => {
+      if (!inputText.trim()) return;
+
+      const payload = {
+        thread: thread?._id,
+        body: inputText.trim(),
+        attachment: null 
+      };
+
+      // Optimistic update (optional, but good for UX)
+      // For now we rely on success callback or socket
+
+      sendMessage(payload, {
+          onSuccess: (data) => {
+              console.log('✅ [ChatDetails] Message sent successfully:', data);
+              setInputText('');
+              // Add message to state
+              setMessages(prevMessages => [
+                ...prevMessages,
+                { ...data, sender: loggedInUser }
+              ]);
+              setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+              }, 500);
+          },
+          onError: (err) => {
+              console.error("❌ [ChatDetails] Failed to send message", err);
+              Alert.alert(
+                t.common?.error || 'Error',
+                err.message || 'Failed to send message'
+              );
+          }
+      });
+   };
+   
+   // Show attachment options menu
+   const showAttachmentOptions = () => {
+       if (Platform.OS === 'ios') {
+           ActionSheetIOS.showActionSheetWithOptions(
+               {
+                   options: [isRTL ? 'إلغاء' : 'Cancel', isRTL ? 'صورة' : 'Image', isRTL ? 'ملف' : 'File'],
+                   cancelButtonIndex: 0,
+               },
+               (buttonIndex) => {
+                   if (buttonIndex === 1) {
+                       handleImageUpload();
+                   } else if (buttonIndex === 2) {
+                       handleFileUpload();
+                   }
+               }
+           );
+       } else {
+           setAttachmentMenuVisible(true);
+       }
+   };
+
+   // Handle image upload from gallery
+   const handleImageUpload = async () => {
+       setAttachmentMenuVisible(false);
+       try {
+           const result = await launchImageLibrary({
+               mediaType: 'photo',
+               quality: 0.8,
+               maxWidth: 1920,
+               maxHeight: 1920,
+               selectionLimit: 1,
+           });
+
+           if (result.didCancel) {
+               console.log('User cancelled image picker');
+               return;
+           }
+
+           if (result.errorCode) {
+               console.error('ImagePicker Error:', result.errorCode, result.errorMessage);
+               Alert.alert(t.common?.error || 'Error', result.errorMessage || 'Failed to pick image');
+               return;
+           }
+
+           if (result.assets && result.assets.length > 0) {
+               const imageAsset = result.assets[0];
+               const file = {
+                   uri: imageAsset.uri,
+                   type: imageAsset.type || 'image/jpeg',
+                   name: imageAsset.fileName || `image_${Date.now()}.jpg`,
+                   size: imageAsset.fileSize,
+               };
+
+               console.log("📷 [ChatDetails] Selected image:", file);
+               await uploadAndSendAttachment(file);
+           }
+       } catch (err) {
+           console.error('Image picker error:', err);
+           Alert.alert(t.common?.error || 'Error', 'Failed to pick image');
+       }
+   };
+
+   // Handle file upload (PDF, documents)
+   const handleFileUpload = async () => {
+       setAttachmentMenuVisible(false);
+       try {
+           const results = await DocumentPicker.pick({
+               type: [DocumentPicker.types.pdf],
+           });
+
+           const file = results[0];
+           console.log("📎 [ChatDetails] Selected file:", file);
+           await uploadAndSendAttachment(file);
+       } catch (err) {
+           if (!DocumentPicker.isCancel(err)) {
+               console.error(err);
+               Alert.alert(t.common?.error || 'Error', 'Failed to pick file');
+           }
+       }
+   };
+
+   // Common upload and send logic
+   const uploadAndSendAttachment = async (file) => {
+       // Validate file before upload
+       const validation = validateFile(file, 'attachment');
+       if (!validation.isValid) {
+           Alert.alert(t.common?.error || 'Error', validation.error);
+           return;
+       }
+
+       setIsUploadingAttachment(true);
+
+       try {
+           // Use secure upload function
+           const uploadResponse = await uploadAttachment(file, {
+               threadId: thread?._id,
+           });
+
+           console.log('📤 [ChatDetails] Upload response:', uploadResponse);
+
+           // Send message with attachment - include both fileId (new) and url (legacy)
+           const payload = {
+               thread: thread?._id,
+               body: '',
+               attachment: {
+                   fileId: uploadResponse?.fileId, // New secure field
+                   url: uploadResponse?.url || '', // Legacy field for backward compatibility
+                   size: file.size,
+                   name: file.name,
+                   type: file.type
+               }
+           };
+
+           sendMessage(payload, {
+               onSuccess: (data) => {
+                   setMessages(prev => [...prev, { ...data, sender: loggedInUser }]);
+                   scrollToBottom();
+               },
+               onError: (err) => {
+                   console.error('❌ [ChatDetails] Failed to send attachment message:', err);
+                   Alert.alert(t.common?.error || 'Error', 'Failed to send attachment');
+               }
+           });
+       } catch (uploadErr) {
+           console.error('❌ [ChatDetails] Upload error:', uploadErr);
+           Alert.alert(t.common?.error || 'Error', uploadErr.message || 'Failed to upload file');
+       } finally {
+           setIsUploadingAttachment(false);
+       }
+   };
+
+   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+   
+   const renderMessageItem = ({ item }) => {
+       // Check if I sent it
+       const isMyMessage = item.sender?._id === loggedInUser?.id || item.sender?.email === loggedInUser?.email;
+
+       const handleAttachmentPress = async () => {
+           // Support both fileId (new secure) and url (legacy)
+           const fileId = item.attachment?.fileId;
+           const legacyUrl = item.attachment?.url;
+           const fileName = item.attachment?.name || 'Attachment';
+
+           if (!fileId && !legacyUrl) {
+               Alert.alert(t.common?.error || 'Error', 'No attachment available');
+               return;
+           }
+
+           try {
+               let documentUrl = legacyUrl;
+
+               // If we have a fileId, fetch the private file
+               if (fileId) {
+                   console.log('📎 [ChatDetails] Fetching private attachment:', fileId);
+                   try {
+                       documentUrl = await getPrivateFileAsBase64(fileId);
+                   } catch (fetchErr) {
+                       console.error('Error fetching private attachment:', fetchErr);
+                       // Fall back to legacy URL if available
+                       if (!legacyUrl) {
+                           Alert.alert(t.common?.error || 'Error', 'Failed to load attachment');
+                           return;
+                       }
+                   }
+               }
+
+               if (documentUrl) {
+                   // Check if it's an external URL (legacy) that can be opened with Linking
+                   if (documentUrl.startsWith('http://') || documentUrl.startsWith('https://')) {
+                       const supported = await Linking.canOpenURL(documentUrl);
+                       if (supported) {
+                           await Linking.openURL(documentUrl);
+                       } else {
+                           Alert.alert(t.common?.error || 'Error', 'Cannot open this file');
+                       }
+                   } else {
+                       // It's a base64 URL - display in DocumentViewer
+                       const isImage = documentUrl.startsWith('data:image/');
+                       const isPdf = documentUrl.startsWith('data:application/pdf');
+
+                       const attachmentHtml = `
+                           <!DOCTYPE html>
+                           <html>
+                           <head>
+                               <meta charset="UTF-8">
+                               <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+                               <style>
+                                   * { margin: 0; padding: 0; box-sizing: border-box; }
+                                   body {
+                                       display: flex;
+                                       justify-content: center;
+                                       align-items: center;
+                                       min-height: 100vh;
+                                       background: #f5f5f5;
+                                       padding: 10px;
+                                   }
+                                   img {
+                                       max-width: 100%;
+                                       height: auto;
+                                       border-radius: 8px;
+                                       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                   }
+                                   .pdf-container {
+                                       width: 100%;
+                                       height: 100vh;
+                                   }
+                                   iframe {
+                                       width: 100%;
+                                       height: 100%;
+                                       border: none;
+                                   }
+                               </style>
+                           </head>
+                           <body>
+                               ${isImage ? `<img src="${documentUrl}" alt="Attachment" />` :
+                                 isPdf ? `<div class="pdf-container"><iframe src="${documentUrl}" title="PDF Attachment"></iframe></div>` :
+                                 `<img src="${documentUrl}" alt="Attachment" />`}
+                           </body>
+                           </html>
+                       `;
+
+                       setAttachmentViewerContent(attachmentHtml);
+                       setAttachmentViewerTitle(fileName);
+                       setAttachmentViewerVisible(true);
+                   }
+               }
+           } catch (error) {
+               console.error('Error opening attachment:', error);
+               Alert.alert(t.common?.error || 'Error', 'Failed to open attachment');
+           }
+       };
+
+       return (
+           <View style={[styles.msgRow, isRTL ? { alignSelf: isMyMessage ? 'flex-start' : 'flex-end' } : { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>
+                  <View style={[styles.bubble, isMyMessage ? styles.bubbleSent : styles.bubbleReceived]}>
+                     {/* Show text first if exists */}
+                     {item.body ? (
+                        <Text style={isMyMessage ? styles.textSent : styles.textReceived}>{item.body}</Text>
+                     ) : null}
+
+                     {/* Show attachment after text - support both fileId (new) and url (legacy) */}
+                     {(item.attachment?.fileId || item.attachment?.url) && (() => {
+                        const fileName = item.attachment.name || (item.attachment.url ? item.attachment.url.split('/').pop() : 'Attachment');
+                        const fileExtension = fileName.split('.').pop()?.toUpperCase() || 'FILE';
+
+                        return (
+                           <TouchableOpacity
+                              style={[
+                                 styles.attachmentContainer,
+                                 item.body && { marginTop: 10 },
+                                 isMyMessage && styles.attachmentContainerSent
+                              ]}
+                              onPress={handleAttachmentPress}
+                              activeOpacity={0.7}
+                           >
+                              <View style={[styles.attachmentIconContainer, isMyMessage && styles.attachmentIconContainerSent]}>
+                                 <Icon
+                                    name="file-alt"
+                                    size={12}
+                                    color={COLORS.primary}
+                                 />
+                                 <Text style={[styles.fileExtensionText, { color: COLORS.primary }]}>
+                                    {fileExtension.length > 4 ? fileExtension.substring(0, 4) : fileExtension}
+                                 </Text>
+                              </View>
+                              <View style={{ marginLeft: 8, flex: 1 }}>
+                                 <Text numberOfLines={1} style={[styles.attachmentFileName, { color: isMyMessage ? '#fff' : '#000' }]}>
+                                    {fileName}
+                                 </Text>
+                                 <Text style={[styles.attachmentFileSize, { color: isMyMessage ? 'rgba(255,255,255,0.7)' : COLORS.gray500 }]}>
+                                    {formatFileSize(item.attachment.size)}
+                                 </Text>
+                              </View>
+                              <Icon
+                                 name="chevron-right"
+                                 size={16}
+                                 color={isMyMessage ? 'rgba(255,255,255,0.6)' : COLORS.gray400}
+                                 style={{ marginLeft: 8 }}
+                              />
+                           </TouchableOpacity>
+                        );
+                     })()}
+                  </View>
+                  <Text style={[styles.timestamp, { alignSelf: isRTL ? (isMyMessage ? 'flex-start' : 'flex-end') : (isMyMessage ? 'flex-end' : 'flex-start') }]}>
+                      {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+           </View>
+       );
+   };
+
+   // Custom Chat Header
+   const ChatHeader = () => (
+      <View style={[styles.header, rowStyle]}>
+         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
+            <Image source={ICONS.back} style={[styles.icon, isRTL && { transform: [{ rotate: '180deg' }] }]} />
+         </TouchableOpacity>
+         <Image source={{ uri: provider.profileImage }} style={styles.headerAvatar} />
+         <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+            <Text style={styles.headerName}>{isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)}</Text>
+            {/* Online status could be dynamic if we had socket presence events */}
+         </View>
+      </View>
+   );
+
+   return (
+      <View style={styles.container}>
+         <ChatHeader />
+
+         {isLoadingMessages ? (
+             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                 <ActivityIndicator size="large" color={COLORS.primary} />
+             </View>
+         ) : (
+             <FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderMessageItem}
+                keyExtractor={(item, index) => item._id || index.toString()}
+                contentContainerStyle={{ padding: 20, paddingBottom: 20 }}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+             />
+         )}
+
+         {/* Footer Input */}
+         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+            {isThreadExpired ? (
+               <View style={styles.expiredBanner}>
+                  <Icon name="clock" size={16} color={COLORS.gray500} />
+                  <Text style={styles.expiredText}>
+                     {isRTL
+                        ? 'لا يمكنك إرسال رسائل. يجب أن يكون آخر موعد مكتمل خلال الـ 30 يومًا الماضية.'
+                        : 'You cannot send messages. Your last completed appointment must be within the past 30 days.'}
+                  </Text>
+               </View>
+            ) : (
+               <View style={[styles.footer, rowStyle]}>
+                  <TouchableOpacity
+                     style={styles.attachBtn}
+                     onPress={showAttachmentOptions}
+                     disabled={isUploadingAttachment}
+                  >
+                     {isUploadingAttachment ? (
+                        <ActivityIndicator size="small" color={COLORS.primary} />
+                     ) : (
+                        <Icon name="plus" size={20} color={COLORS.gray600} />
+                     )}
+                  </TouchableOpacity>
+                  <TextInput
+                     placeholder={t.typeMessage || "Type a message..."}
+                     placeholderTextColor={COLORS.gray500}
+                     style={[styles.chatInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                     value={inputText}
+                     onChangeText={setInputText}
+                     multiline
+                  />
+                  <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
+                     <Image source={ICONS.send} style={{ width: 18, height: 18, tintColor: COLORS.white, marginLeft: isRTL ? 0 : 2, marginRight: isRTL ? 2 : 0 }} />
+                  </TouchableOpacity>
+               </View>
+            )}
+         </KeyboardAvoidingView>
+
+         {/* Android Attachment Menu Modal */}
+         <Modal
+            visible={attachmentMenuVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setAttachmentMenuVisible(false)}
+         >
+            <TouchableOpacity
+               style={styles.attachmentMenuOverlay}
+               activeOpacity={1}
+               onPress={() => setAttachmentMenuVisible(false)}
+            >
+               <View style={[styles.attachmentMenuContainer, isRTL && { alignItems: 'flex-end' }]}>
+                  <TouchableOpacity
+                     style={[styles.attachmentMenuItem, rowStyle]}
+                     onPress={handleImageUpload}
+                  >
+                     <Icon name="image" size={20} color={COLORS.primary} />
+                     <Text style={styles.attachmentMenuText}>{isRTL ? 'صورة' : 'Image'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.attachmentMenuDivider} />
+                  <TouchableOpacity
+                     style={[styles.attachmentMenuItem, rowStyle]}
+                     onPress={handleFileUpload}
+                  >
+                     <Icon name="file-pdf" size={20} color={COLORS.danger} />
+                     <Text style={styles.attachmentMenuText}>{isRTL ? 'ملف PDF' : 'PDF File'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.attachmentMenuDivider} />
+                  <TouchableOpacity
+                     style={[styles.attachmentMenuItem, rowStyle]}
+                     onPress={() => setAttachmentMenuVisible(false)}
+                  >
+                     <Icon name="times" size={20} color={COLORS.gray500} />
+                     <Text style={[styles.attachmentMenuText, { color: COLORS.gray500 }]}>{isRTL ? 'إلغاء' : 'Cancel'}</Text>
+                  </TouchableOpacity>
+               </View>
+            </TouchableOpacity>
+         </Modal>
+
+         {/* Attachment Viewer Modal */}
+         <DocumentViewer
+            visible={attachmentViewerVisible}
+            onClose={() => setAttachmentViewerVisible(false)}
+            htmlContent={attachmentViewerContent}
+            title={attachmentViewerTitle}
+         />
+      </View>
+   );
+};
+
+const styles = StyleSheet.create({
+   container: { flex: 1, backgroundColor: COLORS.background },
+
+   // Header
+   header: { backgroundColor: COLORS.white, paddingHorizontal: 15, paddingTop: 50, paddingBottom: 15, alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.gray200 },
+   icon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
+   headerAvatar: { width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, backgroundColor: '#eee' },
+   headerName: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
+   headerStatus: { fontSize: 12, color: COLORS.success },
+
+   // Messages
+   msgRow: { maxWidth: '80%', marginBottom: 8 },
+   bubble: { padding: 12, borderRadius: 14 },
+
+   bubbleReceived: { backgroundColor: COLORS.white, borderTopLeftRadius: 0, borderWidth: 1, borderColor: COLORS.gray200 },
+   textReceived: { color: '#000', fontSize: 14 },
+
+   bubbleSent: { backgroundColor: COLORS.primary, borderTopRightRadius: 0 },
+   textSent: { color: '#fff', fontSize: 14 },
+
+   timestamp: { fontSize: 10, color: COLORS.gray500, marginTop: 4 },
+
+   // Attachment
+   attachmentContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      padding: 8,
+      borderRadius: 10,
+   },
+   attachmentContainerSent: {
+      backgroundColor: 'rgba(255,255,255,0.25)',
+   },
+   attachmentIconContainer: {
+      width: 32,
+      height: 32,
+      borderRadius: 6,
+      backgroundColor: '#fff',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+   },
+   attachmentIconContainerSent: {
+      backgroundColor: 'rgba(255,255,255,0.9)',
+      borderColor: 'rgba(255,255,255,0.3)',
+   },
+   fileExtensionText: {
+      fontSize: 7,
+      fontWeight: 'bold',
+      marginTop: 1,
+   },
+   attachmentFileName: {
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 1,
+   },
+   attachmentFileSize: {
+      fontSize: 10,
+   },
+
+   // Footer
+   footer: { backgroundColor: COLORS.white, padding: 10, paddingBottom: 30, alignItems: 'center', borderTopWidth: 1, borderColor: COLORS.gray200 },
+   attachBtn: { padding: 10, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+   footerIcon: { width: 24, height: 24, tintColor: COLORS.gray500 },
+   chatInput: { flex: 1, backgroundColor: COLORS.gray100, borderRadius: 25, paddingHorizontal: 20, paddingVertical: 10, marginHorizontal: 10, maxHeight: 100, color: COLORS.textPrimary },
+   sendBtn: { backgroundColor: COLORS.primary, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.primary, shadowOpacity: 0.3, elevation: 3 },
+
+   // Expired thread banner
+   expiredBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.gray100,
+      padding: 16,
+      paddingBottom: 30,
+      borderTopWidth: 1,
+      borderColor: COLORS.gray200,
+      gap: 8,
+   },
+   expiredText: {
+      color: COLORS.gray500,
+      fontSize: 13,
+      textAlign: 'center',
+      flex: 1,
+   },
+
+   // Attachment Menu (Android)
+   attachmentMenuOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+   },
+   attachmentMenuContainer: {
+      backgroundColor: COLORS.white,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 20,
+      paddingBottom: 40,
+   },
+   attachmentMenuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 15,
+   },
+   attachmentMenuText: {
+      fontSize: 16,
+      color: COLORS.textPrimary,
+      marginHorizontal: 15,
+   },
+   attachmentMenuDivider: {
+      height: 1,
+      backgroundColor: COLORS.gray200,
+   },
+});
+
+export default ChatDetailsScreen;

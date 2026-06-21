@@ -1,0 +1,40 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.10 (swiftlang-5.10.0.13 clang-1500.3.9.4)
+// swift-module-flags: -target arm64-apple-ios12.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -O -enable-bare-slash-regex -module-name OPPWAMobile
+import Foundation
+@_exported import OPPWAMobile
+import Swift
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+import ipworks3ds_sdk
+@_inheritsConvenienceInitializers @objc public class OPPThreeDSConfig : ObjectiveC.NSObject {
+  @objc public var challengeUiTypes: OPPWAMobile.OPPThreeDSChallengeUiType
+  @objc public var sdkMaxTimeout: Swift.Int
+  @objc public var clientConfigParams: [Swift.String : Swift.String] {
+    @objc get
+    @objc set
+  }
+  @objc public var appBundleID: Swift.String
+  @objc public var locale: Swift.String?
+  @objc public var deviceParameterBlacklist: [Swift.String]?
+  @objc public var uiCustomization: ipworks3ds_sdk.UiCustomization
+  @objc public var threeDSRequestorAppURL: Swift.String?
+  @objc override dynamic public init()
+  @objc public func getClientConfig() -> Swift.Set<Swift.String>
+  @objc public func getUngroupedConfigParams() -> [Swift.String : Swift.String]
+  @objc deinit
+}
+@objc public class OPPThreeDSSchemeConfig : ObjectiveC.NSObject {
+  @objc public var dsRefId: Swift.String {
+    get
+  }
+  @objc public var dsEncryptCert: Swift.String {
+    get
+  }
+  @objc public var dsCaRootCert: Swift.String {
+    get
+  }
+  @objc public init(dsRefId: Swift.String, dsEncryptCert: Swift.String, dsCaRootCert: Swift.String)
+  @objc deinit
+}

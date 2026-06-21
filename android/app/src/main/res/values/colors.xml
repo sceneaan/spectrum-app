@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bootsplash_background">#ffffff</color>
+    <color name="primary">#5DBCD2</color>
+    <color name="secondary">#005f73</color>
+    <color name="white">#FFFFFF</color>
+    <color name="success">#4CAF50</color>
+    <color name="danger">#FF5252</color>
+    <color name="warning">#FFA500</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

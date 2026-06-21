@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">سبكتروم</string>
+
+    <!-- Permission Rationale Descriptions (shown to users when requesting permissions) -->
+
+    <!-- Camera Permission -->
+    <string name="permission_camera_title">مطلوب الوصول للكاميرا</string>
+    <string name="permission_camera_message">يحتاج سبكتروم إلى الوصول للكاميرا لإجراء الاستشارات المرئية مع مقدم الرعاية الصحية. يتيح لك ذلك إجراء مواعيد طبية عن بُعد من أي مكان.</string>
+    <string name="permission_camera_denied">إذن الكاميرا مطلوب للاستشارات المرئية. يرجى تفعيله من الإعدادات.</string>
+
+    <!-- Microphone Permission -->
+    <string name="permission_microphone_title">مطلوب الوصول للميكروفون</string>
+    <string name="permission_microphone_message">يحتاج سبكتروم إلى الوصول للميكروفون لتفعيل الصوت أثناء الاستشارات المرئية. هذا يضمن أن طبيبك يمكنه سماعك بوضوح أثناء المواعيد.</string>
+    <string name="permission_microphone_denied">إذن الميكروفون مطلوب للصوت أثناء الاستشارات. يرجى تفعيله من الإعدادات.</string>
+
+    <!-- Storage/Photos Permission -->
+    <string name="permission_storage_title">مطلوب الوصول لمكتبة الصور</string>
+    <string name="permission_storage_message">يحتاج سبكتروم إلى الوصول لصورك لرفع المستندات الطبية والوصفات وغيرها من الصور المتعلقة بالصحة لسجلاتك الطبية.</string>
+    <string name="permission_storage_denied">إذن التخزين مطلوب لرفع المستندات. يرجى تفعيله من الإعدادات.</string>
+
+    <!-- Notifications Permission -->
+    <string name="permission_notifications_title">تفعيل الإشعارات</string>
+    <string name="permission_notifications_message">ابقَ على اطلاع بمواعيدك ورسائل الأطباء والتحديثات الصحية المهمة. سنرسل لك فقط الإشعارات التي تهمك.</string>
+    <string name="permission_notifications_denied">الإشعارات معطلة. قد تفوتك تذكيرات المواعيد والرسائل المهمة.</string>
+
+    <!-- Location Permission (if needed) -->
+    <string name="permission_location_title">الوصول للموقع</string>
+    <string name="permission_location_message">يستخدم سبكتروم موقعك للعثور على مقدمي الرعاية الصحية والعيادات القريبة، مما يسهل حجز المواعيد الحضورية.</string>
+    <string name="permission_location_denied">إذن الموقع يساعد في العثور على مقدمي الخدمة القريبين. فعّله من الإعدادات للحصول على توصيات أفضل.</string>
+
+    <!-- General Permission Dialog -->
+    <string name="permission_settings_button">فتح الإعدادات</string>
+    <string name="permission_cancel_button">إلغاء</string>
+    <string name="permission_allow_button">السماح</string>
+    <string name="permission_deny_button">رفض</string>
+
+    <!-- Notification Channel Names (shown in Android Settings) -->
+    <string name="notification_channel_default">الإشعارات العامة</string>
+    <string name="notification_channel_appointments">تذكيرات المواعيد</string>
+    <string name="notification_channel_chat">رسائل الأطباء</string>
+    <string name="notification_channel_payments">تحديثات الدفع</string>
+
+    <!-- Notification Channel Descriptions -->
+    <string name="notification_channel_default_desc">إشعارات عامة من سبكتروم</string>
+    <string name="notification_channel_appointments_desc">تذكيرات وتحديثات لمواعيدك القادمة</string>
+    <string name="notification_channel_chat_desc">رسائل جديدة من مقدمي الرعاية الصحية</string>
+    <string name="notification_channel_payments_desc">تأكيدات الدفع وتحديثات الفواتير</string>
+</resources>

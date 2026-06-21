@@ -1,0 +1,1493 @@
+{
+  "ABIRoot": {
+    "kind": "Root",
+    "name": "TopLevel",
+    "printedName": "TopLevel",
+    "children": [
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "OPPWAMobile",
+        "declAttributes": [
+          "RawDocComment"
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "ipworks3ds_sdk",
+        "printedName": "ipworks3ds_sdk",
+        "declKind": "Import",
+        "moduleName": "OPPWAMobile"
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "OPPThreeDSConfig",
+        "printedName": "OPPThreeDSConfig",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "challengeUiTypes",
+            "printedName": "challengeUiTypes",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "OPPThreeDSChallengeUiType",
+                "printedName": "OPPWAMobile.OPPThreeDSChallengeUiType",
+                "usr": "c:@E@OPPThreeDSChallengeUiType"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)challengeUiTypes",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC16challengeUiTypesSo0b11DSChallengeE4TypeVvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "OPPThreeDSChallengeUiType",
+                    "printedName": "OPPWAMobile.OPPThreeDSChallengeUiType",
+                    "usr": "c:@E@OPPThreeDSChallengeUiType"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)challengeUiTypes",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC16challengeUiTypesSo0b11DSChallengeE4TypeVvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "OPPThreeDSChallengeUiType",
+                    "printedName": "OPPWAMobile.OPPThreeDSChallengeUiType",
+                    "usr": "c:@E@OPPThreeDSChallengeUiType"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setChallengeUiTypes:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC16challengeUiTypesSo0b11DSChallengeE4TypeVvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC16challengeUiTypesSo0b11DSChallengeE4TypeVvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC16challengeUiTypesSo0b11DSChallengeE4TypeVvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "sdkMaxTimeout",
+            "printedName": "sdkMaxTimeout",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)sdkMaxTimeout",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC13sdkMaxTimeoutSivp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)sdkMaxTimeout",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC13sdkMaxTimeoutSivg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setSdkMaxTimeout:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC13sdkMaxTimeoutSivs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC13sdkMaxTimeoutSivM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC13sdkMaxTimeoutSivM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "clientConfigParams",
+            "printedName": "clientConfigParams",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Dictionary",
+                "printedName": "[Swift.String : Swift.String]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "usr": "s:SD"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)clientConfigParams",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC18clientConfigParamsSDyS2SGvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Dictionary",
+                    "printedName": "[Swift.String : Swift.String]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:SD"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)clientConfigParams",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC18clientConfigParamsSDyS2SGvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Dictionary",
+                    "printedName": "[Swift.String : Swift.String]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:SD"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setClientConfigParams:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC18clientConfigParamsSDyS2SGvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC18clientConfigParamsSDyS2SGvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC18clientConfigParamsSDyS2SGvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "appBundleID",
+            "printedName": "appBundleID",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)appBundleID",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC11appBundleIDSSvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)appBundleID",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC11appBundleIDSSvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setAppBundleID:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC11appBundleIDSSvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC11appBundleIDSSvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC11appBundleIDSSvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "locale",
+            "printedName": "locale",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "Swift.String?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "usr": "s:Sq"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)locale",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC6localeSSSgvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "Swift.String?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)locale",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC6localeSSSgvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "Swift.String?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setLocale:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC6localeSSSgvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC6localeSSSgvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC6localeSSSgvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "deviceParameterBlacklist",
+            "printedName": "deviceParameterBlacklist",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "[Swift.String]?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[Swift.String]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "usr": "s:Sq"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)deviceParameterBlacklist",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC24deviceParameterBlacklistSaySSGSgvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "[Swift.String]?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Array",
+                        "printedName": "[Swift.String]",
+                        "children": [
+                          {
+                            "kind": "TypeNominal",
+                            "name": "String",
+                            "printedName": "Swift.String",
+                            "usr": "s:SS"
+                          }
+                        ],
+                        "usr": "s:Sa"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)deviceParameterBlacklist",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC24deviceParameterBlacklistSaySSGSgvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "[Swift.String]?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Array",
+                        "printedName": "[Swift.String]",
+                        "children": [
+                          {
+                            "kind": "TypeNominal",
+                            "name": "String",
+                            "printedName": "Swift.String",
+                            "usr": "s:SS"
+                          }
+                        ],
+                        "usr": "s:Sa"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setDeviceParameterBlacklist:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC24deviceParameterBlacklistSaySSGSgvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC24deviceParameterBlacklistSaySSGSgvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC24deviceParameterBlacklistSaySSGSgvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "uiCustomization",
+            "printedName": "uiCustomization",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "UiCustomization",
+                "printedName": "ipworks3ds_sdk.UiCustomization",
+                "usr": "c:@M@ipworks3ds_sdk@objc(cs)UiCustomization"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)uiCustomization",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC15uiCustomization14ipworks3ds_sdk02UiE0Cvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "UiCustomization",
+                    "printedName": "ipworks3ds_sdk.UiCustomization",
+                    "usr": "c:@M@ipworks3ds_sdk@objc(cs)UiCustomization"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)uiCustomization",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC15uiCustomization14ipworks3ds_sdk02UiE0Cvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "UiCustomization",
+                    "printedName": "ipworks3ds_sdk.UiCustomization",
+                    "usr": "c:@M@ipworks3ds_sdk@objc(cs)UiCustomization"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setUiCustomization:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC15uiCustomization14ipworks3ds_sdk02UiE0Cvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC15uiCustomization14ipworks3ds_sdk02UiE0CvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC15uiCustomization14ipworks3ds_sdk02UiE0CvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "threeDSRequestorAppURL",
+            "printedName": "threeDSRequestorAppURL",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "Swift.String?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "usr": "s:Sq"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(py)threeDSRequestorAppURL",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC22threeDSRequestorAppURLSSSgvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "Swift.String?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)threeDSRequestorAppURL",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC22threeDSRequestorAppURLSSSgvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "Swift.String?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)setThreeDSRequestorAppURL:",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC22threeDSRequestorAppURLSSSgvs",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:11OPPWAMobile16OPPThreeDSConfigC22threeDSRequestorAppURLSSSgvM",
+                "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC22threeDSRequestorAppURLSSSgvM",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init()",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "OPPThreeDSConfig",
+                "printedName": "OPPWAMobile.OPPThreeDSConfig",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)init",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigCACycfc",
+            "moduleName": "OPPWAMobile",
+            "overriding": true,
+            "objc_name": "init",
+            "declAttributes": [
+              "Dynamic",
+              "ObjC",
+              "Override",
+              "AccessControl",
+              "RawDocComment"
+            ],
+            "init_kind": "Designated"
+          },
+          {
+            "kind": "Function",
+            "name": "getClientConfig",
+            "printedName": "getClientConfig()",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Set",
+                "printedName": "Swift.Set<Swift.String>",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "usr": "s:Sh"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)getClientConfig",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC15getClientConfigShySSGyF",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "getUngroupedConfigParams",
+            "printedName": "getUngroupedConfigParams()",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Dictionary",
+                "printedName": "[Swift.String : Swift.String]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "usr": "s:SD"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig(im)getUngroupedConfigParams",
+            "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC24getUngroupedConfigParamsSDyS2SGyF",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "funcSelfKind": "NonMutating"
+          }
+        ],
+        "declKind": "Class",
+        "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSConfig",
+        "mangledName": "$s11OPPWAMobile16OPPThreeDSConfigC",
+        "moduleName": "OPPWAMobile",
+        "declAttributes": [
+          "AccessControl",
+          "ObjC",
+          "RawDocComment"
+        ],
+        "superclassUsr": "c:objc(cs)NSObject",
+        "inheritsConvenienceInitializers": true,
+        "superclassNames": [
+          "ObjectiveC.NSObject"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Equatable",
+            "printedName": "Equatable",
+            "usr": "s:SQ",
+            "mangledName": "$sSQ"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Hashable",
+            "printedName": "Hashable",
+            "usr": "s:SH",
+            "mangledName": "$sSH"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CVarArg",
+            "printedName": "CVarArg",
+            "usr": "s:s7CVarArgP",
+            "mangledName": "$ss7CVarArgP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "_KeyValueCodingAndObservingPublishing",
+            "printedName": "_KeyValueCodingAndObservingPublishing",
+            "usr": "s:10Foundation37_KeyValueCodingAndObservingPublishingP",
+            "mangledName": "$s10Foundation37_KeyValueCodingAndObservingPublishingP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "_KeyValueCodingAndObserving",
+            "printedName": "_KeyValueCodingAndObserving",
+            "usr": "s:10Foundation27_KeyValueCodingAndObservingP",
+            "mangledName": "$s10Foundation27_KeyValueCodingAndObservingP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CustomStringConvertible",
+            "printedName": "CustomStringConvertible",
+            "usr": "s:s23CustomStringConvertibleP",
+            "mangledName": "$ss23CustomStringConvertibleP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CustomDebugStringConvertible",
+            "printedName": "CustomDebugStringConvertible",
+            "usr": "s:s28CustomDebugStringConvertibleP",
+            "mangledName": "$ss28CustomDebugStringConvertibleP"
+          }
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "OPPWAMobile",
+        "declAttributes": [
+          "RawDocComment"
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "OPPThreeDSSchemeConfig",
+        "printedName": "OPPThreeDSSchemeConfig",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "dsRefId",
+            "printedName": "dsRefId",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(py)dsRefId",
+            "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC7dsRefIdSSvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasStorage",
+              "SetterAccess",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(im)dsRefId",
+                "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC7dsRefIdSSvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "dsEncryptCert",
+            "printedName": "dsEncryptCert",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(py)dsEncryptCert",
+            "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC13dsEncryptCertSSvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasStorage",
+              "SetterAccess",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(im)dsEncryptCert",
+                "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC13dsEncryptCertSSvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "dsCaRootCert",
+            "printedName": "dsCaRootCert",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(py)dsCaRootCert",
+            "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC12dsCaRootCertSSvp",
+            "moduleName": "OPPWAMobile",
+            "declAttributes": [
+              "HasStorage",
+              "SetterAccess",
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(im)dsCaRootCert",
+                "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC12dsCaRootCertSSvg",
+                "moduleName": "OPPWAMobile",
+                "implicit": true,
+                "declAttributes": [
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(dsRefId:dsEncryptCert:dsCaRootCert:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "OPPThreeDSSchemeConfig",
+                "printedName": "OPPWAMobile.OPPThreeDSSchemeConfig",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "String",
+                "printedName": "Swift.String",
+                "usr": "s:SS"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(im)initWithDsRefId:dsEncryptCert:dsCaRootCert:",
+            "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC7dsRefId0E11EncryptCert0e6CaRootI0ACSS_S2Stcfc",
+            "moduleName": "OPPWAMobile",
+            "objc_name": "initWithDsRefId:dsEncryptCert:dsCaRootCert:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC",
+              "RawDocComment"
+            ],
+            "init_kind": "Designated"
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init()",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "OPPThreeDSSchemeConfig",
+                "printedName": "OPPWAMobile.OPPThreeDSSchemeConfig",
+                "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig(im)init",
+            "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigCACycfc",
+            "moduleName": "OPPWAMobile",
+            "overriding": true,
+            "implicit": true,
+            "objc_name": "init",
+            "declAttributes": [
+              "Dynamic",
+              "ObjC",
+              "Override"
+            ],
+            "init_kind": "Designated"
+          }
+        ],
+        "declKind": "Class",
+        "usr": "c:@M@OPPWAMobile@objc(cs)OPPThreeDSSchemeConfig",
+        "mangledName": "$s11OPPWAMobile22OPPThreeDSSchemeConfigC",
+        "moduleName": "OPPWAMobile",
+        "declAttributes": [
+          "AccessControl",
+          "ObjC",
+          "RawDocComment"
+        ],
+        "superclassUsr": "c:objc(cs)NSObject",
+        "superclassNames": [
+          "ObjectiveC.NSObject"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Equatable",
+            "printedName": "Equatable",
+            "usr": "s:SQ",
+            "mangledName": "$sSQ"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Hashable",
+            "printedName": "Hashable",
+            "usr": "s:SH",
+            "mangledName": "$sSH"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CVarArg",
+            "printedName": "CVarArg",
+            "usr": "s:s7CVarArgP",
+            "mangledName": "$ss7CVarArgP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "_KeyValueCodingAndObservingPublishing",
+            "printedName": "_KeyValueCodingAndObservingPublishing",
+            "usr": "s:10Foundation37_KeyValueCodingAndObservingPublishingP",
+            "mangledName": "$s10Foundation37_KeyValueCodingAndObservingPublishingP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "_KeyValueCodingAndObserving",
+            "printedName": "_KeyValueCodingAndObserving",
+            "usr": "s:10Foundation27_KeyValueCodingAndObservingP",
+            "mangledName": "$s10Foundation27_KeyValueCodingAndObservingP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CustomStringConvertible",
+            "printedName": "CustomStringConvertible",
+            "usr": "s:s23CustomStringConvertibleP",
+            "mangledName": "$ss23CustomStringConvertibleP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CustomDebugStringConvertible",
+            "printedName": "CustomDebugStringConvertible",
+            "usr": "s:s28CustomDebugStringConvertibleP",
+            "mangledName": "$ss28CustomDebugStringConvertibleP"
+          }
+        ]
+      }
+    ],
+    "json_format_version": 8
+  },
+  "ConstValues": [
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 638,
+      "length": 26,
+      "value": "\"DeviceRenderingInterface\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 718,
+      "length": 23,
+      "value": "\"DeviceRenderingUIType\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 782,
+      "length": 10,
+      "value": "\"LogLevel\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 838,
+      "length": 15,
+      "value": "\"MaskSensitive\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 899,
+      "length": 15,
+      "value": "\"SDKMaxTimeout\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 974,
+      "length": 24,
+      "value": "\"UseSDKProcessingScreen\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "IntegerLiteral",
+      "offset": 1054,
+      "length": 1,
+      "value": "1"
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "IntegerLiteral",
+      "offset": 1104,
+      "length": 1,
+      "value": "2"
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "IntegerLiteral",
+      "offset": 1150,
+      "length": 1,
+      "value": "2"
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "BooleanLiteral",
+      "offset": 1191,
+      "length": 4,
+      "value": "true"
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "IntegerLiteral",
+      "offset": 2199,
+      "length": 1,
+      "value": "5"
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 2798,
+      "length": 17,
+      "value": "\"\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 2805,
+      "length": 1,
+      "value": "\"=\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 2814,
+      "length": 2,
+      "value": "\"\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 2973,
+      "length": 2,
+      "value": "\"\""
+    },
+    {
+      "filePath": "\/Users\/jenkins\/.jenkins\/workspace\/iOS_release\/OPPWAMobile\/target\/private\/OPPWAMobile\/OPPWAMobileThreeDS\/OPPThreeDSSchemeConfig.swift",
+      "kind": "StringLiteral",
+      "offset": 543,
+      "length": 22,
+      "value": "\"OPPWAMobile.OPPThreeDSSchemeConfig\""
+    }
+  ]
+}

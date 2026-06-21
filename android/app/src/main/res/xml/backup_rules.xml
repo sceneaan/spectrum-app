@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Include all app data -->
+    <include domain="sharedpref" path="." />
+    <include domain="database" path="." />
+    <include domain="file" path="." />
+
+    <!-- Exclude sensitive data from backup -->
+    <exclude domain="sharedpref" path="auth_tokens.xml" />
+    <exclude domain="sharedpref" path="RN_*.xml" />
+    <exclude domain="database" path="RKStorage" />
+    <exclude domain="file" path="cache/" />
+    <exclude domain="file" path="temp/" />
+    <exclude domain="file" path="tmp/" />
+    <exclude domain="file" path="logs/" />
+    <exclude domain="file" path="medical_records/" />
+    <exclude domain="database" path="health_data.db" />
+    <exclude domain="sharedpref" path="payment_*.xml" />
+</full-backup-content>
