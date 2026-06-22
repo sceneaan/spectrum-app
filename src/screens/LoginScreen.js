@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, I18nManager } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, I18nManager, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -64,9 +64,6 @@ const LoginScreen = () => {
           });
         },
         onError: (err) => {
-          console.error("Login OTP Error:", err);
-          console.error("Error response:", err.response?.data);
-          console.error("Error message:", err.response?.data?.message);
           const errorMessage = err.response?.data?.message || err.message || t('auth.otp.error') || "Failed to send OTP";
 
           // Check if error is "isNotVerified" - user exists but not verified yet
@@ -82,7 +79,6 @@ const LoginScreen = () => {
                 });
               },
               onError: (resendErr) => {
-                console.error("Resend OTP Error:", resendErr);
                 const resendErrorMsg = resendErr.response?.data?.message || resendErr.message || "Failed to resend OTP";
                 Alert.alert(t('alerts.error') || "Error", resendErrorMsg);
               }
@@ -167,7 +163,7 @@ const LoginScreen = () => {
           {/* Footer */}
           <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <Text style={styles.footerText}>{t('auth.login.needHelp') || "Need help?"} </Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL('mailto:support@spectrumclinics.care')}>
               <Text style={styles.linkText}>{t('auth.login.contactSupport') || "Contact Support"}</Text>
             </TouchableOpacity>
           </View>

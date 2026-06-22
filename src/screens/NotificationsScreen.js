@@ -36,13 +36,6 @@ const NotificationsScreen = () => {
       error: notificationsError
   } = useGetNotifications({ limit: 50 }); // Fetch first 50
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🔔 [NotificationsScreen] Data:', notificationsData);
-    console.log('🔔 [NotificationsScreen] Error:', notificationsError);
-    console.log('🔔 [NotificationsScreen] User:', user);
-    console.log('🔔 [NotificationsScreen] Token:', token ? 'Present' : 'Missing');
-  }, [notificationsData, notificationsError, user, token]);
 
   const { mutate: markRead } = useMarkNotificationsAsRead();
   const { mutate: markAllRead, isPending: isMarkingAll } = useMarkAllNotificationsAsRead();
@@ -57,8 +50,7 @@ const NotificationsScreen = () => {
 
       // Listen for foreground messages
       const unsubscribe = messaging().onMessage(async remoteMessage => {
-          console.log('Foreground notification received:', remoteMessage);
-          refetch(); // Refresh list
+          refetch();
       });
 
       return unsubscribe;
@@ -230,9 +222,12 @@ const NotificationsScreen = () => {
       {/* List */}
       <FlatList
         data={getFilteredData()}
-        keyExtractor={item => item._id}
+        keyExtractor={(item, index) => item._id || index.toString()}
         contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
         renderItem={({ item }) => <NotificationItem item={item} />}
+        removeClippedSubviews={true}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
         refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }

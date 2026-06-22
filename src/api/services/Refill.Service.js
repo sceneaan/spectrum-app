@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest } from '@api';
 import { ErrorMessages } from '@api/messages/generic';
 import { throwServerError } from '@api/messages/error';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/refill';
 
@@ -62,6 +63,7 @@ export const usePatientToProviderRequests = () => {
 };
 
 export const usePendingMedications = () => {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['pendingMedications'],
         queryFn: async () => {
@@ -77,6 +79,7 @@ export const usePendingMedications = () => {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 };
 

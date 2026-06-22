@@ -70,12 +70,8 @@ const MedicalRecordScreen = () => {
 
   // Fetch all data
   const fetchAllData = useCallback(async () => {
-    if (!currentUser?._id) {
-      console.log('❌ [MedicalRecord] No currentUser._id found');
-      return;
-    }
+    if (!currentUser?._id) return;
 
-    console.log('🔄 [MedicalRecord] Fetching data for user:', currentUser._id);
     setLoading(true);
     try {
       const [prescriptions, sickLeaves, procedures, refillRequests, documents] = await Promise.all([
@@ -86,34 +82,12 @@ const MedicalRecordScreen = () => {
         GetAllDocuments(currentUser._id),
       ]);
 
-      console.log('📋 [MedicalRecord] Prescriptions:', prescriptions);
-      console.log('🏥 [MedicalRecord] Sick Leaves:', sickLeaves);
-      console.log('🔬 [MedicalRecord] Procedures:', procedures);
-      console.log('💊 [MedicalRecord] Refill Requests:', refillRequests);
-      console.log('📄 [MedicalRecord] Documents:', documents);
-
-      if (prescriptions?.prescriptions) {
-        console.log('✅ Setting prescriptions:', prescriptions.prescriptions.length);
-        setPrescriptionsList(prescriptions.prescriptions);
-      }
-      if (sickLeaves) {
-        console.log('✅ Setting sick leaves:', sickLeaves.length);
-        setSickLeavesList(sickLeaves);
-      }
-      if (procedures) {
-        console.log('✅ Setting procedures:', procedures.length);
-        setProcedureList(procedures);
-      }
-      if (refillRequests?.docs) {
-        console.log('✅ Setting refill requests:', refillRequests.docs.length);
-        setRefillRequestList(refillRequests.docs);
-      }
-      if (documents) {
-        console.log('✅ Setting documents:', documents.length);
-        setDocumentsList(documents);
-      }
+      if (prescriptions?.prescriptions) setPrescriptionsList(prescriptions.prescriptions);
+      if (sickLeaves) setSickLeavesList(sickLeaves);
+      if (procedures) setProcedureList(procedures);
+      if (refillRequests?.docs) setRefillRequestList(refillRequests.docs);
+      if (documents) setDocumentsList(documents);
     } catch (error) {
-      console.error('❌ [MedicalRecord] Error fetching data:', error);
       Alert.alert(t.common?.error || 'Error', error.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
@@ -131,8 +105,7 @@ const MedicalRecordScreen = () => {
       );
 
       setAvailableTestNames(availableProcedures);
-    } catch (error) {
-      console.error('Error updating available test names:', error);
+    } catch {
     }
   }, [currentUser?._id, procedureList]);
 
@@ -206,7 +179,6 @@ const MedicalRecordScreen = () => {
           relatedPatient: currentUser?._id,
         });
 
-        console.log('📄 [MedicalRecord] Upload response:', uploadResponse);
 
         // Store both fileId (new) and url (legacy) for backward compatibility
         setSelectedFile({
@@ -217,7 +189,6 @@ const MedicalRecordScreen = () => {
 
         Alert.alert(t.common?.success || 'Success', t.medicalRecord?.fileSelectedSuccess || 'File selected successfully');
       } catch (error) {
-        console.error('Upload error:', error);
         Alert.alert(t.common?.error || 'Error', error.message || t.medicalRecord?.failedToPickDocument || 'Failed to upload file');
       } finally {
         setUploadingFile(false);
@@ -273,7 +244,6 @@ const MedicalRecordScreen = () => {
         await updateAvailableTestNames();
       }
     } catch (error) {
-      console.error('Error uploading test:', error);
       Alert.alert(t.common?.error || 'Error', error.message || 'Failed to upload test');
     } finally {
       setAddDocumentLoader(false);
@@ -283,14 +253,6 @@ const MedicalRecordScreen = () => {
   // Filter data based on active tab
   const getFilteredData = () => {
     let allData = [];
-
-    console.log('📊 [MedicalRecord] Data counts:', {
-      prescriptions: prescriptionsList.length,
-      procedures: procedureList.length,
-      documents: documentsList.length,
-      sickLeaves: sickLeavesList.length,
-      refillRequests: refillRequestList.length,
-    });
 
     if (activeTab === 'All' || activeTab === 'Meds') {
       allData = [...allData, ...prescriptionsList.map(item => ({ ...item, type: 'Meds' }))];
@@ -317,7 +279,6 @@ const MedicalRecordScreen = () => {
       });
     }
 
-    console.log('🔍 [MedicalRecord] Filtered data count:', allData.length);
     return allData;
   };
 
@@ -369,11 +330,8 @@ const MedicalRecordScreen = () => {
         if (item.documentFileId) {
           // New secure private file - fetch via authenticated endpoint
           try {
-            console.log('📄 [MedicalRecord] Fetching private document:', item.documentFileId);
             documentUrl = await getPrivateFileAsBase64(item.documentFileId);
-            console.log('📄 [MedicalRecord] Got document URL, length:', documentUrl?.length);
           } catch (fetchError) {
-            console.error('Error fetching private document:', fetchError);
             setLoadingDocument(false);
             // Fall back to legacy URL if available
             if (!item.document) {
@@ -481,10 +439,8 @@ const MedicalRecordScreen = () => {
 
           if (item.documentFileId) {
             try {
-              console.log('📄 [MedicalRecord] Fetching private document:', item.documentFileId);
               documentUrl = await getPrivateFileAsBase64(item.documentFileId);
             } catch (fetchError) {
-              console.error('Error fetching private document:', fetchError);
               setLoadingDocument(false);
               if (!item.document) {
                 Alert.alert(t.common?.error || 'Error', 'Failed to load document');
@@ -574,7 +530,6 @@ ${providerDisplayName ? `${t.medicalRecord?.provider || 'Provider'}: ${providerD
         Alert.alert(t.common?.info || 'Info', t.medicalRecord?.noDocumentAvailable || 'No document available');
       }
     } catch (error) {
-      console.error('Error opening document:', error);
       setLoadingDocument(false);
       Alert.alert(t.common?.error || 'Error', 'Failed to open document');
     }

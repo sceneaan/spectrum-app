@@ -90,18 +90,12 @@ const HomeScreen = () => {
    // Fetch promotions from backend
    const { data: promotionsData, isLoading: isPromotionsLoading, error: promotionsError } = useGetAllPromotions();
 
-   // Debug log for promotions
+   // Derive loading from actual data fetches instead of a fixed timer
    useEffect(() => {
-      console.log('Promotions Data:', promotionsData);
-      console.log('Promotions Loading:', isPromotionsLoading);
-      console.log('Promotions Error:', promotionsError);
-   }, [promotionsData, isPromotionsLoading, promotionsError]);
-
-
-   React.useEffect(() => {
-      const timer = setTimeout(() => setLoading(false), 2000);
-      return () => clearTimeout(timer);
-   }, []);
+      if (!isCategoriesLoading && !isFiltersLoading && !isProvidersLoading) {
+         setLoading(false);
+      }
+   }, [isCategoriesLoading, isFiltersLoading, isProvidersLoading]);
 
    const openJoinUs = async () => {
       const url = 'https://spectrumclinics.care/#/join-us';
@@ -161,14 +155,6 @@ const HomeScreen = () => {
       ? promotionsData.filter(promo => promo.status === 'active')
       : [];
 
-   // Debug log for promo cards
-   useEffect(() => {
-      console.log('Promo Cards:', promoCards);
-      console.log('Promo Cards Length:', promoCards.length);
-      if (promoCards.length > 0) {
-         console.log('First Promo Card:', promoCards[0]);
-      }
-   }, [promoCards]);
 
    // Auto-scroll functionality
    useEffect(() => {

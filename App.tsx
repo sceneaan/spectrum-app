@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './src/api/queryClient';
 import { LanguageProvider } from './src/store/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { requestUserPermission } from './src/utils/notificationService'; // Import the utility
@@ -32,29 +33,38 @@ Sentry.init({
 });
 import './src/config/i18n'; // Initialize i18n configuration
 
-// Create a client for React Query
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 2,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    },
-  },
-});
-
 const App = () => {
-  const { user, token } = useAuthStore(); // Access auth store
-  
-  useEffect(() => {
-    const init = async () => {
-      // …do multiple sync or async tasks
-    };
+  const { user, token, isAuthenticated, isTokenExpiringSoon, refreshToken, updateTokens, logout } = useAuthStore();
 
-    init().finally(async () => {
-      await BootSplash.hide({ fade: true });
-      console.log("BootSplash has been hidden successfully");
-    });
+  useEffect(() => {
+    BootSplash.hide({ fade: true });
   }, []);
+
+  // Proactively refresh token 5 minutes before it expires
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(async () => {
+      if (isTokenExpiringSoon() && refreshToken) {
+        try {
+          const response = await fetch(`${require('./src/config').environmentUrls.api_url}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const { token: newToken, refreshToken: newRefreshToken, expiresIn } = data.data;
+            updateTokens(newToken, newRefreshToken, expiresIn);
+          }
+        } catch {
+          // Proactive refresh failed — reactive refresh on next 401 will handle it
+        }
+      }
+    }, 60 * 1000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, refreshToken]);
 
   useEffect(() => {
     // Request notification permissions and register token on app start

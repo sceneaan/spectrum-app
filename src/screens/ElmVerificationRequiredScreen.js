@@ -139,7 +139,6 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-      console.error('ELM verification error:', error);
       Alert.alert(
         isRTL ? 'خطأ' : 'Error',
         error.message || (isRTL ? 'فشل التحقق من الهوية. يرجى المحاولة مرة أخرى' : 'Verification failed. Please try again.')
@@ -189,7 +188,6 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
         }, 1500);
       }
     } catch (error) {
-      console.error('Update error:', error);
       Alert.alert(
         isRTL ? 'خطأ' : 'Error',
         error.message || (isRTL ? 'فشل تحديث البيانات' : 'Failed to update information')

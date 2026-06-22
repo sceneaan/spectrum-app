@@ -255,7 +255,7 @@ const FindTherapistScreen = () => {
             ) : (
                 <FlatList
                     data={providers}
-                    keyExtractor={(item) => (item.id || item._id || Math.random()).toString()}
+                    keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                     renderItem={renderItem}
                     contentContainerStyle={{ padding: 20 }}
                     ListEmptyComponent={renderEmpty}

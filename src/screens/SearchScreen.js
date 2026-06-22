@@ -28,29 +28,17 @@ const SearchScreen = () => {
   };
 
   // Fetch categories and services from API
-  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useGetAllCategories();
-  const { data: servicesData, isLoading: isLoadingServices, error: servicesError } = useGetAllServices();
+  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError, refetch: refetchCategories } = useGetAllCategories();
+  const { data: servicesData, isLoading: isLoadingServices, error: servicesError, refetch: refetchServices } = useGetAllServices();
 
   // Filter services when category or appointment type changes
   useEffect(() => {
     if (selectedCategoryId && appointmentType && servicesData) {
-      console.log('Filtering services...');
-      console.log('Selected Category:', selectedCategoryId);
-      console.log('Selected Type:', appointmentType);
-      console.log('All services:', servicesData);
-
       const filtered = servicesData.filter((service) => {
-        // Handle both _id and id for category
         const serviceCategoryId = service.category?._id || service.category?.id || service.category;
-        const matchesCategory = serviceCategoryId === selectedCategoryId;
-        const matchesType = service.serviceType === appointmentType;
-
-        console.log(`Service: ${service.name}, Category: ${serviceCategoryId}, Type: ${service.serviceType}, Matches: ${matchesCategory && matchesType}`);
-
-        return matchesCategory && matchesType;
+        return serviceCategoryId === selectedCategoryId && service.serviceType === appointmentType;
       });
 
-      console.log('Filtered services:', filtered);
       setFilteredServices(filtered);
     } else {
       setFilteredServices([]);
@@ -122,6 +110,9 @@ const SearchScreen = () => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{t('common.errorLoadingData') || "Error loading data. Please try again."}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => { refetchCategories(); refetchServices(); }}>
+          <Text style={styles.retryBtnText}>{t('common.retry') || 'Retry'}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -153,7 +144,6 @@ const SearchScreen = () => {
                     isRTL && { marginLeft: 15, marginRight: 0 }
                   ]}
                   onPress={() => {
-                    console.log('Category clicked:', categoryId);
                     handleCategoryChange(categoryId);
                   }}
                   activeOpacity={0.7}
@@ -263,7 +253,7 @@ const SearchScreen = () => {
         </TouchableOpacity>
 
         {/* Service Modal */}
-        <Modal visible={serviceModalVisible} transparent animationType="slide">
+        <Modal visible={serviceModalVisible} transparent animationType="slide" onRequestClose={() => setServiceModalVisible(false)}>
           <View style={styles.modalBg}>
             <View style={styles.modalContent}>
               <View style={[rowStyle, { justifyContent: 'space-between', marginBottom: 20 }]}>
@@ -280,7 +270,6 @@ const SearchScreen = () => {
                         key={serviceId}
                         style={styles.modalItem}
                         onPress={() => {
-                          console.log('Service selected:', serviceId, serviceName);
                           setSelectedServiceId(serviceId);
                           setServiceModalVisible(false);
                         }}
@@ -309,13 +298,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
   loadingText: { marginTop: 10, fontSize: 16, color: COLORS.textPrimary },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  errorText: { fontSize: 16, color: COLORS.error, textAlign: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, padding: 20 },
+  errorText: { fontSize: 16, color: COLORS.error, textAlign: 'center', marginBottom: 16 },
+  retryBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
+  retryBtnText: { color: COLORS.white, fontWeight: '600', fontSize: 15 },
 
   section: { marginTop: 25 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, paddingHorizontal: 20, color: COLORS.textPrimary },
 
-  catCard: { alignItems: 'center', marginRight: 15, width: 80 },
+  catCard: { alignItems: 'center', marginRight: 15, width: 80, borderRadius: 12, padding: 6, borderWidth: 1.5, borderColor: 'transparent' },
+  activeCatCard: { borderColor: COLORS.primary, backgroundColor: COLORS.promo1 || '#EBF3FF' },
   iconBox: { width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', marginBottom: 8, elevation: 2, shadowColor: COLORS.shadow, shadowOpacity: 0.05 },
   activeIconBox: { backgroundColor: COLORS.primary },
   catIcon: { width: 28, height: 28, tintColor: COLORS.primary },

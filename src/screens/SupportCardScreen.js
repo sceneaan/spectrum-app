@@ -114,12 +114,6 @@ const SupportCardScreen = () => {
     // Format phone: remove spaces, +, -, (), and add country code
     const formattedPhone = `${countryCode}${recipientPhone}`.replace(/[\s\+\-\(\)]/g, '');
 
-    console.log('Creating support card with:', {
-      amount: totalAmount,
-      phoneNumber: formattedPhone,
-    });
-
-    // Create support card via API
     createSupportCard(
       {
         amount: totalAmount,
@@ -127,7 +121,6 @@ const SupportCardScreen = () => {
       },
       {
         onSuccess: (data) => {
-          console.log('Support card created successfully:', data);
 
           // Navigate to PaymentFormScreen
           // Ensure amount is a number for native iOS module compatibility
@@ -144,7 +137,6 @@ const SupportCardScreen = () => {
           });
         },
         onError: (error) => {
-          console.error('Error creating support card:', error);
           Alert.alert(
             t.supportCard?.error || 'Error',
             t.supportCard?.failedToCreateSupportCard || 'Failed to create support card'

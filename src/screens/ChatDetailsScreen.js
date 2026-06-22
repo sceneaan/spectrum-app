@@ -107,8 +107,6 @@ const ChatDetailsScreen = () => {
    // Load messages
    useEffect(() => {
     if (threadMessages) {
-      console.log('📨 [ChatDetails] Thread messages received:', threadMessages);
-      console.log('📨 [ChatDetails] Number of messages:', threadMessages.length);
       setMessages(threadMessages);
       // Scroll to bottom when messages first load
       setTimeout(() => {
@@ -121,36 +119,22 @@ const ChatDetailsScreen = () => {
    useEffect(() => {
     if (loggedInUser?.id && thread?._id) {
       const handleNewMessage = (message) => {
-        console.log('🔔 [ChatDetails] New message received via socket:', message);
-
-        // Only add message if it belongs to this thread
         const messageThreadId = message?.thread?._id || message?.thread;
         if (messageThreadId === thread._id) {
-          console.log('🔔 [ChatDetails] Message belongs to this thread, adding to state');
           setMessages(prevMessages => {
-            // Check if message already exists (prevent duplicates)
             const exists = prevMessages.some(m => m._id === message._id);
-            if (exists) {
-              console.log('🔔 [ChatDetails] Message already exists, skipping');
-              return prevMessages;
-            }
+            if (exists) return prevMessages;
             return [...prevMessages, message];
           });
           scrollToBottom();
-        } else {
-          console.log('🔔 [ChatDetails] Message belongs to different thread:', messageThreadId);
         }
       };
 
-      // Connect and set up listener
       socketService.connect(loggedInUser.id)
         .then(() => {
-          console.log('🔔 [ChatDetails] Socket connected, setting up listener');
           socketService.on('newMessage', handleNewMessage);
         })
-        .catch((error) => {
-          console.warn('🔔 [ChatDetails] Socket connection failed:', error.message);
-        });
+        .catch(() => {});
 
       return () => {
         socketService.off('newMessage', handleNewMessage);
@@ -178,7 +162,6 @@ const ChatDetailsScreen = () => {
 
       sendMessage(payload, {
           onSuccess: (data) => {
-              console.log('✅ [ChatDetails] Message sent successfully:', data);
               setInputText('');
               // Add message to state
               setMessages(prevMessages => [
@@ -190,7 +173,6 @@ const ChatDetailsScreen = () => {
               }, 500);
           },
           onError: (err) => {
-              console.error("❌ [ChatDetails] Failed to send message", err);
               Alert.alert(
                 t.common?.error || 'Error',
                 err.message || 'Failed to send message'
@@ -233,12 +215,10 @@ const ChatDetailsScreen = () => {
            });
 
            if (result.didCancel) {
-               console.log('User cancelled image picker');
                return;
            }
 
            if (result.errorCode) {
-               console.error('ImagePicker Error:', result.errorCode, result.errorMessage);
                Alert.alert(t.common?.error || 'Error', result.errorMessage || 'Failed to pick image');
                return;
            }
@@ -252,11 +232,9 @@ const ChatDetailsScreen = () => {
                    size: imageAsset.fileSize,
                };
 
-               console.log("📷 [ChatDetails] Selected image:", file);
                await uploadAndSendAttachment(file);
            }
        } catch (err) {
-           console.error('Image picker error:', err);
            Alert.alert(t.common?.error || 'Error', 'Failed to pick image');
        }
    };
@@ -270,11 +248,9 @@ const ChatDetailsScreen = () => {
            });
 
            const file = results[0];
-           console.log("📎 [ChatDetails] Selected file:", file);
            await uploadAndSendAttachment(file);
        } catch (err) {
            if (!DocumentPicker.isCancel(err)) {
-               console.error(err);
                Alert.alert(t.common?.error || 'Error', 'Failed to pick file');
            }
        }
@@ -297,7 +273,6 @@ const ChatDetailsScreen = () => {
                threadId: thread?._id,
            });
 
-           console.log('📤 [ChatDetails] Upload response:', uploadResponse);
 
            // Send message with attachment - include both fileId (new) and url (legacy)
            const payload = {
@@ -318,12 +293,10 @@ const ChatDetailsScreen = () => {
                    scrollToBottom();
                },
                onError: (err) => {
-                   console.error('❌ [ChatDetails] Failed to send attachment message:', err);
                    Alert.alert(t.common?.error || 'Error', 'Failed to send attachment');
                }
            });
        } catch (uploadErr) {
-           console.error('❌ [ChatDetails] Upload error:', uploadErr);
            Alert.alert(t.common?.error || 'Error', uploadErr.message || 'Failed to upload file');
        } finally {
            setIsUploadingAttachment(false);
@@ -352,11 +325,9 @@ const ChatDetailsScreen = () => {
 
                // If we have a fileId, fetch the private file
                if (fileId) {
-                   console.log('📎 [ChatDetails] Fetching private attachment:', fileId);
                    try {
                        documentUrl = await getPrivateFileAsBase64(fileId);
                    } catch (fetchErr) {
-                       console.error('Error fetching private attachment:', fetchErr);
                        // Fall back to legacy URL if available
                        if (!legacyUrl) {
                            Alert.alert(t.common?.error || 'Error', 'Failed to load attachment');
@@ -426,7 +397,6 @@ const ChatDetailsScreen = () => {
                    }
                }
            } catch (error) {
-               console.error('Error opening attachment:', error);
                Alert.alert(t.common?.error || 'Error', 'Failed to open attachment');
            }
        };

@@ -3,11 +3,13 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest, putRequest, deleteRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/notification';
 
 // Hook to get notifications with pagination and filters
 export function useGetNotifications(queryParams = {}) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const defaultParams = {
     page: 1,
     limit: 20,
@@ -30,17 +32,11 @@ export function useGetNotifications(queryParams = {}) {
     queryKey: ['notifications', defaultParams],
     queryFn: async () => {
       try {
-        console.log('🔔 [NotificationService] Fetching notifications with params:', defaultParams);
         const result = await getRequest(`${MODEL_NAME}/list`, defaultParams);
-        console.log('🔔 [NotificationService] API Response status:', result.status);
-        console.log('🔔 [NotificationService] API Response data:', JSON.stringify(result.data, null, 2));
 
         if (result.status === HttpStatusCode.Ok) {
-          // Handle nested data structure: result.data.data
           const data = result.data?.data || result.data || {};
-          console.log('🔔 [NotificationService] Parsed data:', JSON.stringify(data, null, 2));
-
-          const response = {
+          return {
             docs: Array.isArray(data.docs) ? data.docs : [],
             totalDocs: typeof data.totalDocs === 'number' ? data.totalDocs : 0,
             limit: typeof data.limit === 'number' ? data.limit : defaultParams.limit,
@@ -49,25 +45,18 @@ export function useGetNotifications(queryParams = {}) {
             hasNextPage: typeof data.hasNextPage === 'boolean' ? data.hasNextPage : false,
             hasPrevPage: typeof data.hasPrevPage === 'boolean' ? data.hasPrevPage : false,
           };
-
-          console.log('🔔 [NotificationService] Final response:', response);
-          return response;
         } else {
-          console.log('🔔 [NotificationService] Non-OK status, returning default');
           return defaultResponse;
         }
       } catch (err) {
-        // Return a default value instead of throwing
-        console.error('🔔 [NotificationService] Error fetching notifications:', err.message);
-        console.error('🔔 [NotificationService] Error response:', err.response?.data);
         return defaultResponse;
       }
     },
-    keepPreviousData: true, // Keep previous data while fetching new data
-    retry: 3, // Retry failed requests up to 3 times
+    enabled: isAuthenticated,
+    keepPreviousData: true,
+    retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    staleTime: 30000, // Consider data stale after 30 seconds
-    // Use placeholderData instead of initialData so React Query still fetches
+    staleTime: 30000,
     placeholderData: defaultResponse,
   });
 }
@@ -98,6 +87,7 @@ export async function testNotificationAPI() {
 
 // Hook to get unread count
 export function useGetUnreadCount() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['unreadCount'],
     queryFn: async () => {
@@ -122,10 +112,11 @@ export function useGetUnreadCount() {
         }
       } catch (err) {
         // Return a default value instead of throwing
-        return 0; // Default to 0 unread notifications
+        return 0;
       }
     },
-    // refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: isAuthenticated,
+    // refetchInterval: 30000,
     // retry: 3, // Retry failed requests up to 3 times
     // retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
@@ -226,9 +217,9 @@ export function useMarkNotificationsAsRead() {
     },
     onSuccess: () => {
       // Invalidate and refetch related queries
-      queryClient.invalidateQueries(['notifications']);
-      queryClient.invalidateQueries(['unreadCount']);
-      queryClient.invalidateQueries(['notificationStats']);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationStats'] });
     },
     onError: (error) => {
       // Log the error for debugging
@@ -276,9 +267,9 @@ export function useMarkAllNotificationsAsRead() {
     },
     onSuccess: () => {
       // Invalidate and refetch related queries
-      queryClient.invalidateQueries(['notifications']);
-      queryClient.invalidateQueries(['unreadCount']);
-      queryClient.invalidateQueries(['notificationStats']);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationStats'] });
     },
     onError: (error) => {
       // Log the error for debugging
@@ -326,9 +317,9 @@ export function useDeleteNotification() {
     },
     onSuccess: () => {
       // Invalidate and refetch related queries
-      queryClient.invalidateQueries(['notifications']);
-      queryClient.invalidateQueries(['unreadCount']);
-      queryClient.invalidateQueries(['notificationStats']);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationStats'] });
     },
     onError: (error) => {
       // Log the error for debugging
@@ -378,9 +369,9 @@ export function useDeleteMultipleNotifications() {
     },
     onSuccess: () => {
       // Invalidate and refetch related queries
-      queryClient.invalidateQueries(['notifications']);
-      queryClient.invalidateQueries(['unreadCount']);
-      queryClient.invalidateQueries(['notificationStats']);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationStats'] });
     },
     onError: (error) => {
       // Log the error for debugging
@@ -428,9 +419,9 @@ export function useDeleteAllNotifications() {
     },
     onSuccess: () => {
       // Invalidate and refetch related queries
-      queryClient.invalidateQueries(['notifications']);
-      queryClient.invalidateQueries(['unreadCount']);
-      queryClient.invalidateQueries(['notificationStats']);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationStats'] });
     },
     onError: (error) => {
       // Log the error for debugging
@@ -516,7 +507,7 @@ export function useAdminSendNotifications() {
     },
     onSuccess: () => {
       // Invalidate admin notifications query
-      queryClient.invalidateQueries(['adminNotifications']);
+      queryClient.invalidateQueries({ queryKey: ['adminNotifications'] });
     },
   });
 }
@@ -540,10 +531,10 @@ export function useAdminCleanupExpiredNotifications() {
     },
     onSuccess: () => {
       // Invalidate all notification-related queries
-      queryClient.invalidateQueries(['notifications']);
-      queryClient.invalidateQueries(['adminNotifications']);
-      queryClient.invalidateQueries(['unreadCount']);
-      queryClient.invalidateQueries(['notificationStats']);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['adminNotifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationStats'] });
     },
   });
 }

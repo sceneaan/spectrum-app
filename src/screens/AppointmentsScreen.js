@@ -115,7 +115,6 @@ const AppointmentsScreen = () => {
 
         // Only update if something was filtered out
         if (filtered.length !== prev.length) {
-          console.log('🔍 [Appointment Filter] Removed expired appointments');
           return filtered;
         }
         return prev;
@@ -138,7 +137,6 @@ const AppointmentsScreen = () => {
           }
         }
       } catch (error) {
-        console.log('Error getting user ID:', error);
       }
     };
     getUserId();
@@ -150,7 +148,6 @@ const AppointmentsScreen = () => {
       socketService.connect(userId);
 
       const handleCallEnded = (data) => {
-        console.log('Call ended event received:', data);
         const isProviderEndedCall = data?.message?.includes('provider') || data?.message?.includes('doctor');
 
         if (isProviderEndedCall && data?.roomId) {
@@ -162,7 +159,6 @@ const AppointmentsScreen = () => {
 
       // Handle appointment rejection in real-time
       const handleAppointmentRejected = (data) => {
-        console.log('📡 Appointment rejected event received:', data);
         // Refetch both upcoming and pending appointments to update UI
         refetchUpcoming();
         refetchPending();
@@ -173,7 +169,6 @@ const AppointmentsScreen = () => {
 
       // Handle appointment cancellation in real-time
       const handleAppointmentCancelled = (data) => {
-        console.log('📡 Appointment cancelled event received:', data);
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
@@ -182,7 +177,6 @@ const AppointmentsScreen = () => {
 
       // Handle appointment status change in real-time
       const handleAppointmentStatusChanged = (data) => {
-        console.log('📡 Appointment status changed event received:', data);
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
@@ -213,7 +207,6 @@ const AppointmentsScreen = () => {
     try {
       await Promise.all([refetchUpcoming(), refetchPending()]);
     } catch (error) {
-      console.error('Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }
@@ -280,12 +273,9 @@ const AppointmentsScreen = () => {
     const appointmentId = firstAppointment.appointmentId || firstAppointment._id || firstAppointment.id;
 
     if (!appointmentId) {
-      console.error('❌ No valid appointment ID found in:', firstAppointment);
       Alert.alert(t.appointments?.error || 'Error', 'Appointment ID not found');
       return;
     }
-
-    console.log('✅ Navigating to Checkout with appointment ID:', appointmentId);
 
     // Navigate to checkout with the appointment ID
     navigation.navigate('Checkout', {
@@ -387,7 +377,6 @@ const AppointmentsScreen = () => {
         );
       }
     } catch (error) {
-      console.error('Error adding to calendar:', error);
       Alert.alert(
         t.common?.error || 'Error',
         t.appointments?.calendarError || 'Could not add to calendar'
@@ -396,36 +385,20 @@ const AppointmentsScreen = () => {
   };
 
   const handleCancel = (item) => {
-    console.log('🔍 [AppointmentsScreen] handleCancel called with item:', JSON.stringify(item, null, 2));
-
-    // Handle both grouped pending appointments and single upcoming appointments
     let appointment;
 
-    // Check if this is a grouped pending appointment (has appointments array)
     if (item.appointments && Array.isArray(item.appointments) && item.appointments.length > 0) {
-      // Pending appointment grouped by doctor - navigate with first appointment
       appointment = item.appointments[0];
-      console.log('🔍 [AppointmentsScreen] Extracted from appointments array:', JSON.stringify(appointment, null, 2));
     } else {
-      // Single upcoming appointment
       appointment = item;
-      console.log('🔍 [AppointmentsScreen] Using item directly as appointment');
     }
 
     if (!appointment) {
-      console.error('❌ No valid appointment found in item:', item);
       Alert.alert(t.appointments?.error || 'Error', 'Appointment not found');
       return;
     }
 
-    console.log('🔍 [AppointmentsScreen] Final appointment._id:', appointment._id);
-    console.log('🔍 [AppointmentsScreen] Final appointment.id:', appointment.id);
-    console.log('✅ Navigating to CancelAppointment screen');
-
-    // Navigate to CancelAppointment screen with appointment data
-    navigation.navigate('CancelAppointment', {
-      appointment: appointment
-    });
+    navigation.navigate('CancelAppointment', { appointment });
   };
 
   const handleReschedule = (item) => {
@@ -433,7 +406,7 @@ const AppointmentsScreen = () => {
     navigation.navigate('RescheduleAppointment', {
       appointment: item,
       onRescheduleSuccess: () => {
-        queryClient.invalidateQueries(['upcomingAppointments']);
+        queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
         refetchUpcoming();
       }
     });

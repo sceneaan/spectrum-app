@@ -9,9 +9,8 @@ const MODEL_NAME = '/auth';
 
 // Function to get OTP
 export function useRequestOtp() {
-  return useQuery({
-    queryKey: ['otp'],
-    queryFn: async (payload) => {
+  return useMutation({
+    mutationFn: async (payload) => {
       try {
         const result = await postRequest(`${MODEL_NAME}/otp`, payload);
         if (result.status === HttpStatusCode.Ok) {
@@ -20,7 +19,7 @@ export function useRequestOtp() {
           throw new Error(ErrorMessages.generalMessage);
         }
       } catch (err) {
-        return throwServerError(err);
+        throw new Error(err.response?.data?.message || ErrorMessages.generalMessage);
       }
     },
   });

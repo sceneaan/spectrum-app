@@ -3,11 +3,13 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest, putRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/medical/reports';
 
 // Hook to get my providers
 export function useGetMyProviders() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['myProviders'],
         queryFn: async () => {
@@ -22,6 +24,7 @@ export function useGetMyProviders() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 }
 
@@ -45,6 +48,7 @@ export function useCreateMedicalReports() {
 
 // Hook to get patient medical reports
 export function useGetPatientMedicalReports() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['patientMedicalReports'],
         queryFn: async () => {
@@ -72,11 +76,13 @@ export function useGetPatientMedicalReports() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 }
 
 // Hook to get patient medical reports with pagination
 export function useGetPatientMedicalReportsPaginated(queryParams = {}) {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['patientMedicalReportsPaginated', queryParams],
         queryFn: async () => {
@@ -114,11 +120,12 @@ export function useGetPatientMedicalReportsPaginated(queryParams = {}) {
             }
         },
         // Enhanced query options to prevent excessive refetching
-        staleTime: 30000, // 30 seconds
-        cacheTime: 300000, // 5 minutes
+        staleTime: 30000,
+        cacheTime: 300000,
         keepPreviousData: true,
         refetchOnWindowFocus: false,
         retry: 2,
+        enabled: isAuthenticated,
     });
 }
 

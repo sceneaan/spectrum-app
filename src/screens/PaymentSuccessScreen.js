@@ -22,14 +22,9 @@ const PaymentSuccessScreen = () => {
   const isSupportCard = paymentType === 'support_card';
 
   useEffect(() => {
-    // Optional: Add any analytics or post-payment logic here
-    console.log('Payment Success:', { paymentType, appointment, transactionId });
-
-    // Invalidate wallet query to refresh balance after payment
-    queryClient.invalidateQueries(['myWallet']);
-    // Also invalidate appointments to refresh the list
-    queryClient.invalidateQueries(['upcomingAppointments']);
-    queryClient.invalidateQueries(['pendingAppointments']);
+    queryClient.invalidateQueries({ queryKey: ['myWallet'] });
+    queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
+    queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
 
     // Animate in sequence: scale up circle, fade in content, then draw checkmark
     Animated.sequence([

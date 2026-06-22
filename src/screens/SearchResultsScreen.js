@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, TextInput, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { useGetAvailableProviders2 } from '../api/services/Availablity.Service'; // Import API hook
+import { useGetAvailableProviders2 } from '../api/services/Availablity.Service';
 import Header from '../components/Header';
 import RiyalText from '../components/RiyalText';
 import ICONS from '../constants/icons';
@@ -33,7 +33,7 @@ const SearchResultsScreen = () => {
         time: timeFilter,
     };
 
-    const { data: doctorsData, isLoading, error } = useGetAvailableProviders2(apiQuery);
+    const { data: doctorsData, isLoading, error, refetch } = useGetAvailableProviders2(apiQuery);
 
     const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
     const alignText = { textAlign: isRTL ? 'right' : 'left' };
@@ -75,6 +75,9 @@ const SearchResultsScreen = () => {
         return (
             <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{t('common.errorLoadingData') || "Error loading doctors. Please try again."}</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+                    <Text style={styles.retryBtnText}>{t('common.retry') || 'Retry'}</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -134,7 +137,11 @@ const SearchResultsScreen = () => {
                     <FlatList
                         data={doctorsData}
                         contentContainerStyle={{ padding: 20 }}
-                        keyExtractor={(item) => item.id?.toString() || item._id?.toString() || Math.random().toString()}
+                        keyExtractor={(item, index) => item.id?.toString() || item._id?.toString() || index.toString()}
+                        removeClippedSubviews={true}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={10}
+                        windowSize={10}
                         renderItem={({ item }) => {
                             // Get the first available slot date
                             const nextAvailableSlot = item.slots?.find(slot => slot.slotCount > 0)?.date || null;
@@ -148,7 +155,6 @@ const SearchResultsScreen = () => {
                                 <TouchableOpacity style={styles.docResultCard} onPress={() => {
                                     // Validate doctor data before navigation
                                     if (!item.id) {
-                                        console.error('❌ Doctor ID missing:', item);
                                         Alert.alert(
                                             t('common.error') || 'Error',
                                             t('searchResults.doctorDataError') || 'Doctor information is incomplete. Please try again.'
@@ -202,8 +208,7 @@ const SearchResultsScreen = () => {
                                     <TouchableOpacity style={styles.bookLink} onPress={() => {
                                         // Validate doctor data before navigation
                                         if (!item.id) {
-                                            console.error('❌ Doctor ID missing:', item);
-                                            Alert.alert(
+                                                Alert.alert(
                                                 t('common.error') || 'Error',
                                                 t('searchResults.doctorDataError') || 'Doctor information is incomplete. Please try again.'
                                             );
@@ -247,7 +252,7 @@ const SearchResultsScreen = () => {
             </View>
 
             {/* Language Filter Modal */}
-            <Modal visible={showLanguageModal} transparent animationType="slide">
+            <Modal visible={showLanguageModal} transparent animationType="slide" onRequestClose={() => setShowLanguageModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={[styles.modalHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -289,7 +294,7 @@ const SearchResultsScreen = () => {
             </Modal>
 
             {/* Time Filter Modal */}
-            <Modal visible={showTimeModal} transparent animationType="slide">
+            <Modal visible={showTimeModal} transparent animationType="slide" onRequestClose={() => setShowTimeModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={[styles.modalHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -346,8 +351,10 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
     loadingText: { marginTop: 10, fontSize: 16, color: COLORS.textPrimary },
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-    errorText: { fontSize: 16, color: COLORS.error, textAlign: 'center' },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, padding: 20 },
+    errorText: { fontSize: 16, color: COLORS.error, textAlign: 'center', marginBottom: 16 },
+    retryBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
+    retryBtnText: { color: COLORS.white, fontWeight: '600', fontSize: 15 },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     emptyText: { fontSize: 16, color: COLORS.textSecondary, textAlign: 'center' },
 

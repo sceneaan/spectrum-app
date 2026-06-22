@@ -36,12 +36,7 @@ const OTPScreen = () => {
     const filledDigits = otp.filter(d => d !== '');
     const enteredOtp = filledDigits.join('');
 
-    console.log('🔐 [OTP] Verify called - otp state:', otp);
-    console.log('🔐 [OTP] Filled digits:', filledDigits, 'count:', filledDigits.length);
-    console.log('🔐 [OTP] Entered OTP string:', enteredOtp, 'length:', enteredOtp.length);
-
     if (filledDigits.length !== 6 || enteredOtp.length !== 6) {
-      console.log('❌ [OTP] Validation failed - not 6 digits');
       setError(t('auth.otp.invalidOtpLength') || 'Please enter the full 6-digit OTP.');
       return;
     }
@@ -69,20 +64,9 @@ const OTPScreen = () => {
         setAuth({ user: response, token: response.token }); // Save to Zustand store
 
         // Check if signature is required (matches old app flow: OTP → Consent → PatientInfo/Signature)
-        console.log('🔍 Checking user signature status:', {
-          hasSignatureUrl: !!response?.signatureUrl,
-          signatureUrl: response?.signatureUrl,
-          userId: response?.id,
-          userRole: response?.role,
-          fullResponse: response
-        });
-
         if (!response?.signatureUrl) {
-          console.log('➡️ New user detected (no signature) - navigating to Consent screen');
-          // New user - Navigate to Consent screen first (matching old app's consent-screen → signature-screen flow)
           navigation.navigate('Consent', { targetScreen, targetParams, emailOrPhone });
         } else {
-          console.log('✅ Returning user detected (has signature) - skipping consent');
           // Returning user (already has signature)
           // Check if we're coming from a booking flow (DoctorProfile with booking data)
           const isBookingFlow = targetScreen === 'DoctorProfile' &&
@@ -122,7 +106,6 @@ const OTPScreen = () => {
                 throw new Error('Failed to create appointment');
               }
             } catch (appointmentErr) {
-              console.error('Error creating appointment for returning user:', appointmentErr);
               Alert.alert(
                 t('common.error') || 'Error',
                 appointmentErr?.response?.data?.message || appointmentErr?.message || 'Failed to create appointment. Please try booking again.',
@@ -147,7 +130,7 @@ const OTPScreen = () => {
             // Normal flow - not a booking scenario
             if (targetScreen) {
               // If targetScreen is a tab name, navigate to Main with that tab active
-              const tabNames = ['HomeTab', 'AppointmentsTab', 'ProfileTab', 'SettingsTab'];
+              const tabNames = ['HomeTab', 'SearchTab', 'AppointmentsTab', 'InboxTab'];
               if (tabNames.includes(targetScreen)) {
                 navigation.reset({
                   index: 0,
@@ -167,8 +150,6 @@ const OTPScreen = () => {
         }
       },
       onError: (err) => {
-        console.error("OTP Verification Error:", err);
-
         // Handle rate limit error (429)
         if (err.isRateLimited || err.message === 'RATE_LIMIT_EXCEEDED') {
           Alert.alert(
@@ -260,16 +241,9 @@ const OTPScreen = () => {
 
 
   const handleResend = () => {
-    console.log("📱 Resend OTP clicked - canResend:", canResend, "timer:", timer);
+    if (!canResend) return;
 
-    if (!canResend) {
-      console.log("⚠️ Resend blocked - canResend is false or timer not expired");
-      return;
-    }
-
-    console.log("📤 Attempting to resend OTP to:", emailOrPhone);
-
-    setTimer(420); // Reset timer
+    setTimer(420);
     setCanResend(false);
     setError(''); // Clear any existing errors
 
@@ -283,9 +257,6 @@ const OTPScreen = () => {
         Alert.alert(t('auth.otp.success') || "Success", t('auth.otp.resendSuccess') || "OTP has been re-sent to your device.");
       },
       onError: (err) => {
-        console.error("❌ OTP Resend Error:", err);
-        console.error("Error response:", err.response?.data);
-        console.error("Error message:", err.response?.data?.message);
         const errorMessage = err.response?.data?.message || t('auth.otp.resendFailed') || "Failed to re-send OTP.";
         Alert.alert("Error", errorMessage);
         // Reset the ability to resend after error

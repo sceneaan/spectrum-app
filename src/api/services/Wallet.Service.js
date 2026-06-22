@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest, putRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/wallet';
 
@@ -44,6 +45,7 @@ export function useUpdateWalletForMultipleTransactions() {
 
 // Hook to list wallet transactions
 export function useWalletListing(payload) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['walletListing', payload],
     queryFn: async () => {
@@ -76,10 +78,12 @@ export function useMakePayout() {
         return throwServerError(err);
       }
     },
+    enabled: isAuthenticated,
   });
 }
 
 export function useGetMyWallet() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['myWallet'],
     queryFn: async () => {
@@ -94,7 +98,8 @@ export function useGetMyWallet() {
         return throwServerError(err);
       }
     },
-    staleTime: 0, // Always consider data stale, refetch on mount
-    cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    staleTime: 0,
+    cacheTime: 5 * 60 * 1000,
+    enabled: isAuthenticated,
   });
 }

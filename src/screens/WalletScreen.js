@@ -68,7 +68,6 @@ const WalletScreen = () => {
       }
     }
     if (walletTransactionsError) {
-      console.log('Error getting wallet transactions:', walletTransactionsError.message);
       Alert.alert(
         t.error || 'Error',
         walletTransactionsError.message || 'Failed to load transactions'
@@ -79,7 +78,6 @@ const WalletScreen = () => {
   // Handle wallet errors
   useEffect(() => {
     if (myWalletError) {
-      console.log('Error getting user wallet:', myWalletError.message);
       Alert.alert(
         t.error || 'Error',
         myWalletError.message || 'Failed to load wallet'
@@ -186,8 +184,6 @@ const WalletScreen = () => {
   };
 
   const handleRedeemSuccess = (result) => {
-    console.log('✅ Support card redeemed successfully:', result);
-
     // Refresh wallet balance (correct query key)
     queryClient.invalidateQueries({ queryKey: ['myWallet'] });
 
@@ -263,6 +259,9 @@ const WalletScreen = () => {
           ListFooterComponent={renderFooter}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          removeClippedSubviews={true}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
         />
       </View>
 

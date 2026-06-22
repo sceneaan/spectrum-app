@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import COLORS from '../constants/colors';
 import { Logout } from '../api/services/Auth.Service';
 import socketService from '../utils/socket';
+import { queryClient } from '../api/queryClient';
 
 // Import your new sub-components
 import ProfileMenu from '../components/profile/ProfileMenu';
@@ -28,13 +29,11 @@ const ProfileScreen = () => {
 
   const handleLogout = async () => {
     try {
-      // Disconnect socket before logout
       socketService.disconnect();
-      // Call backend logout to invalidate refresh token
       await Logout();
-      // Clear local auth state
       await logout();
-      // Use CommonActions to properly reset navigation stack
+      // Clear all React Query cached data so stale user data never leaks post-logout
+      queryClient.clear();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -49,7 +48,6 @@ const ProfileScreen = () => {
         })
       );
     } catch (error) {
-      console.error('Logout error:', error);
     }
   };
 

@@ -1,8 +1,26 @@
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider } from '../store/AuthContext';
 import { useAuthStore } from '../store/authStore';
+
+// Wraps any screen that requires authentication.
+// Immediately redirects to LoginScreen if the user is not authenticated.
+const RequireAuth = ({ Screen }) => {
+  const { isAuthenticated } = useAuthStore();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigation.replace('LoginScreen');
+    }
+  }, [isAuthenticated, navigation]);
+
+  if (!isAuthenticated) return null;
+  return <Screen />;
+};
+
+const makeProtected = (Screen) => (props) => <RequireAuth Screen={Screen} {...props} />;
 // --- Auth Screens ---
 import LoginScreen from '../screens/LoginScreen';
 import OTPScreen from '../screens/OTPScreen';
@@ -83,12 +101,12 @@ const AppNavigator = () => {
         <Stack.Screen name="PaymentFormScreen" component={PaymentFormScreen} />
         <Stack.Screen name="PaymentSuccessScreen" component={PaymentSuccessScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="PaymentFailureScreen" component={PaymentFailureScreen} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen name="WalletScreen" component={WalletScreen} />
-        <Stack.Screen name="BillingScreen" component={BillingScreen} />
-        <Stack.Screen name="RefillRequestScreen" component={RefillRequestScreen} />
-        <Stack.Screen name="MedicalReportsScreen" component={MedicalReportsScreen} />
-        <Stack.Screen name="MedicalRecordScreen" component={MedicalRecordScreen} />
+        <Stack.Screen name="Notifications" component={makeProtected(NotificationsScreen)} />
+        <Stack.Screen name="WalletScreen" component={makeProtected(WalletScreen)} />
+        <Stack.Screen name="BillingScreen" component={makeProtected(BillingScreen)} />
+        <Stack.Screen name="RefillRequestScreen" component={makeProtected(RefillRequestScreen)} />
+        <Stack.Screen name="MedicalReportsScreen" component={makeProtected(MedicalReportsScreen)} />
+        <Stack.Screen name="MedicalRecordScreen" component={makeProtected(MedicalRecordScreen)} />
         <Stack.Screen name="TermsScreen" component={TermsScreen} />
         <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
         <Stack.Screen name="AboutUsScreen" component={AboutUsScreen} />

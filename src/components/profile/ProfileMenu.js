@@ -63,8 +63,14 @@ const ProfileMenu = ({ onEditPress, onLogout }) => {
                style={styles.avatarLarge}
             />
             <View style={{ flex: 1, marginHorizontal: 15, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-               <Text style={styles.userName}>{userData?.fullName || user?.fullName || user?.name || (isRTL ? 'مريض زائر' : 'Guest Patient')}</Text>
-               {(userData?.userId || user?.mrn) && <Text style={styles.userId}>{t.moreOptions?.patientId || 'Patient ID'} {userData?.userId || user?.mrn}</Text>}
+               <Text style={styles.userName}>
+                  {isAuthenticated
+                     ? (userData?.fullName || user?.fullName || user?.name)
+                     : (isRTL ? 'مريض زائر' : 'Guest Patient')}
+               </Text>
+               {isAuthenticated && (userData?.userId || user?.mrn) && (
+                  <Text style={styles.userId}>{t.moreOptions?.patientId || 'Patient ID'} {userData?.userId || user?.mrn}</Text>
+               )}
 
                {/* Show Edit button if authenticated, Login button if not */}
                {isAuthenticated ? (

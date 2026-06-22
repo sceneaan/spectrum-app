@@ -101,7 +101,6 @@ const NewMessageScreen = () => {
         // Use secure upload function
         const uploadResponse = await uploadAttachment(file);
 
-        console.log('📤 [NewMessage] Upload response:', uploadResponse);
 
         // Store file info with both fileId (new) and url (legacy)
         setSelectedFile({
@@ -110,15 +109,12 @@ const NewMessageScreen = () => {
           url: uploadResponse?.url || '', // Legacy field
         });
       } catch (uploadErr) {
-        console.error('Upload error:', uploadErr);
         Alert.alert(t.common?.error || 'Error', uploadErr.message || t.composeMessage?.fileUploadFailed || 'File upload failed');
       } finally {
         setIsUploading(false);
       }
     } catch (err) {
-      if (!DocumentPicker.isCancel(err)) {
-        console.error(err);
-      }
+      // DocumentPicker.isCancel(err) is treated as no-op
     }
   };
 
@@ -174,7 +170,6 @@ const NewMessageScreen = () => {
           },
           onError: (err) => {
               Alert.alert(t.common?.error || 'Error', t.composeMessage?.messageFailed || 'Failed to send message');
-              console.error(err);
           }
       });
   };

@@ -167,7 +167,6 @@ const BillingScreen = () => {
     }
 
     if (allTransactionsError) {
-      console.error('Transaction error details:', allTransactionsError);
       Alert.alert(
         t.common?.error || 'Error',
         allTransactionsError.message || 'Unknown error occurred'
@@ -272,48 +271,30 @@ const BillingScreen = () => {
     }
 
     try {
-      // Try to fetch invoice data for QR code (ZATCA e-invoice)
       let invoiceData = null;
       let qrCodeBase64 = null;
 
       try {
-        // First, try to get existing invoice
-        console.log('📄 [Invoice] Fetching invoice with slug:', item.slug);
         invoiceData = await GetInvoice(item.slug);
-        console.log('✅ [Invoice] Retrieved:', invoiceData ? 'yes' : 'no');
-        console.log('📋 [Invoice] Has QR Data:', invoiceData?.qrCodeData ? 'yes' : 'no');
       } catch (error) {
-        console.log('⚠️ [Invoice] Not found, attempting to generate:', error.message);
-
-        // If invoice doesn't exist (404), try to generate it
         if (error.message === 'invoice not found' && item._id) {
           try {
-            console.log('🔄 [Invoice] Generating invoice for transaction:', item._id);
             const generateResult = await GenerateInvoice(item._id);
             if (generateResult?.invoice) {
               invoiceData = generateResult.invoice;
-              console.log('✅ [Invoice] Generated successfully');
-              console.log('📋 [Invoice] Generated has QR Data:', invoiceData?.qrCodeData ? 'yes' : 'no');
             }
-          } catch (genError) {
-            console.warn('❌ [Invoice] Could not generate:', genError.message);
+          } catch {
             // Continue without QR code
           }
         }
       }
 
-      // If we have invoice data with QR code, generate base64 QR code locally
       if (invoiceData?.qrCodeData) {
         try {
-          console.log('🔍 [QR] Generating QR code from data...');
           qrCodeBase64 = await generateQRCodeBase64(invoiceData.qrCodeData);
-          console.log('✅ [QR] QR code generated successfully, length:', qrCodeBase64?.length);
-        } catch (qrError) {
-          console.warn('❌ [QR] Could not generate QR code:', qrError.message);
+        } catch {
           // Continue without QR code
         }
-      } else {
-        console.log('⚠️ [QR] No QR code data available in invoice');
       }
 
       // Generate HTML content for the invoice (with or without QR code)
@@ -328,7 +309,6 @@ const BillingScreen = () => {
       setViewerTitle(title);
       setViewerVisible(true);
     } catch (error) {
-      console.error('Error generating invoice:', error);
       Alert.alert(t.common?.error || 'Error', 'Failed to generate invoice');
     }
   };

@@ -238,7 +238,6 @@ const MedicalReportsScreen = () => {
      }
 
      if (patientReportsError) {
-       console.error('Reports fetch error:', patientReportsError);
        setIsLoadingMore(false);
      }
    }, [patientReports, patientReportsError, currentPage]);

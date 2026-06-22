@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest, putRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/appointment';
 
@@ -64,6 +65,7 @@ export function useGetAppointmentsCount() {
 
 // Hook to get pending appointments grouped by doctor
 export function useGetPendingAppointmentsGroupedByDoctor() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['pendingAppointmentsGroupedByDoctor'],
         queryFn: async () => {
@@ -78,6 +80,7 @@ export function useGetPendingAppointmentsGroupedByDoctor() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 }
 
@@ -212,6 +215,7 @@ export function useGetPendingAppointmentsByDoctorId(id) {
 }
 
 export function useGetUpcomingAppointments() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['upcomingAppointments'],
         queryFn: async () => {
@@ -226,6 +230,7 @@ export function useGetUpcomingAppointments() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 }
 
@@ -249,6 +254,7 @@ export function useSendInvitation() {
 
 // Hook to get completed appointments for medical reports
 export function useGetCompletedAppointments() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['completedAppointments'],
         queryFn: async () => {
@@ -263,5 +269,6 @@ export function useGetCompletedAppointments() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 }

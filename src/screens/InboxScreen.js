@@ -83,7 +83,6 @@ const InboxScreen = () => {
       setFilteredThreads(threadsList);
     }
     if (userThreadsError) {
-      console.log('Error getting user threads ', userThreadsError.message);
     }
   }, [userThreads, userThreadsError, isAuthenticated]);
 
@@ -231,9 +230,12 @@ const InboxScreen = () => {
             <FlatList
             data={filteredThreads}
             renderItem={renderItem}
-            keyExtractor={item => item._id?.toString() || Math.random().toString()}
+            keyExtractor={(item, index) => item._id?.toString() || index.toString()}
             contentContainerStyle={{ paddingTop: 10, paddingBottom: 80 }}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
             />
         )}
       </View>

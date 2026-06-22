@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, putRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/user';
 
@@ -45,11 +46,13 @@ export function useGetCurrentUser() {
 
 // Hook to get user data (React Query version)
 export function useGetUserData() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['userData'],
     queryFn: () => handleRequest(getRequest, `${MODEL_NAME}/context`),
-    staleTime: 0, // Always refetch to get latest profile data
+    staleTime: 0,
     refetchOnMount: 'always',
+    enabled: isAuthenticated, // Never fires for guest users
   });
 }
 

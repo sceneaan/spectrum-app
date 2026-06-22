@@ -101,15 +101,6 @@ const DoctorProfileScreen = () => {
       }
    }, [doctor, navigation]);
 
-   // Log errors for debugging
-   useEffect(() => {
-      if (profileError) {
-         console.error('Profile Error:', profileError);
-      }
-      if (availabilityError) {
-         console.error('Availability Error:', availabilityError);
-      }
-   }, [profileError, availabilityError]);
 
    const [patientsCount, setPatientsCount] = useState(0);
    const [selectedDate, setSelectedDate] = useState(null);
@@ -144,8 +135,7 @@ const DoctorProfileScreen = () => {
             if (response.data.data.count) {
                setPatientsCount(response.data.data.count);
             }
-         } catch (error) {
-            console.log('Error fetching patients count:', error);
+         } catch {
          }
       };
       getPatientsCount();
@@ -180,12 +170,6 @@ const DoctorProfileScreen = () => {
       }
    );
 
-   // Log slots error
-   useEffect(() => {
-      if (slotsError) {
-         console.error('Slots Error:', slotsError);
-      }
-   }, [slotsError]);
 
    // Use useMemo to prevent slots from flickering during re-renders
    // Pre-format time strings to avoid moment() calls during render
@@ -265,7 +249,6 @@ const DoctorProfileScreen = () => {
                providerDate = moment(d);
             }
          } catch (error) {
-            console.warn('Error creating moment with timezone:', error);
             providerDate = moment(d);
          }
 
@@ -285,8 +268,7 @@ const DoctorProfileScreen = () => {
                   weekdayValue = localizedDate.format('ddd');
                }
             }
-         } catch (err) {
-            console.warn('Error formatting date:', err);
+         } catch {
          }
 
          days.push({
@@ -387,7 +369,6 @@ const DoctorProfileScreen = () => {
 
       // Validate that doctor has providerService before proceeding
       if (!doctor.providerService) {
-         console.error('❌ Doctor missing providerService:', doctor);
          Alert.alert(
             isRTL ? 'خطأ' : 'Error',
             isRTL ? 'معلومات الطبيب غير مكتملة. الرجاء المحاولة مرة أخرى' : 'Doctor information incomplete. Please try again.'
@@ -400,13 +381,6 @@ const DoctorProfileScreen = () => {
          // User NOT logged in -> Go to Login with return params
          const formattedDate = moment(selectedDate).locale('en').format('YYYY-MM-DD');
          const formattedTime = selectedTime.startTime ? moment(selectedTime.startTime).locale('en').format('h:mm A') : 'N/A';
-
-         console.log('🔐 User not authenticated - navigating to login with booking data:', {
-            doctorId: doctor.id,
-            providerService: doctor.providerService,
-            date: formattedDate,
-            time: formattedTime
-         });
 
          navigation.navigate('LoginScreen', {
             targetScreen: 'DoctorProfile',
@@ -435,7 +409,6 @@ const DoctorProfileScreen = () => {
          // Validate all required fields before creating payload
          const userId = user?._id || user?.id;
          if (!userId || !user?.fullName) {
-            console.error('❌ User validation failed - userId:', userId, 'fullName:', user?.fullName);
             throw new Error('User information incomplete. Please log in again.');
          }
 
@@ -473,8 +446,6 @@ const DoctorProfileScreen = () => {
             throw new Error('Failed to create appointment');
          }
       } catch (error) {
-         console.error('❌ Error creating appointment:', error);
-         console.error('Error details:', error?.response?.data);
          Alert.alert(
             isRTL ? 'خطأ' : 'Error',
             error?.response?.data?.message || error?.message || (isRTL ? 'فشل في حجز الموعد' : 'Failed to book appointment')

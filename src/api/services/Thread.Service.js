@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/thread';
 
@@ -44,6 +45,7 @@ export function useProviderCreateThread() {
 
 // Hook for a patient to get their threads
 export function usePatientGetThreads() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['patientThreads'],
         queryFn: async () => {
@@ -58,6 +60,7 @@ export function usePatientGetThreads() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated,
     });
 }
 

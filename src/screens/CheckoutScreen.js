@@ -130,17 +130,13 @@ const CheckoutScreen = () => {
       payableAmount: context.appointment?.providerService?.slotPrice || priceCalculation.basePrice || 0,
     };
 
-    console.log('🎫 Applying discount code with payload:', payload);
-
     applyDiscountCode(payload, {
         onSuccess: async (data) => {
-            console.log('✅ Discount applied successfully:', data);
             setIsApplyingDiscount(false);
             actions.applyDiscount(data);
 
             // If support card is already applied, recalculate it with the new discounted total
             if (context.supportCard && supportCardInput) {
-                console.log('🔄 Recalculating support card with new discounted total...');
                 try {
                     // Calculate new total after discount
                     const discountAmount = data?.amount || 0;
@@ -165,10 +161,8 @@ const CheckoutScreen = () => {
                             fullValue: result.supportCard?.value || 0,
                             leftoverToWallet: result.supportCard?.remainingValue || 0,
                         });
-                        console.log('✅ Support card recalculated successfully');
                     }
                 } catch (error) {
-                    console.error('❌ Failed to recalculate support card:', error);
                     // Remove support card if recalculation fails
                     actions.removeSupportCard();
                     setSupportCardInput('');
@@ -178,8 +172,6 @@ const CheckoutScreen = () => {
             Alert.alert(t('common.success') || 'Success', t('checkout.discountApplied') || 'Discount applied successfully!');
         },
         onError: (error) => {
-            console.error('❌ Discount application failed:', error);
-            console.error('Error response:', error?.response?.data);
             setIsApplyingDiscount(false);
 
             // Handle specific error cases
@@ -211,7 +203,6 @@ const CheckoutScreen = () => {
 
     // If support card is already applied, recalculate it with the new total (without discount)
     if (context.supportCard && supportCardInput) {
-        console.log('🔄 Recalculating support card after removing discount...');
         try {
             // Calculate new total without discount
             const basePrice = context.appointment?.providerService?.slotPrice || priceCalculation.basePrice || 0;
@@ -234,10 +225,8 @@ const CheckoutScreen = () => {
                     fullValue: result.supportCard?.value || 0,
                     leftoverToWallet: result.supportCard?.remainingValue || 0,
                 });
-                console.log('✅ Support card recalculated successfully after discount removal');
             }
         } catch (error) {
-            console.error('❌ Failed to recalculate support card after discount removal:', error);
             // Remove support card if recalculation fails
             actions.removeSupportCard();
             setSupportCardInput('');
@@ -259,8 +248,6 @@ const CheckoutScreen = () => {
             netAmount: priceCalculation.totalAmount
         });
 
-        console.log('✅ Support card check result:', result);
-
         if (result && result.isValid) {
             // Store full support card data including leftover information
             actions.applySupportCard({
@@ -279,7 +266,6 @@ const CheckoutScreen = () => {
              throw new Error(result?.message || 'Invalid card');
         }
     } catch (error) {
-        console.error('❌ Support card check failed:', error);
         actions.removeSupportCard();
         const msg = error?.response?.data?.message || error?.message || t('checkout.invalidSupportCardCode') || 'Invalid support card code.';
         Alert.alert(t('checkout.invalidCode') || 'Invalid Code', msg);
@@ -299,7 +285,6 @@ const CheckoutScreen = () => {
 
     // If payment is fully covered by support card, create transaction directly
     if (context.paymentMethod === 'support' && priceCalculation.payableAmount === 0) {
-        console.log('🎁 Support card fully covers payment - creating transaction directly');
         const transactionData = {
             appointmentId: context.appointment.id || context.appointment._id,
             paymentMethod: 'Support Card',
@@ -311,7 +296,6 @@ const CheckoutScreen = () => {
 
         createTransactionMutation(transactionData, {
             onSuccess: (data) => {
-                console.log('✅ Support card transaction created:', data);
                 setIsProcessingBooking(false);
                 const transactionId = data.transaction?._id;
                 if (transactionId) {
@@ -323,7 +307,6 @@ const CheckoutScreen = () => {
                 }
             },
             onError: (error) => {
-                console.error('❌ Support card transaction failed:', error);
                 setIsProcessingBooking(false);
                 Alert.alert(
                     t('common.error') || 'Error',
@@ -336,7 +319,6 @@ const CheckoutScreen = () => {
 
     // If support card partially covers payment, navigate to payment form for remaining
     if (context.paymentMethod === 'support' && priceCalculation.payableAmount > 0) {
-        console.log('🎁 Support card partially covers payment - navigating to payment form');
         setIsProcessingBooking(false);
         navigation.navigate('PaymentFormScreen', {
             amount: parseFloat(priceCalculation.payableAmount) || 0,

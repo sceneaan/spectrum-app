@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest, putRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/encounter';
 
@@ -106,11 +107,13 @@ export async function ListPrescriptionByPatient() {
 
 // React Query hook for listing prescriptions by patient
 export function useListPrescriptionByPatient() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
         queryKey: ['prescriptions', 'patient'],
         queryFn: async () => {
             return await ListPrescriptionByPatient();
         },
+        enabled: isAuthenticated,
     });
 }
 

@@ -29,15 +29,6 @@ const RescheduleAppointmentScreen = () => {
   const currentTime = moment().locale('en').format('YYYY-MM-DD HH:mm:ss');
   const shouldFetchSlots = !!(selectedDate && providerId);
 
-  console.log('🔍 Slot Fetch Conditions:', {
-    selectedDate,
-    formattedDate: selectedDate ? moment(selectedDate).locale('en').format('YYYY-MM-DD') : null,
-    providerId,
-    shouldFetchSlots,
-    slotDuration,
-    currentTime
-  });
-
   const { data: slotsData, isLoading: isLoadingSlots } = useGetSlots(
     providerId,
     {
@@ -50,9 +41,7 @@ const RescheduleAppointmentScreen = () => {
     }
   );
 
-  console.log('🕐 Slots Data:', slotsData);
   const availableSlots = slotsData?.slots || [];
-  console.log('✅ Available Slots Count:', availableSlots.length);
 
   // Generate next 14 days
   const getNextTwoWeeks = () => {
@@ -84,17 +73,12 @@ const RescheduleAppointmentScreen = () => {
       return;
     }
 
-    console.log('Selected slot:', selectedSlot);
-    console.log('Selected date:', selectedDate);
-
     const payload = {
       appointmentId: appointment.id || appointment._id,
       date: moment(selectedSlot.startTime).locale('en').format('YYYY-MM-DD'),
       startTime: selectedSlot.startTime,
       endTime: selectedSlot.endTime,
     };
-
-    console.log('Reschedule payload:', payload);
 
     rescheduleAppointment(payload, {
       onSuccess: () => {

@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { getRequest, postRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import { useAuthStore } from '../../store/authStore';
 
 const MODEL_NAME = '/transaction';
 
@@ -102,6 +103,7 @@ export function useGetAllTransactions(patientId, queryParams = {}) {
 }
 // Hook to get patient transactions
 export function useGetPatientTransactions(query) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['patientTransactions', query],
     queryFn: async () => {
@@ -116,10 +118,12 @@ export function useGetPatientTransactions(query) {
         return throwServerError(err);
       }
     },
+    enabled: isAuthenticated,
   });
 }
 
 export function useGetWalletTransactions(query = { page: 1, limit: 10 }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['walletTransactions', query],
     queryFn: async () => {
@@ -149,5 +153,6 @@ export function useGetWalletTransactions(query = { page: 1, limit: 10 }) {
     keepPreviousData: true,
     refetchOnWindowFocus: false,
     retry: 2,
+    enabled: isAuthenticated,
   });
 }

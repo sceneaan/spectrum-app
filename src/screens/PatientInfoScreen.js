@@ -396,7 +396,6 @@ const PatientInfoScreen = () => {
                             isValid = false;
                         }
                     } catch (error) {
-                        console.error('Error checking national ID:', error);
                         // Continue with submission, backend will validate
                     }
                 }
@@ -452,55 +451,28 @@ const PatientInfoScreen = () => {
         let signatureUrl = '';
         let signatureFileId = null;
         try {
-            // 1. Upload Signature using secure endpoint
-            console.log('📝 Starting secure signature upload...');
-
-            // Strip the data URI prefix for both platforms
             const base64Data = signatureData.replace(/^data:image\/\w+;base64,/, '');
-
             const timestamp = new Date().getTime();
             const dirs = ReactNativeBlobUtil.fs.dirs;
-
-            // Use DocumentDir for iOS which has better write permissions
             const baseDir = Platform.OS === 'ios' ? dirs.DocumentDir : dirs.CacheDir;
             const filePath = `${baseDir}/signature_${timestamp}.png`;
 
-            console.log('💾 Writing signature to file:', filePath);
-            console.log('📁 Base directory:', baseDir);
-
-            // Ensure the directory exists (especially important for iOS)
-            try {
-                const dirExists = await ReactNativeBlobUtil.fs.isDir(baseDir);
-                console.log('📂 Directory exists:', dirExists);
-            } catch (dirErr) {
-                console.log('⚠️ Directory check failed:', dirErr.message);
-            }
-
-            // Write the file with error handling
             try {
                 await ReactNativeBlobUtil.fs.writeFile(filePath, base64Data, 'base64');
-                console.log('✅ File written successfully');
             } catch (writeError) {
-                console.error('❌ Write error details:', writeError);
                 throw new Error(`Failed to write signature file: ${writeError.message || 'Unknown error'}`);
             }
 
-            // Check if file was created successfully
             const fileExists = await ReactNativeBlobUtil.fs.exists(filePath);
-            console.log('✅ File exists:', fileExists);
-
             if (!fileExists) {
                 throw new Error('Failed to create signature file - file does not exist after write');
             }
 
-            // Get file stats for debugging
             let fileSize = null;
             try {
                 const stats = await ReactNativeBlobUtil.fs.stat(filePath);
-                console.log('📊 File stats:', JSON.stringify(stats, null, 2));
                 fileSize = stats.size;
-            } catch (statErr) {
-                console.log('⚠️ Could not get file stats:', statErr.message);
+            } catch {
             }
 
             const file = {
@@ -510,46 +482,25 @@ const PatientInfoScreen = () => {
                 size: fileSize,
             };
 
-            // Validate file before upload
             const validation = validateFile(file, 'signature');
             if (!validation.isValid) {
                 throw new Error(validation.error);
             }
 
-            console.log('📤 Uploading file via secure endpoint:', JSON.stringify(file, null, 2));
-
-            // Use the guest upload endpoint (no auth required for new users)
             const uploadResponse = await uploadGuestSignature(file);
-
-            console.log('✅ Upload response:', uploadResponse);
-
-            // New secure system returns fileId, legacy returns url
             signatureFileId = uploadResponse?.fileId;
             signatureUrl = uploadResponse?.url || '';
-
-            console.log('🎯 Signature FileId:', signatureFileId);
-            console.log('🎯 Signature URL (legacy):', signatureUrl);
 
             if (!signatureFileId && !signatureUrl) {
                 throw new Error('No signature reference returned from upload');
             }
 
-            // Clean up the temporary file after successful upload
             try {
                 await ReactNativeBlobUtil.fs.unlink(filePath);
-                console.log('🗑️ Temporary file deleted:', filePath);
-            } catch (cleanupErr) {
-                console.log('⚠️ Could not delete temporary file:', cleanupErr.message);
-                // Non-critical error, continue with the flow
+            } catch {
             }
 
         } catch (uploadErr) {
-            console.error("❌ Signature Upload Error:", uploadErr);
-            console.error("Error details:", {
-                message: uploadErr.message,
-                response: uploadErr.response?.data,
-                status: uploadErr.response?.status,
-            });
             const errorMessage = uploadErr.response?.data?.message || uploadErr.message || t('patientInfo.uploadFailed') || 'Failed to upload signature.';
             setGeneralError(errorMessage);
             Alert.alert(t('common.error') || 'Error', errorMessage);
@@ -595,28 +546,11 @@ const PatientInfoScreen = () => {
                     preSelectedTime.endTime &&
                     (preSelectedTime.date || targetParams.preSelectedDate);
 
-                console.log('🔍 Booking flow validation:', {
-                    targetScreen,
-                    hasDoctor: !!doctor,
-                    doctorId: doctor?.id,
-                    providerService: doctor?.providerService,
-                    hasPreSelectedTime: !!preSelectedTime,
-                    startTime: preSelectedTime?.startTime,
-                    endTime: preSelectedTime?.endTime,
-                    date: preSelectedTime?.date || targetParams?.preSelectedDate,
-                    hasCompleteBookingData
-                });
-
                 if (hasCompleteBookingData) {
-                    // Create appointment automatically after successful patient info submission
                     try {
-                        // Debug: Log the response structure
-                        console.log('📋 Response from consent submission:', JSON.stringify(response, null, 2));
-
                         const patientId = response.user?.id || response.user?._id || response.id || response._id;
 
                         if (!patientId) {
-                            console.error('❌ No patient ID found in response!');
                             throw new Error('Patient ID not found after consent submission');
                         }
 
@@ -649,8 +583,6 @@ const PatientInfoScreen = () => {
                             throw new Error('Failed to create appointment');
                         }
                     } catch (appointmentErr) {
-                        console.error('❌ Error creating appointment after patient info:', appointmentErr);
-                        console.error('Error details:', appointmentErr?.response?.data);
                         Alert.alert(
                             t('common.error') || 'Error',
                             appointmentErr?.response?.data?.message || appointmentErr?.message || 'Failed to create appointment. Please try booking again.',
@@ -672,12 +604,6 @@ const PatientInfoScreen = () => {
                         );
                     }
                 } else {
-                    // Normal flow - just navigate to targetScreen or Main
-                    console.log('ℹ️ Normal flow - no automatic appointment creation');
-                    if (targetScreen === 'DoctorProfile' && !hasCompleteBookingData) {
-                        console.warn('⚠️ Incomplete booking data - navigating to DoctorProfile for user to re-select time');
-                    }
-
                     Alert.alert(t('patientInfo.success') || "Success", t('patientInfo.consentSuccess') || "Patient information and consent submitted.");
                     if (targetScreen) {
                         navigation.replace(targetScreen, targetParams);
@@ -690,7 +616,6 @@ const PatientInfoScreen = () => {
                 }
             },
             onError: (consentErr) => {
-                console.error("Consent Submission Error:", consentErr);
                 const errorMessage = consentErr.response?.data?.message || t('patientInfo.consentFailed') || 'Failed to submit patient consent.';
                 setGeneralError(errorMessage);
                 Alert.alert(t('common.error'), errorMessage);

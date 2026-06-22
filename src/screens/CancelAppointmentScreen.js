@@ -32,27 +32,15 @@ const CancelAppointmentScreen = () => {
   const alignText = { textAlign: isRTL ? 'right' : 'left' };
 
   const handleCancel = () => {
-    console.log('🔍 [CancelAppointment] Full appointment object:', JSON.stringify(appointment, null, 2));
-
-    // Try to find the ID in various possible fields
     const appointmentId = appointment?._id || appointment?.id || appointment?.appointmentId;
 
-    console.log('🔍 [CancelAppointment] appointment._id:', appointment?._id);
-    console.log('🔍 [CancelAppointment] appointment.id:', appointment?.id);
-    console.log('🔍 [CancelAppointment] appointment.appointmentId:', appointment?.appointmentId);
-    console.log('🔍 [CancelAppointment] Final appointmentId:', appointmentId);
-
     if (!appointmentId) {
-      console.error('❌ [CancelAppointment] No ID found in appointment object');
-      console.error('❌ [CancelAppointment] Available keys:', Object.keys(appointment || {}));
       Alert.alert(
         t.appointments?.error || 'Error',
         t.appointments?.appointmentNotFound || 'Appointment not found'
       );
       return;
     }
-
-    console.log('✅ [CancelAppointment] Using appointmentId:', appointmentId);
 
     // Pass current time to backend for refund calculation
     cancelAppointment(
