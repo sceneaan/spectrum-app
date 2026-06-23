@@ -15,6 +15,7 @@ import {
 import { requestUserPermission } from '../utils/notificationService';
 import { useAuthStore } from '../store/authStore';
 import messaging from '@react-native-firebase/messaging';
+import Skeleton from '../components/Skeleton';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
@@ -195,8 +196,18 @@ const NotificationsScreen = () => {
 
   if (isLoading && !refreshing) {
       return (
-          <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+          <View style={styles.container}>
+              <View style={{ padding: 16 }}>
+                  {[0, 1, 2, 3, 4].map(i => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 15, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10 }}>
+                          <Skeleton width={45} height={45} style={{ borderRadius: 22.5, marginRight: 12 }} />
+                          <View style={{ flex: 1 }}>
+                              <Skeleton width="70%" height={13} style={{ marginBottom: 8 }} />
+                              <Skeleton width="85%" height={11} />
+                          </View>
+                      </View>
+                  ))}
+              </View>
           </View>
       );
   }

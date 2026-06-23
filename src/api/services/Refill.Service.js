@@ -27,7 +27,7 @@ export const useCreateRefillRequestFromPatient = () => {
 
 export const useProcessRefillRequest = () => {
     return useMutation({
-        mutationFn: async ({ id, payload }: { id: string, payload: any }) => {
+        mutationFn: async ({ id, payload }) => {
             try {
                 const result = await postRequest(`${MODEL_NAME}/provider/process-refill/${id}`, payload);
 
@@ -85,7 +85,7 @@ export const usePendingMedications = () => {
 
 // Additional utility functions for direct API calls (if needed)
 export const RefillRequestService = {
-    createFromPatient: async (payload: any) => {
+    createFromPatient: async (payload) => {
         try {
             const result = await postRequest(`${MODEL_NAME}/patient/request-refill`, payload);
             return result.data;
@@ -94,7 +94,7 @@ export const RefillRequestService = {
         }
     },
 
-    processRequest: async (id: string, payload: any) => {
+    processRequest: async (id, payload) => {
         try {
             const result = await postRequest(`${MODEL_NAME}/provider/process-refill/${id}`, payload);
             return result.data;

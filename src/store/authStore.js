@@ -66,6 +66,10 @@ export const useAuthStore = create(
         await EncryptedStorage.clear();
       },
 
+      // Biometric app-lock preference (persisted)
+      biometricsEnabled: false,
+      setBiometricsEnabled: (enabled) => set({ biometricsEnabled: enabled }),
+
       initializeAuth: async () => {
         const sessionJson = await EncryptedStorage.getItem('auth-storage');
         if (sessionJson) {
@@ -91,6 +95,7 @@ export const useAuthStore = create(
         refreshToken: state.refreshToken,
         tokenExpiresAt: state.tokenExpiresAt,
         isAuthenticated: state.isAuthenticated,
+        biometricsEnabled: state.biometricsEnabled,
       }),
       onRehydrateStorage: () => (rehydratedState) => {
         // Derive isAuthenticated from persisted user+token in case it was missing

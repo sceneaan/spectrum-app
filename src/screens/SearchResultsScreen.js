@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, TextInput, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useGetAvailableProviders2 } from '../api/services/Availablity.Service';
@@ -186,7 +187,15 @@ const SearchResultsScreen = () => {
                                     });
                                 }}>
                                     <View style={[rowStyle]}>
-                                        <Image source={item.profileImage ? { uri: item.profileImage } : ICONS.defaultAvatar} style={styles.docAvatar} />
+                                        {item.profileImage ? (
+                                          <FastImage
+                                            source={{ uri: item.profileImage, priority: FastImage.priority.normal, cache: FastImage.cacheControl.immutable }}
+                                            style={styles.docAvatar}
+                                            resizeMode={FastImage.resizeMode.cover}
+                                          />
+                                        ) : (
+                                          <Image source={ICONS.defaultAvatar} style={styles.docAvatar} />
+                                        )}
                                         <View style={[styles.docInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                                             <Text style={styles.docName}>{(isRTL ? (item.fullNameArabic || item.fullName) : (item.fullNameEnglish || item.fullName)) || 'Unknown Doctor'}</Text>
                                             <Text style={styles.docSpec}>{specialtyName}</Text>

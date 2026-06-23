@@ -14,6 +14,7 @@ import { wp, hp } from '@utils/responsive';
 import { rtlRow, rtlLeft, rtlTextAlign, isRTL } from '@utils/rtlUtils';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import moment from 'moment';
+import Skeleton from '../components/Skeleton';
 
 const InboxScreen = () => {
   const { t } = useLanguage();
@@ -219,8 +220,16 @@ const InboxScreen = () => {
         </View>
 
         {userThreadsLoader ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
+            <View style={{ padding: 16 }}>
+                {[0, 1, 2, 3].map(i => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 15, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10 }}>
+                        <Skeleton width={45} height={45} style={{ borderRadius: 22.5, marginRight: 12 }} />
+                        <View style={{ flex: 1 }}>
+                            <Skeleton width="70%" height={13} style={{ marginBottom: 8 }} />
+                            <Skeleton width="85%" height={11} />
+                        </View>
+                    </View>
+                ))}
             </View>
         ) : filteredThreads.length === 0 ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

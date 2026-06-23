@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ScrollView, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import Header from '../components/Header';
 import TherapistCard from '../components/search/TherapistCard';
@@ -29,7 +29,10 @@ const SORT_OPTIONS = [
 
 const FindTherapistScreen = () => {
     const navigation = useNavigation();
+    const route = useRoute();
     const { t, isRTL } = useLanguage();
+
+    const preSelectedIssue = route.params?.preSelectedIssue;
 
     const {
         providers,
@@ -43,7 +46,7 @@ const FindTherapistScreen = () => {
         removeFilter,
         hasActiveFilters,
         activeFilterCount,
-    } = useProviderSearch();
+    } = useProviderSearch(preSelectedIssue ? { issues: [preSelectedIssue] } : {});
 
     const [activeFilterSheet, setActiveFilterSheet] = useState(null);
     const [showSortMenu, setShowSortMenu] = useState(false);

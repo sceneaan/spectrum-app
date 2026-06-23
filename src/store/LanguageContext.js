@@ -50,14 +50,12 @@ export const LanguageProvider = ({ children }) => {
   useEffect(() => {
     i18n.changeLanguage(lang);
 
-    // Force RTL layout for Arabic
+    // Force RTL layout for Arabic — requires app restart to take full native effect
     const I18nManager = NativeModules.I18nManager;
     if (I18nManager) {
       const shouldBeRTL = lang === 'ar';
       if (I18nManager.isRTL !== shouldBeRTL) {
         I18nManager.forceRTL(shouldBeRTL);
-        // Note: Changing RTL requires app restart to take full effect
-        console.log(`RTL set to: ${shouldBeRTL} for language: ${lang}`);
       }
     }
   }, [lang]);

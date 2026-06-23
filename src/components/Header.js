@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../store/LanguageContext';
@@ -73,6 +74,8 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
           <TouchableOpacity
             onPress={onBack}
             style={[styles.backBtn, isRTL && { transform: [{ rotate: '180deg' }] }]}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Image source={ICONS.back} style={styles.icon} />
           </TouchableOpacity>
@@ -81,11 +84,18 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             style={[rowStyle, { alignItems: 'center' }]}
             onPress={goToProfile}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="View profile"
           >
-            <Image
-              source={displayAvatar}
-              style={styles.avatar}
-            />
+            {typeof displayAvatar === 'object' && displayAvatar.uri && !displayAvatar.uri.startsWith('data:') ? (
+              <FastImage
+                source={{ uri: displayAvatar.uri, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
+                style={styles.avatar}
+                resizeMode={FastImage.resizeMode.cover}
+              />
+            ) : (
+              <Image source={displayAvatar} style={styles.avatar} />
+            )}
             {isAuthenticated && ( // Only show online indicator if logged in
                 <View style={{
                 position: 'absolute',
@@ -113,7 +123,12 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
       <View style={[styles.rightContainer, isRTL ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' }]}>
 
         {/* Language Toggle */}
-        <TouchableOpacity onPress={toggleLang} style={styles.langBtn}>
+        <TouchableOpacity
+          onPress={toggleLang}
+          style={styles.langBtn}
+          accessibilityRole="button"
+          accessibilityLabel={lang === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+        >
           <Text style={{ fontSize: 22 }}>{lang === 'en' ? '🇸🇦' : '🇺🇸'}</Text>
         </TouchableOpacity>
 
@@ -122,9 +137,10 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
           <TouchableOpacity
             style={styles.bellBtn}
             onPress={goToNotifications}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
           >
             <Image source={ICONS.bell} style={styles.icon} />
-            {/* Red Dot for Unread Notifications - You can connect this to a store later */}
             <View style={[styles.badge, isRTL ? { left: 8 } : { right: 8 }]} />
           </TouchableOpacity>
         )}

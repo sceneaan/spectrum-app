@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { useSendOtp, useResendOtp } from '../api/services/Auth.Service';
+import haptics from '../utils/haptics';
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -39,8 +40,10 @@ const LoginScreen = () => {
   };
 
   const handleContinue = () => {
+    haptics.light();
     const validationError = validateInput(input);
     if (validationError) {
+      haptics.error();
       setError(validationError);
       return;
     }
@@ -51,7 +54,7 @@ const LoginScreen = () => {
 
     const payload = {
         emailOrPhone: normalizedInput,
-        preferredLanguage: 'en' // Default to English or get from store
+        preferredLanguage: i18n.language || 'en'
     };
 
     sendOtp(payload, {

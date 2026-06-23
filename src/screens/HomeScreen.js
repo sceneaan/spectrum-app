@@ -1,10 +1,11 @@
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Dimensions, Alert } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import { getDynamicData } from '../utils/dataHelper';
-import { useGetAllCategories, useGetAllPromotions } from '../api/services/Public.Service';
+import { useGetAllPromotions } from '../api/services/Public.Service';
 import { useGetSearchFilters, useSearchProviders } from '../api/services/Search.Service';
 import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
 import { useAuthStore } from '../store/authStore';
@@ -15,7 +16,33 @@ import COLORS from '../constants/colors';
 import moment from 'moment-timezone';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PROMO_CARD_WIDTH = 300;
+const PROMO_CARD_WIDTH = SCREEN_WIDTH - 40;
+
+const PROMO_THEMES = [
+  { bg: '#5DBCD2', anim: require('../assets/animations/promo-pulse.json') },
+  { bg: '#4F46E5', anim: require('../assets/animations/promo-dots.json') },
+  { bg: '#B45309', anim: require('../assets/animations/promo-orbit.json') },
+];
+
+const FEATURED_ISSUES = [
+  { code: 'depression', iconKey: 'depression', en: 'Depression', ar: 'الاكتئاب' },
+  { code: 'generalized-anxiety', iconKey: 'anxiety', en: 'Anxiety & Stress', ar: 'القلق و التوتر' },
+  { code: 'ptsd', iconKey: 'trauma', en: 'Panic & Trauma', ar: 'هلع و صدمات' },
+  { code: 'social-phobia', iconKey: 'socialPhobia', en: 'Social Phobia', ar: 'الرهاب الاجتماعي' },
+  { code: 'ocd', iconKey: 'ocd', en: 'OCD', ar: 'الوسواس القهري' },
+  { code: 'adhd', iconKey: 'attention', en: 'Attention & Memory', ar: 'الانتباه و الذاكرة' },
+  { code: 'self-esteem', iconKey: 'selfEsteem', en: 'Self-esteem', ar: 'تقدير الذات' },
+  { code: 'relationship-issues', iconKey: 'relationships', en: 'Relationships', ar: 'العلاقات' },
+];
+
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 const HomeScreen = () => {
    const navigation = useNavigation();
@@ -23,9 +50,7 @@ const HomeScreen = () => {
    const data = getDynamicData(isRTL);
    const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
    const alignText = { textAlign: isRTL ? 'right' : 'left' };
-   const scaleRTL = isRTL ? { transform: [{ scaleX: -1 }] } : {};
 
-   const [loading, setLoading] = useState(true);
    const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
    const promoFlatListRef = useRef(null);
    const autoScrollTimer = useRef(null);
@@ -35,7 +60,7 @@ const HomeScreen = () => {
    const isLoggedIn = isAuthenticated && user;
 
    // Fetch upcoming appointments (only for logged in users)
-   const { data: upcomingAppointments, isLoading: isAppointmentsLoading } = useGetUpcomingAppointments();
+   const { data: upcomingAppointments } = useGetUpcomingAppointments();
 
    // Get the nearest upcoming appointment
    const nearestAppointment = useMemo(() => {
@@ -49,32 +74,17 @@ const HomeScreen = () => {
       return sorted[0];
    }, [upcomingAppointments]);
 
-   // Fetch categories from backend
-   const { data: categoriesData, isLoading: isCategoriesLoading, error: categoriesError } = useGetAllCategories();
-
    // Fetch issue categories for "How Can We Help You?" section
    const { data: searchFilters, isLoading: isFiltersLoading } = useGetSearchFilters();
 
-   // Exact 8 issues matching the web design with custom display names and flaticon icons
-   const FEATURED_ISSUES = [
-      { code: 'depression', icon: ICONS.depression, en: 'Depression', ar: 'الاكتئاب' },
-      { code: 'generalized-anxiety', icon: ICONS.anxiety, en: 'Anxiety & Stress', ar: 'القلق و التوتر' },
-      { code: 'ptsd', icon: ICONS.trauma, en: 'Panic & Trauma', ar: 'هلع و صدمات' },
-      { code: 'social-phobia', icon: ICONS.socialPhobia, en: 'Social Phobia', ar: 'الرهاب الاجتماعي' },
-      { code: 'ocd', icon: ICONS.ocd, en: 'OCD', ar: 'الوسواس القهري' },
-      { code: 'adhd', icon: ICONS.attention, en: 'Attention & Memory', ar: 'الانتباه و الذاكرة' },
-      { code: 'self-esteem', icon: ICONS.selfEsteem, en: 'Self-esteem', ar: 'تقدير الذات' },
-      { code: 'relationship-issues', icon: ICONS.relationships, en: 'Relationships', ar: 'العلاقات' },
-   ];
    const displayIssues = useMemo(() => {
       const issues = searchFilters?.issues || searchFilters?.issueCategories || [];
-      // Return all 8 featured items, using backend match for ID or fallback without
       return FEATURED_ISSUES.map(fi => {
          const match = issues.find(i => i.code === fi.code);
          return {
             _id: match?._id || match?.id || fi.code,
             code: fi.code,
-            icon: fi.icon,
+            icon: ICONS[fi.iconKey],
             displayName: isRTL ? fi.ar : fi.en,
          };
       });
@@ -88,14 +98,7 @@ const HomeScreen = () => {
    const providersData = searchResult?.providers || searchResult || [];
 
    // Fetch promotions from backend
-   const { data: promotionsData, isLoading: isPromotionsLoading, error: promotionsError } = useGetAllPromotions();
-
-   // Derive loading from actual data fetches instead of a fixed timer
-   useEffect(() => {
-      if (!isCategoriesLoading && !isFiltersLoading && !isProvidersLoading) {
-         setLoading(false);
-      }
-   }, [isCategoriesLoading, isFiltersLoading, isProvidersLoading]);
+   const { data: promotionsData } = useGetAllPromotions();
 
    const openJoinUs = async () => {
       const url = 'https://spectrumclinics.care/#/join-us';
@@ -111,36 +114,6 @@ const HomeScreen = () => {
       }
    };
 
-   // Map category names to icons (fallback if no image uploaded)
-   const getCategoryIcon = (nameEnglish) => {
-      const iconMap = {
-         'Psychiatry': ICONS.psychiatry,
-         'Psychology': ICONS.psychology,
-         'Speech Therapy': ICONS.speech,
-         'General': ICONS.general,
-      };
-      return iconMap[nameEnglish] || ICONS.general;
-   };
-
-   // Prepare categories for display
-   const displayCategories = categoriesData?.map(cat => ({
-      id: cat.id,
-      name: isRTL ? cat.nameArabic : cat.nameEnglish,
-      // Use uploaded image if available, otherwise fallback to icon mapping
-      icon: cat.image || getCategoryIcon(cat.nameEnglish),
-      categoryData: cat, // Store full category data for navigation
-   })) || [];
-
-   // Function to shuffle array randomly
-   const shuffleArray = (array) => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-         const j = Math.floor(Math.random() * (i + 1));
-         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-   };
-
    // Prepare providers for display - filter active only, then randomly select 5
    const displayProviders = React.useMemo(() => {
       if (!providersData || providersData.length === 0) return [];
@@ -150,10 +123,10 @@ const HomeScreen = () => {
       return shuffled.slice(0, 5);
    }, [providersData]);
 
-   // Promo cards data - use data from API only, filter active promotions
-   const promoCards = promotionsData
-      ? promotionsData.filter(promo => promo.status === 'active')
-      : [];
+   const promoCards = useMemo(
+      () => promotionsData ? promotionsData.filter(p => p.status === 'active') : [],
+      [promotionsData]
+   );
 
 
    // Auto-scroll functionality
@@ -213,36 +186,23 @@ const HomeScreen = () => {
    };
 
    // Render promo card
-   const renderPromoCard = ({ item }) => {
-      // Check if item has imageEnglish or imageArabic (from API)
-      const hasApiImage = item.imageEnglish || item.imageArabic;
+   const renderPromoCard = ({ item, index }) => {
+      const { bg, anim } = PROMO_THEMES[index % PROMO_THEMES.length];
+      const title = item.title || (isRTL ? 'صحتك أولويتنا' : 'Your Health, Our Priority');
+      const subtitle = item.subtitle || (isRTL ? 'احجز جلستك الآن' : 'Book your session today');
 
-      if (hasApiImage) {
-         // Render image-based promo from API
-         return (
-            <View style={[styles.promoCard, { backgroundColor: COLORS.promo1 }]}>
-               <Image
-                  source={{ uri: isRTL ? item.imageArabic : item.imageEnglish }}
-                  style={styles.promoImageFull}
-                  resizeMode="cover"
-               />
+      return (
+         <View style={[styles.promoCard, { backgroundColor: bg, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.promoTextBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+               <Text style={[styles.promoTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{title}</Text>
+               <Text style={[styles.promoSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{subtitle}</Text>
+               <TouchableOpacity style={styles.promoBtn}>
+                  <Text style={styles.promoBtnText}>{t.home?.readMore || 'Read More'}</Text>
+               </TouchableOpacity>
             </View>
-         );
-      } else {
-         // Render text-based fallback promo
-         return (
-            <View style={[styles.promoCard, { backgroundColor: item.backgroundColor, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-               <View style={[styles.promoContent, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-                  <Text style={styles.promoTitle}>{item.title}</Text>
-                  <Text style={styles.promoSub}>{item.subtitle}</Text>
-                  <TouchableOpacity style={styles.promoBtn}>
-                     <Text style={styles.promoBtnText}>{t.home?.readMore || 'Read More'}</Text>
-                  </TouchableOpacity>
-               </View>
-               <Image source={ICONS.general} style={styles.promoImg} />
-            </View>
-         );
-      }
+            <LottieView source={anim} autoPlay loop style={styles.promoLottie} />
+         </View>
+      );
    };
 
    return (
@@ -263,12 +223,15 @@ const HomeScreen = () => {
                      showsHorizontalScrollIndicator={false}
                      snapToInterval={PROMO_CARD_WIDTH + 15}
                      decelerationRate="fast"
-                     contentContainerStyle={[styles.slider, scaleRTL]}
-                     style={scaleRTL}
+                     contentContainerStyle={styles.slider}
                      onScroll={handlePromoScroll}
                      onScrollBeginDrag={handleScrollBeginDrag}
                      onScrollEndDrag={handleScrollEndDrag}
                      scrollEventThrottle={16}
+                     initialNumToRender={1}
+                     maxToRenderPerBatch={2}
+                     windowSize={3}
+                     removeClippedSubviews={true}
                      getItemLayout={(data, index) => ({
                         length: PROMO_CARD_WIDTH + 15,
                         offset: (PROMO_CARD_WIDTH + 15) * index,
@@ -479,8 +442,7 @@ const HomeScreen = () => {
                <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  style={[styles.docSlider, scaleRTL]}
-                  contentContainerStyle={scaleRTL}
+                  style={styles.docSlider}
                >
                   {isProvidersLoading ? (
                      // Skeleton Loading State
@@ -590,14 +552,13 @@ const styles = StyleSheet.create({
    // Promos
    promoContainer: { marginTop: 20, marginBottom: 15 },
    slider: { paddingHorizontal: 20 },
-   promoCard: { width: PROMO_CARD_WIDTH, height: 140, borderRadius: 16, padding: 20, justifyContent: 'space-between', marginRight: 15, overflow: 'hidden' },
-   promoContent: { flex: 1, justifyContent: 'center' },
-   promoTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 5 },
-   promoSub: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 10 },
-   promoBtn: { backgroundColor: COLORS.gray800, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' },
-   promoBtnText: { color: COLORS.white, fontSize: 12 },
-   promoImg: { width: 80, height: 80, opacity: 0.8 },
-   promoImageFull: { width: PROMO_CARD_WIDTH, height: 140, position: 'absolute', top: 0, left: 0 },
+   promoCard: { width: PROMO_CARD_WIDTH, height: 165, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 18, alignItems: 'center', marginRight: 15, overflow: 'hidden' },
+   promoTextBlock: { flex: 1, justifyContent: 'center', paddingRight: 8 },
+   promoTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 5, lineHeight: 21 },
+   promoSub: { fontSize: 11, color: 'rgba(255,255,255,0.82)', marginBottom: 14, lineHeight: 16 },
+   promoBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', alignSelf: 'flex-start' },
+   promoBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
+   promoLottie: { width: 110, height: 110 },
 
    // Pagination
    paginationContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },

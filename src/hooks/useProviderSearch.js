@@ -17,8 +17,8 @@ const INITIAL_FILTERS = {
     page: 1,
 };
 
-export function useProviderSearch() {
-    const [filters, setFilters] = useState(INITIAL_FILTERS);
+export function useProviderSearch(initialFilters = {}) {
+    const [filters, setFilters] = useState({ ...INITIAL_FILTERS, ...initialFilters });
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const debounceTimer = useRef(null);
 

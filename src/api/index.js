@@ -5,6 +5,7 @@ import { NativeModules, Platform } from 'react-native';
 import { DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { queryClient } from './queryClient';
+import i18n from '../config/i18n';
 
 // ==========================================
 // CONFIGURATION
@@ -16,6 +17,9 @@ const uploadTimeout = 120000;
 // Token refresh state management
 let isRefreshing = false;
 let failedQueue = [];
+
+// Offline detection state
+let isNetworkOffline = false;
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -81,6 +85,9 @@ axios.interceptors.request.use(
     }
 
     config.headers['X-Timezone'] = getDeviceTimezone();
+    const language = i18n.language || 'en';
+    config.headers['Accept-Language'] = language;
+    config.headers['X-Language'] = language;
     config.timeoutErrorMessage = ErrorMessages.timeoutMessage;
     return config;
   },
@@ -91,9 +98,25 @@ axios.interceptors.request.use(
 // RESPONSE INTERCEPTOR - Token Refresh & Rate Limiting
 // ==========================================
 axios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Restore online banner if we were previously offline
+    if (isNetworkOffline) {
+      isNetworkOffline = false;
+      DeviceEventEmitter.emit('network:online');
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+
+    // Detect network-level failure (no response received)
+    if (!error.response && error.request) {
+      if (!isNetworkOffline) {
+        isNetworkOffline = true;
+        DeviceEventEmitter.emit('network:offline');
+      }
+      return Promise.reject(error);
+    }
 
     // Handle rate limiting (429)
     if (error.response?.status === 429) {

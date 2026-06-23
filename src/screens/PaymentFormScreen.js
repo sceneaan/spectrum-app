@@ -836,21 +836,25 @@ const PaymentFormScreen = () => {
             {/* Form */}
             <View style={styles.form}>
             <View style={styles.brandSelectorContainer}>
-              {/* Apple Pay Button */}
-              <TouchableOpacity
-                style={styles.applePayButton}
-                onPress={handleApplePaySubmit}
-                disabled={isSubmitting}
-              >
-                <Text style={{color: 'white', fontWeight: 'bold', fontSize: 18}}> Pay</Text>
-              </TouchableOpacity>
+              {/* Apple Pay — iOS only */}
+              {Platform.OS === 'ios' && (
+                <>
+                  <TouchableOpacity
+                    style={styles.applePayButton}
+                    onPress={handleApplePaySubmit}
+                    disabled={isSubmitting}
+                    accessibilityLabel="Pay with Apple Pay"
+                  >
+                    <Text style={styles.applePayText}> Pay</Text>
+                  </TouchableOpacity>
 
-              {/* Divider */}
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>{t('payment.orPayWith') || "Or pay with"}</Text>
-                <View style={styles.dividerLine} />
-              </View>
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>{t('payment.orPayWith') || "Or pay with"}</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+                </>
+              )}
 
               {/* Other Brands */}
               <View style={[styles.brandContainer, isRTL && { flexDirection: 'row-reverse' }]}>
@@ -1233,6 +1237,12 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginBottom: 15,
+  },
+  applePayText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   applePayButton: {
     width: '100%',

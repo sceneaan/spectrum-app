@@ -13,6 +13,7 @@ import {
   useGetPendingAppointmentsGroupedByDoctor,
 } from '../api/services/Appointment.Service';
 import socketService from '../utils/socket';
+import Skeleton from '../components/Skeleton';
 
 const CountdownTimer = ({ startTime, clientTz, label }) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -459,46 +460,49 @@ const AppointmentsScreen = () => {
     let canCancel = false;
     let timeUntilStart = null;
     let showCountdown = false;
+    let startsInLabel = null;
+    let isBeforeStartGlobal = false;
 
     if (isUpcoming && item?.startTime && item?.endTime) {
-      // Parse appointment times - they come from backend as local time strings (YYYY-MM-DDTHH:mm:ss)
-      // The backend already converts them to the user's timezone
       const clientTz = item.clientTz || moment.tz.guess();
 
-      // Parse times in the client's timezone
       const appointmentStart = moment.tz(item.startTime, clientTz);
       const appointmentEnd = moment.tz(item.endTime, clientTz);
       const joinWindowStart = appointmentStart.clone().subtract(10, 'minutes');
 
-      // Get current time in the same timezone for accurate comparison
       const now = moment.tz(clientTz);
 
       const isBeforeStart = now.isBefore(appointmentStart);
+      isBeforeStartGlobal = isBeforeStart;
       const isInJoinWindow = now.isSameOrAfter(joinWindowStart) && now.isSameOrBefore(appointmentStart);
 
-      // Show join button from 10 minutes before start until end time
       const isAfterJoinWindowStart = now.isSameOrAfter(joinWindowStart);
       const isBeforeOrAtEndTime = now.isSameOrBefore(appointmentEnd);
       showJoinButton = isAfterJoinWindowStart && isBeforeOrAtEndTime;
 
-      // Room is only expired AFTER the end time
       isRoomExpired = now.isAfter(appointmentEnd);
 
-      // Show countdown if we're in the 10-minute join window but before start time
+      // Countdown shown in the 10-minute pre-start join window
       if (isInJoinWindow && isBeforeStart) {
         const diff = appointmentStart.diff(now, 'seconds');
-        const minutes = Math.floor(diff / 60);
-        const seconds = diff % 60;
-        timeUntilStart = { minutes, seconds };
+        timeUntilStart = { minutes: Math.floor(diff / 60), seconds: diff % 60 };
         showCountdown = true;
       }
 
-      // Can reschedule if more than 6 hours away and less than 3 attempts
+      // "Starts in Xh Ym" badge for appointments 10 min–24 h away (patient knows when to expect it)
+      if (isBeforeStart && !isInJoinWindow) {
+        const minsUntil = appointmentStart.diff(now, 'minutes');
+        if (minsUntil <= 1440) {
+          const h = Math.floor(minsUntil / 60);
+          const m = minsUntil % 60;
+          startsInLabel = h > 0 ? `${h}h ${m}m` : `${m}m`;
+        }
+      }
+
       const sixHoursFromNow = now.clone().add(6, 'hours');
       canReschedule = appointmentStart.isAfter(sixHoursFromNow)
         && (item.reschedulingAttempts || 0) < 3;
 
-      // Can cancel if before start time (even if in join window)
       canCancel = appointmentStart.isAfter(now);
     }
 
@@ -554,6 +558,15 @@ const AppointmentsScreen = () => {
           </View>
         </View>
 
+        {/* "Starts in Xh Ym" badge — visible before the 10-min join window opens */}
+        {isUpcoming && startsInLabel && !needsVerification && (
+          <View style={styles.startsInBadge}>
+            <Text style={styles.startsInText}>
+              ⏰ {t.appointments?.startsIn || 'Starts in'} {startsInLabel}
+            </Text>
+          </View>
+        )}
+
         {/* --- UPCOMING ACTIONS --- */}
         {isUpcoming && showJoinButton && !isRoomExpired && !callWasEnded && !needsVerification && (
           <View style={{ marginTop: 15 }}>
@@ -563,7 +576,9 @@ const AppointmentsScreen = () => {
               activeOpacity={0.8}
             >
               <Text style={styles.joinBtnText}>
-                {t.appointments?.joinCall || 'Join Call'}
+                {isBeforeStartGlobal
+                  ? (t.appointments?.joinWaitingRoom || 'Join Waiting Room')
+                  : (t.appointments?.joinCall || 'Join Call')}
               </Text>
             </TouchableOpacity>
 
@@ -571,8 +586,14 @@ const AppointmentsScreen = () => {
               <CountdownTimer
                 startTime={item.startTime}
                 clientTz={item.clientTz || moment.tz.guess()}
-                label={t.appointments?.callStartsIn || 'Call starts in'}
+                label={t.appointments?.appointmentStartsIn || 'Appointment starts in'}
               />
+            )}
+
+            {isBeforeStartGlobal && showCountdown && (
+              <Text style={styles.earlyJoinNote}>
+                {t.appointments?.earlyJoinNote || 'You\'re in the waiting room — the provider will join at appointment time'}
+              </Text>
             )}
 
             <View style={[styles.actionRow, rowStyle, { marginTop: 10, flexWrap: 'wrap', gap: 8 }]}>
@@ -716,8 +737,19 @@ const AppointmentsScreen = () => {
         </View>
 
         {showLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+          <View style={{ padding: 16 }}>
+            {[0, 1, 2].map(i => (
+              <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 15 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Skeleton width={55} height={55} style={{ borderRadius: 27.5 }} />
+                  <View style={{ flex: 1, marginHorizontal: 12 }}>
+                    <Skeleton width="70%" height={14} style={{ marginBottom: 8 }} />
+                    <Skeleton width="50%" height={12} />
+                    <Skeleton width="40%" height={12} style={{ marginTop: 6 }} />
+                  </View>
+                </View>
+              </View>
+            ))}
           </View>
         ) : (
           <FlatList
@@ -847,6 +879,30 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 13,
     fontWeight: 'bold'
+  },
+
+  // "Starts in Xh Ym" badge (before join window)
+  startsInBadge: {
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  startsInText: {
+    color: '#4F46E5',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Note shown in waiting room before appointment starts
+  earlyJoinNote: {
+    marginTop: 6,
+    fontSize: 11,
+    color: COLORS.gray600,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 
   // Countdown Timer

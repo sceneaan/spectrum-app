@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   TextInput,
@@ -8,9 +7,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import Modal from 'react-native-modal';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useLanguage } from '../store/LanguageContext';
 import { useRedeemSupportCard } from '../api/services/SupportCard.Service';
@@ -115,20 +113,20 @@ const RedeemSupportCardModal = ({ visible, onClose, onSuccess }) => {
     onClose();
   };
 
-  if (!visible) return null;
-
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleClose}
+      isVisible={visible}
+      onSwipeComplete={handleClose}
+      swipeDirection="down"
+      onBackdropPress={handleClose}
+      style={styles.modalWrapper}
+      propagateSwipe
+      avoidKeyboard
+      useNativeDriverForBackdrop
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
-      >
-        <View style={styles.modalContainer}>
+      <View style={styles.modalContainer}>
+        {/* Swipe handle */}
+        <View style={styles.swipeHandle} />
           {!showSuccess ? (
             <>
               {/* Header */}
@@ -250,17 +248,15 @@ const RedeemSupportCardModal = ({ visible, onClose, onSuccess }) => {
               )}
             </View>
           )}
-        </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  modalWrapper: {
     justifyContent: 'flex-end',
+    margin: 0,
   },
   modalContainer: {
     backgroundColor: COLORS.white,
@@ -268,7 +264,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 25,
     paddingBottom: 35,
-    maxHeight: '85%',
+    maxHeight: '90%',
+  },
+  swipeHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.gray300,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
 
   // Header

@@ -20,6 +20,7 @@ import { useGetWalletTransactions } from '../api/services/Transaction.Service';
 import { useQueryClient } from '@tanstack/react-query';
 import moment from 'moment';
 import 'moment/locale/ar';
+import Skeleton from '../components/Skeleton';
 
 const WalletScreen = () => {
   const navigation = useNavigation();
@@ -163,8 +164,13 @@ const WalletScreen = () => {
   const renderEmpty = () => {
     if (walletTransactionsLoader && page === 1) {
       return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator color={COLORS.primary} size="large" />
+        <View style={{ padding: 16 }}>
+          {[0, 1, 2].map(i => (
+            <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 12 }}>
+              <Skeleton width="60%" height={14} style={{ marginBottom: 8 }} />
+              <Skeleton width="40%" height={12} />
+            </View>
+          ))}
         </View>
       );
     }
@@ -231,16 +237,28 @@ const WalletScreen = () => {
                 </View>
               )}
             </View>
-            <TouchableOpacity
-              style={styles.redeemButton}
-              onPress={() => setRedeemModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.redeemButtonIcon}>🎁</Text>
-              <Text style={styles.redeemButtonText}>
-                {t.wallet?.redeemCode || 'Redeem'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ gap: 8 }}>
+              <TouchableOpacity
+                style={styles.redeemButton}
+                onPress={() => navigation.navigate('SupportCard')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.redeemButtonIcon}>🎁</Text>
+                <Text style={styles.redeemButtonText}>
+                  {t.wallet?.buySupportCard || 'Buy Card'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.redeemButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
+                onPress={() => setRedeemModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.redeemButtonIcon}>🏷️</Text>
+                <Text style={styles.redeemButtonText}>
+                  {t.wallet?.redeemCode || 'Redeem'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={[styles.cardDecorationCircle, isRTL && { left: -20, right: 'auto' }]} />
         </View>

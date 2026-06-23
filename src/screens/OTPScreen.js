@@ -9,6 +9,8 @@ import { useVerifyOtp, useResendOtp } from '../api/services/Auth.Service'; // Im
 import { useCreateAppointment } from '../api/services/Appointment.Service';
 import { useAuthStore } from '../store/authStore'; // Import auth store
 import moment from 'moment-timezone';
+import haptics from '../utils/haptics';
+import ReactNativeBiometrics from 'react-native-biometrics';
 
 const OTPScreen = () => {
   const navigation = useNavigation();
@@ -17,7 +19,7 @@ const OTPScreen = () => {
   const { emailOrPhone, targetScreen, targetParams } = route.params || {};
   const isRTL = I18nManager.isRTL || i18n.language === 'ar';
 
-  const { setAuth } = useAuthStore();
+  const { setAuth, biometricsEnabled, setBiometricsEnabled } = useAuthStore();
 
   const [otp, setOtp] = useState(new Array(6).fill(''));
   const [timer, setTimer] = useState(420); // 7 minutes * 60 seconds
@@ -61,7 +63,32 @@ const OTPScreen = () => {
 
         // Proceed with login for non-providers (patients, etc.)
         // Note: Response object IS the user object (not nested under response.user)
-        setAuth({ user: response, token: response.token }); // Save to Zustand store
+        setAuth({ user: response, token: response.token, refreshToken: response.refreshToken });
+        haptics.success();
+
+        // Offer biometric lock to first-time users on devices that support it
+        if (!biometricsEnabled) {
+          (async () => {
+            try {
+              const rnBiometrics = new ReactNativeBiometrics();
+              const { biometryType } = await rnBiometrics.isSensorAvailable();
+              if (biometryType) {
+                const label = biometryType === 'FaceID' ? 'Face ID' :
+                              biometryType === 'TouchID' ? 'Touch ID' : 'Biometrics';
+                setTimeout(() => {
+                  Alert.alert(
+                    `Enable ${label}?`,
+                    `Lock the app with ${label} for added privacy. You can disable this in settings.`,
+                    [
+                      { text: 'Not Now', style: 'cancel' },
+                      { text: 'Enable', onPress: () => setBiometricsEnabled(true) },
+                    ],
+                  );
+                }, 900);
+              }
+            } catch {}
+          })();
+        }
 
         // Check if signature is required (matches old app flow: OTP → Consent → PatientInfo/Signature)
         if (!response?.signatureUrl) {
@@ -161,11 +188,20 @@ const OTPScreen = () => {
           return;
         }
 
+        haptics.error();
         const errorMessage = err.response?.data?.message || err.message || t('auth.otp.verificationFailed') || "OTP verification failed.";
         setError(errorMessage);
       }
     });
   }, [otp, emailOrPhone, verifyOtp, t, navigation, targetScreen, targetParams, setAuth, createAppointment]);
+
+  // Auto-submit when all 6 digits are filled (covers paste and SMS auto-fill)
+  useEffect(() => {
+    const allFilled = otp.every(d => d !== '') && otp.join('').length === 6;
+    if (allFilled && !isVerifying && !isCreatingAppointment) {
+      handleVerify();
+    }
+  }, [otp]);
 
   // Timer useEffect
   useEffect(() => {

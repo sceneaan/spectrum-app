@@ -3,21 +3,38 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import LottieView from 'lottie-react-native';
+import InAppReview from 'react-native-in-app-review';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment-timezone';
 import COLORS from '../constants/colors';
+import haptics from '../utils/haptics';
+
+const APPOINTMENT_COUNT_KEY = '@spectrum_appointment_count';
+
+const triggerAppReviewIfEligible = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(APPOINTMENT_COUNT_KEY);
+    const count = parseInt(raw || '0', 10) + 1;
+    await AsyncStorage.setItem(APPOINTMENT_COUNT_KEY, String(count));
+    // Request review at 3rd, 10th, 25th successful appointment
+    if ((count === 3 || count === 10 || count === 25) && InAppReview.isAvailable()) {
+      await InAppReview.RequestInAppReview();
+    }
+  } catch {}
+};
 
 const PaymentSuccessScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { appointment, paymentType, transactionId } = route.params || {};
+  const lottieRef = useRef(null);
 
-  // Animation values
-  const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const checkmarkAnim = useRef(new Animated.Value(0)).current;
 
-  // Determine success message based on payment type
   const isAppointment = paymentType === 'appointment' || appointment;
   const isSupportCard = paymentType === 'support_card';
 
@@ -26,27 +43,23 @@ const PaymentSuccessScreen = () => {
     queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
     queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
 
-    // Animate in sequence: scale up circle, fade in content, then draw checkmark
-    Animated.sequence([
-      Animated.spring(scaleAnim, {
+    haptics.success();
+
+    // Fade in content after a short delay (lets Lottie play first)
+    const timer = setTimeout(() => {
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        duration: 500,
         useNativeDriver: true,
-      }),
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(checkmarkAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
+      }).start();
+    }, 600);
+
+    // Trigger app review for appointment bookings
+    if (isAppointment) {
+      triggerAppReviewIfEligible();
+    }
+
+    return () => clearTimeout(timer);
   }, [queryClient]);
 
   const handleGoHome = () => {
@@ -56,17 +69,16 @@ const PaymentSuccessScreen = () => {
     });
   };
 
-  // Dynamic content based on payment type
   const getSuccessContent = () => {
     if (isSupportCard) {
       return {
-        title: 'Support Card Purchased!',
-        subtitle: 'Your support card has been activated successfully.',
+        title: t('paymentSuccess.supportCardHeading'),
+        subtitle: t('paymentSuccess.supportCardSubheading'),
       };
     }
     return {
-      title: 'Payment Successful!',
-      subtitle: 'Your appointment has been booked successfully.',
+      title: t('paymentSuccess.heading1'),
+      subtitle: t('paymentSuccess.subheading'),
     };
   };
 
@@ -75,95 +87,52 @@ const PaymentSuccessScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Animated Success Icon */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            {
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          {/* Icon based on payment type */}
-          <Animated.Text
-            style={[
-              styles.mainIcon,
-              {
-                opacity: checkmarkAnim,
-                transform: [
-                  {
-                    scale: checkmarkAnim.interpolate({
-                      inputRange: [0, 0.5, 1],
-                      outputRange: [0, 1.2, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            {isAppointment ? '📅' : '💳'}
-          </Animated.Text>
+        {/* Lottie success animation */}
+        <LottieView
+          ref={lottieRef}
+          source={require('../assets/animations/payment-success.json')}
+          autoPlay
+          loop={false}
+          style={styles.lottie}
+        />
 
-          {/* Success Checkmark Badge */}
-          <Animated.View
-            style={[
-              styles.checkmarkBadge,
-              {
-                opacity: checkmarkAnim,
-                transform: [
-                  {
-                    scale: checkmarkAnim.interpolate({
-                      inputRange: [0, 0.5, 1],
-                      outputRange: [0, 1.3, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <Text style={styles.checkmark}>✓</Text>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Animated Title */}
+        {/* Animated content fades in after animation starts */}
         <Animated.Text style={[styles.title, { opacity: fadeAnim }]}>
           {title}
         </Animated.Text>
 
-        {/* Animated Subtitle */}
         <Animated.Text style={[styles.subtitle, { opacity: fadeAnim }]}>
           {subtitle}
         </Animated.Text>
 
-        {/* Show appointment details if it's an appointment */}
         {isAppointment && appointment && (
           <Animated.View style={[styles.detailsCard, { opacity: fadeAnim }]}>
-            <Text style={styles.label}>Appointment ID:</Text>
+            <Text style={styles.label}>{t('paymentSuccess.appointmentId')}</Text>
             <Text style={styles.value}>{appointment._id || appointment.id}</Text>
 
             {appointment.startTime && (
               <>
-                <Text style={styles.label}>Date & Time:</Text>
+                <Text style={styles.label}>{t('paymentSuccess.dateAndTime')}</Text>
                 <Text style={styles.value}>
-                  {moment.utc(appointment.startTime).locale('en').format('MMM D, YYYY')} • {moment(appointment.startTime).locale('en').format('h:mm A')}
+                  {moment.utc(appointment.startTime).locale('en').format('MMM D, YYYY')}
+                  {' • '}
+                  {moment(appointment.startTime).locale('en').format('h:mm A')}
                 </Text>
               </>
             )}
           </Animated.View>
         )}
 
-        {/* Show transaction ID if available */}
         {transactionId && (
           <Animated.View style={[styles.detailsCard, { opacity: fadeAnim }]}>
-            <Text style={styles.label}>Transaction ID:</Text>
+            <Text style={styles.label}>{t('paymentSuccess.id')}</Text>
             <Text style={styles.value}>{transactionId}</Text>
           </Animated.View>
         )}
 
-        {/* Animated Button */}
         <Animated.View style={{ opacity: fadeAnim, width: '100%' }}>
           <TouchableOpacity style={styles.btn} onPress={handleGoHome}>
-            <Text style={styles.btnText}>Go to Home</Text>
+            <Text style={styles.btnText}>{t('paymentSuccess.goToHome')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -182,47 +151,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  iconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: COLORS.promo1 || `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 30,
-    position: 'relative',
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
-  },
-  mainIcon: {
-    fontSize: 70,
-  },
-  checkmarkBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.success || '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: COLORS.background || COLORS.white,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
-  },
-  checkmark: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.white,
-    marginTop: -2,
+  lottie: {
+    width: 180,
+    height: 180,
+    marginBottom: 16,
   },
   title: {
     fontSize: 26,

@@ -137,25 +137,14 @@ export function useGetAllPromotions() {
         queryKey: ['promotions'],
         queryFn: async () => {
             try {
-                console.log('Fetching promotions from /promotions/all');
                 const result = await getRequest('/promotions/all');
-                console.log('Promotions API Response:', result);
-                console.log('Promotions Status:', result?.status);
-                console.log('Promotions Full Data:', result?.data);
-                console.log('Promotions Nested Data:', result?.data?.data);
-
                 if (result?.status === HttpStatusCode.Ok) {
-                    const promotions = result.data.data;
-                    console.log('Returning promotions:', promotions);
-                    return promotions;
+                    return result.data.data;
                 } else {
-                    console.log('Promotions API returned non-OK status:', result?.status);
                     throw new Error(ErrorMessages.generalMessage);
                 }
             } catch (err) {
-                console.error('Error fetching promotions - Full Error:', err);
-                console.error('Error message:', err?.message);
-                console.error('Error response:', err?.response);
+                console.error('Error fetching promotions:', err?.message);
                 throw err;
             }
         },
