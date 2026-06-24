@@ -90,8 +90,22 @@ const OTPScreen = () => {
           })();
         }
 
-        // Check if signature is required (matches old app flow: OTP → Consent → PatientInfo/Signature)
-        if (!response?.signatureUrl) {
+        // Only brand-new patients with an incomplete profile need the
+        // Consent → PatientInfo/Signature flow. Existing/active users — and admins —
+        // must skip it. Previously this only checked signatureUrl, so EVERY returning
+        // user without a saved signature (most existing users, regardless of role)
+        // was wrongly forced back through Consent. Mirror the web VerifyCode guard.
+        const loggedInRole = response?.role?.toLowerCase();
+        const needsConsent =
+          loggedInRole === 'patient' &&
+          response?.status !== 'active' &&
+          !response?.signatureUrl &&
+          !response?.fullName &&
+          !response?.nationality &&
+          !response?.nationalId &&
+          !response?.dob;
+
+        if (needsConsent) {
           navigation.navigate('Consent', { targetScreen, targetParams, emailOrPhone });
         } else {
           // Returning user (already has signature)

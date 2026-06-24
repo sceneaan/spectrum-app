@@ -57,6 +57,8 @@ const CustomVideoConferenceScreen = () => {
   const roomRef = useRef(null); // Ref to access room data in event handlers
   const heartbeatRef = useRef(null); // Heartbeat interval for presence detection
   const appStateRef = useRef(AppState.currentState); // Track app state for background handling
+  const pendingDisconnectTimerRef = useRef(null); // Grace period timer for provider disconnect alert
+  const handleEndCallRef = useRef(null); // Stable ref to handleEndCall (avoids circular dep in socket effects)
 
   // Room state
   const [room, setRoom] = useState({});
@@ -245,6 +247,65 @@ const CustomVideoConferenceScreen = () => {
     };
   }, [t]);
 
+  // Socket listeners for provider disconnect / session end
+  useEffect(() => {
+    if (!socketService.socket) return;
+
+    const handleUserLeft = (data) => {
+      if (String(data?.roomId) !== String(meetingRoomId)) return;
+      if (String(data?.userId) === String(userID)) return; // ignore self
+
+      const currentRoom = roomRef.current;
+      const providerId = String(currentRoom?.provider?.id || currentRoom?.provider?._id || currentRoom?.provider || '');
+      if (!providerId || String(data?.userId) !== providerId) return;
+
+      // Start 8-second grace period before alerting — provider may quickly reconnect
+      if (pendingDisconnectTimerRef.current) clearTimeout(pendingDisconnectTimerRef.current);
+      pendingDisconnectTimerRef.current = setTimeout(() => {
+        pendingDisconnectTimerRef.current = null;
+        Alert.alert(
+          t('videoConsultation.providerDisconnected', 'Provider Disconnected'),
+          t('videoConsultation.providerDisconnectedMessage', 'The provider has left the call. They may rejoin shortly.'),
+          [
+            { text: t('videoConsultation.waitForProvider', 'Wait'), style: 'default' },
+            { text: t('videoConsultation.endCall', 'End Call'), style: 'destructive', onPress: () => handleEndCallRef.current?.() },
+          ]
+        );
+      }, 8000);
+    };
+
+    const handleUserJoined = (data) => {
+      if (String(data?.roomId) !== String(meetingRoomId)) return;
+      if (pendingDisconnectTimerRef.current) {
+        clearTimeout(pendingDisconnectTimerRef.current);
+        pendingDisconnectTimerRef.current = null;
+      }
+    };
+
+    const handleSessionEnded = (data) => {
+      if (String(data?.roomId) !== String(meetingRoomId)) return;
+      Alert.alert(
+        t('videoConsultation.sessionEnded', 'Session Ended'),
+        t('videoConsultation.sessionEndedByProvider', 'The provider has ended the session.'),
+        [{ text: 'OK', onPress: () => handleEndCallRef.current?.() }]
+      );
+    };
+
+    socketService.socket.on('userLeft', handleUserLeft);
+    socketService.socket.on('userJoined', handleUserJoined);
+    socketService.socket.on('meetingEnded', handleSessionEnded);
+    socketService.socket.on('callEnded', handleSessionEnded);
+
+    return () => {
+      if (socketService.socket) {
+        socketService.socket.off('userLeft', handleUserLeft);
+        socketService.socket.off('userJoined', handleUserJoined);
+        socketService.socket.off('meetingEnded', handleSessionEnded);
+        socketService.socket.off('callEnded', handleSessionEnded);
+      }
+    };
+  }, [meetingRoomId, userID, t]);
+
   // Connect to Twilio room once API response is ready
   const isConnectingRef = useRef(false);
 
@@ -307,6 +368,7 @@ const CustomVideoConferenceScreen = () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (durationRef.current) clearInterval(durationRef.current);
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      if (pendingDisconnectTimerRef.current) clearTimeout(pendingDisconnectTimerRef.current);
     };
   }, [meetingRoomId, userID]);
 
@@ -486,8 +548,6 @@ const CustomVideoConferenceScreen = () => {
     // Route audio to speaker so remote audio plays through loudspeaker
     twilioRef.current.toggleSoundSetup(true);
 
-    // Audio starts enabled (enableAudio: true in connect) — mic is live from join
-
     // Notify backend of room join
     if (socketService.isConnected()) {
       socketService.sendMessage('joinRoom', {
@@ -496,14 +556,37 @@ const CustomVideoConferenceScreen = () => {
       });
     }
 
-    // Add self to participants
-    setParticipants([{
-      id: String(userID),
-      name: userName,
-      role: userRole,
-      isMuted: false, // Mic starts on
-      isVideoOn: false,
-    }]);
+    // Build initial participant list: local user + anyone already in the room.
+    // Including existing participants here prevents _onRoomParticipantDidConnect
+    // from adding them again, which would cause duplicate entries and wrong counts.
+    const currentRoom = roomRef.current;
+    const existingRemote = (roomParticipants || []).map((p) => {
+      const remoteID = String(p.identity);
+      const providerId = String(currentRoom?.provider?.id || currentRoom?.provider?._id || currentRoom?.provider || '');
+      const patientId = String(currentRoom?.patient?.id || currentRoom?.patient?._id || currentRoom?.patient || '');
+      let role = 'guest';
+      if (providerId && remoteID === providerId) role = 'provider';
+      else if (patientId && remoteID === patientId) role = 'patient';
+      return {
+        id: remoteID,
+        name: resolveDisplayName(remoteID),
+        role,
+        isMuted: false,
+        isVideoOn: false,
+        participantSid: p.sid,
+      };
+    });
+
+    setParticipants([
+      {
+        id: String(userID),
+        name: userName,
+        role: userRole,
+        isMuted: false,
+        isVideoOn: false,
+      },
+      ...existingRemote,
+    ]);
   };
 
   const _onRoomDidFailToConnect = (error) => {
@@ -532,18 +615,23 @@ const CustomVideoConferenceScreen = () => {
     console.log('[Video] Participant connected — identity:', remoteUserID, 'resolved name:', resolvedName, 'providerId:', providerId, 'patientId:', patientId);
     let role = 'guest';
 
-    // Determine role based on room data
     if (providerId && remoteUserID === providerId) {
       role = 'provider';
     } else if (patientId && remoteUserID === patientId) {
       role = 'patient';
     }
 
+    // Provider rejoined — cancel any pending disconnect alert
+    if (pendingDisconnectTimerRef.current) {
+      clearTimeout(pendingDisconnectTimerRef.current);
+      pendingDisconnectTimerRef.current = null;
+    }
+
     setParticipants((prev) => {
       if (prev.find((p) => p.id === remoteUserID)) return prev;
       return [...prev, {
         id: remoteUserID,
-        name: resolveDisplayName(remoteUserID),
+        name: resolvedName,
         role,
         isMuted: false,
         isVideoOn: false,
@@ -554,7 +642,32 @@ const CustomVideoConferenceScreen = () => {
 
   const _onRoomParticipantDidDisconnect = (participant) => {
     const deletedUserID = String(participant.identity);
+
+    // Determine role from room data to decide if this is the provider
+    const currentRoom = roomRef.current;
+    const providerId = String(currentRoom?.provider?.id || currentRoom?.provider?._id || currentRoom?.provider || '');
+    const isProvider = providerId && deletedUserID === providerId;
+
+    if (isProvider) {
+      // Start 8-second grace period — provider may quickly reconnect
+      if (pendingDisconnectTimerRef.current) clearTimeout(pendingDisconnectTimerRef.current);
+      pendingDisconnectTimerRef.current = setTimeout(() => {
+        pendingDisconnectTimerRef.current = null;
+        Alert.alert(
+          t('videoConsultation.providerDisconnected', 'Provider Disconnected'),
+          t('videoConsultation.providerDisconnectedMessage', 'The provider has left the call. They may rejoin shortly.'),
+          [
+            { text: t('videoConsultation.waitForProvider', 'Wait'), style: 'default' },
+            { text: t('videoConsultation.endCall', 'End Call'), style: 'destructive', onPress: () => handleEndCallRef.current?.() },
+          ]
+        );
+      }, 8000);
+    }
+
     setParticipants((prev) => prev.filter((p) => p.id !== deletedUserID));
+
+    // If the disconnected participant was the selected main speaker, reset to auto
+    setSelectedSpeakerId((prev) => prev === deletedUserID ? null : prev);
 
     // Remove video tracks for this participant
     setVideoTracks((prevTracks) => {
@@ -657,6 +770,13 @@ const CustomVideoConferenceScreen = () => {
       )
     );
   };
+
+  // Auto-select the dominant speaker (whoever is actively talking)
+  const handleDominantSpeakerDidChange = useCallback(({ participant }) => {
+    if (participant?.identity) {
+      setSelectedSpeakerId(String(participant.identity));
+    }
+  }, []);
 
   // Duration timer
   useEffect(() => {
@@ -831,12 +951,19 @@ const CustomVideoConferenceScreen = () => {
   }, [meetingRoomId, room, userName, currentTimezone, sendInvitation, userID, userRole]);
 
   const handleEndCall = useCallback(async () => {
+    if (pendingDisconnectTimerRef.current) {
+      clearTimeout(pendingDisconnectTimerRef.current);
+      pendingDisconnectTimerRef.current = null;
+    }
     stopHeartbeat();
     sendLeaveSignal(); // Sends leaveRoom + socketService.leaveRoom
     twilioRef.current?.disconnect();
     isDisconnectingRef.current = false; // Reset for potential reconnect
     navigation.goBack();
   }, [navigation, stopHeartbeat, sendLeaveSignal]);
+
+  // Keep ref up-to-date every render so socket/timer callbacks always have the latest version
+  handleEndCallRef.current = handleEndCall;
 
   // Helper to get initials
   const getInitials = (name) => {
@@ -959,6 +1086,7 @@ const CustomVideoConferenceScreen = () => {
         onParticipantDisabledVideoTrack={_onParticipantDisabledVideoTrack}
         onParticipantEnabledAudioTrack={_onParticipantEnabledAudioTrack}
         onParticipantDisabledAudioTrack={_onParticipantDisabledAudioTrack}
+        onDominantSpeakerDidChange={handleDominantSpeakerDidChange}
       />
 
       {/* Loading overlay */}

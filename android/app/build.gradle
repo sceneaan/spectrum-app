@@ -83,8 +83,8 @@ android {
         applicationId "care.spectrumclinics.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1"
+        versionCode project.hasProperty('BUILD_VERSION_CODE') ? project.BUILD_VERSION_CODE.toInteger() : 3
+        versionName project.hasProperty('BUILD_VERSION_NAME') ? project.BUILD_VERSION_NAME : "1.2"
 
         // Enable multidex for Hyperpay SDK
         multiDexEnabled true
