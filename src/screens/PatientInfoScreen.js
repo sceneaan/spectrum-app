@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert, Platform, Modal, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert, Platform, Modal, FlatList, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -633,6 +633,11 @@ const PatientInfoScreen = () => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+            >
             <View style={[styles.header, rowStyle]}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Image source={ICONS.back} style={[styles.backIcon, isRTL && { transform: [{ scaleX: -1 }] }]} />
@@ -916,11 +921,13 @@ const PatientInfoScreen = () => {
                         {isSubmitting
                             ? (t('common.submitting') || "Submitting...")
                             : (!ELM_DISABLED && !elmVerified)
-                                ? (isRTL ? "يجب التحقق من الهوية أولاً" : "Verify identity first")
+                                ? (t('patientInfo.verifyIdentityFirst') || 'Verify identity first')
                                 : (t('patientInfo.acceptAndContinue') || "Accept & Continue")}
                     </Text>
                 </TouchableOpacity>
             </View>
+
+            </KeyboardAvoidingView>
 
             {/* Nationality Selector Modal */}
             <Modal

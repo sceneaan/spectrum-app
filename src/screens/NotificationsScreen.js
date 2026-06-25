@@ -16,12 +16,14 @@ import { requestUserPermission } from '../utils/notificationService';
 import { useAuthStore } from '../store/authStore';
 import { FCM_FOREGROUND_EVENT } from '../utils/fcmEvents';
 import { DeviceEventEmitter } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Skeleton from '../components/Skeleton';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.dir() === 'rtl';
+  const insets = useSafeAreaInsets();
   
   const [filter, setFilter] = useState('all');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -252,7 +254,7 @@ const NotificationsScreen = () => {
 
       {/* FAB */}
       <TouchableOpacity
-        style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }]}
+        style={[styles.fab, { bottom: 30 + insets.bottom }, isRTL ? { left: 20 } : { right: 20 }]}
         onPress={() => setMenuVisible(true)}
       >
         <Image source={ICONS.dots} style={{ width: 24, height: 24, tintColor: 'white' }} />
@@ -264,7 +266,7 @@ const NotificationsScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={[
               styles.menuContainer,
-              isRTL ? { left: 20, bottom: 90 } : { right: 20, bottom: 90 }
+              isRTL ? { left: 20, bottom: 90 + insets.bottom } : { right: 20, bottom: 90 + insets.bottom }
             ]}>
               <TouchableOpacity style={[styles.menuItem, rowStyle]} onPress={handleMarkAllRead} disabled={isMarkingAll}>
                 {isMarkingAll ? <ActivityIndicator size="small" color={COLORS.primary} /> : (

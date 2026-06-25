@@ -6,8 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import { useGetUserData } from '../api/services/User.Service';
+import { useGetUnreadCount } from '../api/services/Notification.Service';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+
+const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
 const Header = ({ showBack, onBack, title, showProfile }) => {
   const navigation = useNavigation();
@@ -15,17 +18,15 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
   const { t, isRTL, toggleLang, lang } = useLanguage();
   const { user, isAuthenticated } = useAuthStore();
   const { data: userData } = useGetUserData();
+  const { data: unreadCount = 0 } = useGetUnreadCount();
 
-  // Profile image state
   const [profileImageUrl, setProfileImageUrl] = useState(null);
 
-  // Load profile image using fileId (like web frontend) or direct URL
   useEffect(() => {
     const loadImage = async () => {
       const data = userData || user;
       if (!isAuthenticated || !data) return;
 
-      // Try profileImageFileId first (always returns latest image)
       if (data.profileImageFileId) {
         try {
           const { getPrivateFileAsBase64 } = require('../api/services/Upload.Service');
@@ -35,11 +36,10 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             return;
           }
         } catch (e) {
-          // Fall through to direct URL
+          // fall through
         }
       }
 
-      // Fall back to direct URL
       if (data.profileImage) {
         setProfileImageUrl(data.profileImage);
       }
@@ -51,31 +51,30 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
   const alignText = { textAlign: isRTL ? 'right' : 'left' };
 
-  // Navigation Handlers
   const goToProfile = () => navigation.navigate('Profile');
   const goToNotifications = () => navigation.navigate('Notifications');
 
-  // Display logic for logged-in vs guest users
   const displayName = isAuthenticated
     ? (userData?.fullName || user?.fullName || user?.name || 'User')
     : (t.welcomeToSpectrum || 'Welcome to Spectrum');
   const displayAvatar = (isAuthenticated && profileImageUrl) ? { uri: profileImageUrl } : (isAuthenticated ? ICONS.defaultAvatar : ICONS.guestAvatar);
 
+  const onlineDotPosition = isRTL ? { left: 0 } : { right: 0 };
+
   return (
     <View style={[
       styles.container,
       rowStyle,
-      { paddingTop: insets.top + 10 } // Dynamic padding for Safe Area
+      { paddingTop: insets.top + 10 },
     ]}>
-
-      {/* --- LEFT SIDE (Back Button OR Profile Info) --- */}
       <View style={[styles.leftContainer, rowStyle]}>
         {showBack ? (
           <TouchableOpacity
             onPress={onBack}
             style={[styles.backBtn, isRTL && { transform: [{ rotate: '180deg' }] }]}
+            hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t.accessibility?.goBack || 'Go back'}
           >
             <Image source={ICONS.back} style={styles.icon} />
           </TouchableOpacity>
@@ -85,7 +84,7 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             onPress={goToProfile}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="View profile"
+            accessibilityLabel={t.accessibility?.viewProfile || 'View profile'}
           >
             {typeof displayAvatar === 'object' && displayAvatar.uri && !displayAvatar.uri.startsWith('data:') ? (
               <FastImage
@@ -96,18 +95,8 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             ) : (
               <Image source={displayAvatar} style={styles.avatar} />
             )}
-            {isAuthenticated && ( // Only show online indicator if logged in
-                <View style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                width: 12,
-                height: 12,
-                backgroundColor: COLORS.success, // Green for online/active
-                borderRadius: 6,
-                borderWidth: 2,
-                borderColor: COLORS.white
-                }} />
+            {isAuthenticated && (
+              <View style={[styles.onlineDot, onlineDotPosition]} />
             )}
             <View style={{ marginHorizontal: 12 }}>
               {isAuthenticated && <Text style={[styles.welcome, alignText]}>{t.welcome || 'Welcome'}</Text>}
@@ -115,36 +104,37 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             </View>
           </TouchableOpacity>
         ) : (
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, alignText]}>{title}</Text>
         )}
       </View>
 
-      {/* --- RIGHT SIDE (Language & Notifications) --- */}
       <View style={[styles.rightContainer, isRTL ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' }]}>
-
-        {/* Language Toggle */}
         <TouchableOpacity
           onPress={toggleLang}
           style={styles.langBtn}
+          hitSlop={HIT_SLOP}
           accessibilityRole="button"
-          accessibilityLabel={lang === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+          accessibilityLabel={lang === 'en'
+            ? (t.accessibility?.switchToArabic || 'Switch to Arabic')
+            : (t.accessibility?.switchToEnglish || 'Switch to English')}
         >
           <Text style={{ fontSize: 22 }}>{lang === 'en' ? '🇸🇦' : '🇺🇸'}</Text>
         </TouchableOpacity>
 
-        {/* Notification Bell (Only for logged-in users, hidden on inner pages) */}
         {isAuthenticated && !showBack && (
           <TouchableOpacity
             style={styles.bellBtn}
             onPress={goToNotifications}
+            hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="Notifications"
+            accessibilityLabel={t.accessibility?.notifications || 'Notifications'}
           >
             <Image source={ICONS.bell} style={styles.icon} />
-            <View style={[styles.badge, isRTL ? { left: 8 } : { right: 8 }]} />
+            {unreadCount > 0 && (
+              <View style={[styles.badge, isRTL ? { left: 8 } : { right: 8 }]} />
+            )}
           </TouchableOpacity>
         )}
-
       </View>
     </View>
   );
@@ -163,27 +153,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-    zIndex: 100, // Ensure header stays on top
+    zIndex: 100,
   },
-
   leftContainer: { flex: 1, alignItems: 'center', justifyContent: 'flex-start' },
   rightContainer: { alignItems: 'center' },
-
-  // Profile Elements
   avatar: { width: 45, height: 45, borderRadius: 22.5, borderWidth: 2, borderColor: COLORS.white, shadowColor: COLORS.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 5 },
+  onlineDot: {
+    position: 'absolute',
+    top: 0,
+    width: 12,
+    height: 12,
+    backgroundColor: COLORS.success,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
   welcome: { color: COLORS.textSecondary, fontSize: 12 },
   name: { color: COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
-
-  // Page Title (When not showing profile)
-  title: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
-
-  // Buttons
+  title: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, flex: 1 },
   icon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
-  backBtn: { padding: 5 },
-  langBtn: { padding: 5, marginHorizontal: 5 },
+  backBtn: { padding: 8 },
+  langBtn: { padding: 8, marginHorizontal: 5 },
   bellBtn: { padding: 8, backgroundColor: COLORS.gray100, borderRadius: 20, marginLeft: 5 },
-
-  // Notification Badge
   badge: { position: 'absolute', top: 8, width: 8, height: 8, backgroundColor: COLORS.danger, borderRadius: 4 },
 });
 

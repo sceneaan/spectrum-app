@@ -82,9 +82,7 @@ const InboxScreen = () => {
       setThreads(threadsList);
       setFilteredThreads(threadsList);
     }
-    if (userThreadsError) {
-    }
-  }, [userThreads, userThreadsError, isAuthenticated]);
+  }, [userThreads, isAuthenticated]);
 
   // Search Logic
   useEffect(() => {
@@ -108,7 +106,7 @@ const InboxScreen = () => {
     // Get provider image or use default user icon
     const profileImageSource = item?.provider?.profileImage
       ? { uri: item.provider.profileImage }
-      : (ICONS.user || ICONS.defaultAvatar);
+      : ICONS.defaultAvatar;
 
     // Check if thread is expired (no completed appointment within 30 days)
     const providerId = item?.provider?._id || item?.provider?.id;
@@ -127,7 +125,7 @@ const InboxScreen = () => {
         <View style={{ flex: 1, marginHorizontal: 12, alignItems: isRTL() ? 'flex-end' : 'flex-start' }}>
           <View style={[rowStyle, { justifyContent: 'space-between', width: '100%', alignItems: 'center' }]}>
             <View style={[rowStyle, { alignItems: 'center', flex: 1 }]}>
-              <Text style={styles.name}>{isRTL() ? (item?.provider?.fullNameArabic || item?.provider?.fullName || 'مزود غير معروف') : (item?.provider?.fullNameEnglish || item?.provider?.fullName || 'Unknown Provider')}</Text>
+              <Text style={[styles.name, alignText]}>{isRTL() ? (item?.provider?.fullNameArabic || item?.provider?.fullName || t.messaging?.unknownProvider) : (item?.provider?.fullNameEnglish || item?.provider?.fullName || t.messaging?.unknownProvider)}</Text>
               {isExpired && (
                 <View style={styles.expiredBadge}>
                   <Icon name="clock" size={10} color={COLORS.gray500} />
@@ -139,8 +137,8 @@ const InboxScreen = () => {
 
           <Text style={styles.type}>
             {item?.type === 'General'
-              ? (isRTL() ? 'عام' : 'General')
-              : (item?.type || (isRTL() ? 'عام' : 'General'))
+              ? (t.messaging?.general || 'General')
+              : (item?.type || (t.messaging?.general || 'General'))
             }
           </Text>
 
@@ -182,8 +180,8 @@ const InboxScreen = () => {
         {userThreadsLoader ? (
             <View style={{ padding: 16 }}>
                 {[0, 1, 2, 3].map(i => (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 15, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10 }}>
-                        <Skeleton width={45} height={45} style={{ borderRadius: 22.5, marginRight: 12 }} />
+                    <View key={i} style={[rowStyle, { alignItems: 'flex-start', padding: 15, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10 }]}>
+                        <Skeleton width={45} height={45} style={{ borderRadius: 22.5, marginEnd: 12 }} />
                         <View style={{ flex: 1 }}>
                             <Skeleton width="70%" height={13} style={{ marginBottom: 8 }} />
                             <Skeleton width="85%" height={11} />
@@ -191,9 +189,18 @@ const InboxScreen = () => {
                     </View>
                 ))}
             </View>
+        ) : userThreadsError ? (
+            <View style={styles.emptyContainer}>
+                <Image source={ICONS.emptyBox} style={styles.emptyIcon} />
+                <Text style={styles.emptyText}>{t.messaging?.threadsLoadError || 'Could not load your inbox.'}</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+                    <Text style={styles.retryText}>{t.messaging?.retry || 'Retry'}</Text>
+                </TouchableOpacity>
+            </View>
         ) : filteredThreads.length === 0 ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: COLORS.gray500 }}>{t.messaging?.noMessagesFound || 'No messages found'}</Text>
+            <View style={styles.emptyContainer}>
+                <Image source={ICONS.emptyBox} style={styles.emptyIcon} />
+                <Text style={styles.emptyText}>{t.messaging?.noMessagesFound || 'No messages found'}</Text>
             </View>
         ) : (
             <FlatList
@@ -243,11 +250,16 @@ const styles = StyleSheet.create({
 
   // Expired thread badge
   expiredBadge: {
-    marginLeft: 6,
+    marginStart: 6,
     backgroundColor: COLORS.gray100,
     borderRadius: 10,
     padding: 4,
   },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  emptyIcon: { width: 64, height: 64, tintColor: COLORS.gray400, marginBottom: 16 },
+  emptyText: { color: COLORS.gray500, fontSize: 15, textAlign: 'center', marginBottom: 16 },
+  retryBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryText: { color: COLORS.white, fontWeight: '600' },
 });
 
 export default InboxScreen;

@@ -316,7 +316,7 @@ const OTPScreen = () => {
       },
       onError: (err) => {
         const errorMessage = err.response?.data?.message || t('auth.otp.resendFailed') || "Failed to re-send OTP.";
-        Alert.alert("Error", errorMessage);
+        Alert.alert(t('auth.otp.error') || t('common.error') || 'Error', errorMessage);
         // Reset the ability to resend after error
         setTimer(60); // Give user a shorter timer to try again
       }

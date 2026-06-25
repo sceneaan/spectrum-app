@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import InboxScreen from '../screens/InboxScreen';
@@ -24,6 +25,8 @@ const ProtectedInboxScreen = makeProtected(InboxScreen, {
 
 const TabNavigator = () => {
   const { t, isRTL } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 56 + insets.bottom;
 
   const orderedTabs = useMemo(() => {
     const tabs = [
@@ -56,7 +59,7 @@ const TabNavigator = () => {
     ];
 
     return isRTL ? [...tabs].reverse() : tabs;
-  }, [isRTL, t.tabs]);
+  }, [isRTL, t.tabs, insets.bottom, tabBarHeight]);
 
   return (
     <Tab.Navigator
@@ -66,8 +69,8 @@ const TabNavigator = () => {
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.inactive,
         tabBarStyle: {
-          height: 85,
-          paddingBottom: 30,
+          height: tabBarHeight,
+          paddingBottom: insets.bottom + 8,
           paddingTop: 10,
           backgroundColor: COLORS.white,
           borderTopColor: COLORS.gray200,

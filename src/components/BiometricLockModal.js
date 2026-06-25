@@ -10,13 +10,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ReactNativeBiometrics from 'react-native-biometrics';
 import { useAuthStore } from '../store/authStore';
+import { useLanguage } from '../store/LanguageContext';
 import COLORS from '../constants/colors';
 
 const rnBiometrics = new ReactNativeBiometrics();
-const LOCK_AFTER_MS = 5 * 60 * 1000; // lock after 5 min in background
+const LOCK_AFTER_MS = 5 * 60 * 1000;
 
 const BiometricLockModal = () => {
   const { isAuthenticated, biometricsEnabled, logout } = useAuthStore();
+  const { t } = useLanguage();
   const [locked, setLocked] = useState(false);
   const [biometryType, setBiometryType] = useState(null);
   const [authError, setAuthError] = useState('');
@@ -25,8 +27,8 @@ const BiometricLockModal = () => {
 
   useEffect(() => {
     if (!biometricsEnabled) return;
-    rnBiometrics.isSensorAvailable().then(({ biometryType: t }) => {
-      if (t) setBiometryType(t);
+    rnBiometrics.isSensorAvailable().then(({ biometryType: type }) => {
+      if (type) setBiometryType(type);
     }).catch(() => {});
   }, [biometricsEnabled]);
 
@@ -51,27 +53,30 @@ const BiometricLockModal = () => {
     return () => sub.remove();
   }, [biometricsEnabled, isAuthenticated]);
 
+  const getBiometryLabel = useCallback(() => {
+    if (biometryType === 'FaceID') return 'Face ID';
+    if (biometryType === 'TouchID') return 'Touch ID';
+    return t.biometric?.unlockBiometrics || 'Biometrics';
+  }, [biometryType, t.biometric]);
+
   const handleAuth = useCallback(async () => {
     setAuthError('');
     try {
-      const label =
-        biometryType === 'FaceID' ? 'Face ID' :
-        biometryType === 'TouchID' ? 'Touch ID' : 'Biometrics';
+      const label = getBiometryLabel();
       const { success } = await rnBiometrics.simplePrompt({
-        promptMessage: `Verify with ${label} to continue`,
-        cancelButtonText: 'Logout',
+        promptMessage: (t.biometric?.verifyPrompt || 'Verify with {{label}} to continue').replace('{{label}}', label),
+        cancelButtonText: t.biometric?.logout || 'Logout',
       });
       if (success) {
         setLocked(false);
       } else {
-        setAuthError('Authentication cancelled. Try again or logout.');
+        setAuthError(t.biometric?.authCancelled || 'Authentication cancelled. Try again or logout.');
       }
     } catch {
-      setAuthError('Biometric authentication failed. Please try again.');
+      setAuthError(t.biometric?.authFailed || 'Biometric authentication failed. Please try again.');
     }
-  }, [biometryType]);
+  }, [getBiometryLabel, t.biometric]);
 
-  // Auto-trigger prompt when modal appears
   useEffect(() => {
     if (locked && biometryType) {
       const timer = setTimeout(handleAuth, 400);
@@ -82,36 +87,26 @@ const BiometricLockModal = () => {
   if (!locked || !isAuthenticated || !biometricsEnabled) return null;
 
   const biometricLabel =
-    biometryType === 'FaceID' ? '🔒  Unlock with Face ID' :
-    biometryType === 'TouchID' ? '👆  Unlock with Touch ID' :
-    '🔒  Unlock with Biometrics';
+    biometryType === 'FaceID' ? `🔒  ${t.biometric?.unlockFaceId || 'Unlock with Face ID'}` :
+    biometryType === 'TouchID' ? `👆  ${t.biometric?.unlockTouchId || 'Unlock with Touch ID'}` :
+    `🔒  ${t.biometric?.unlockBiometrics || 'Unlock with Biometrics'}`;
 
   return (
     <Modal visible animationType="fade" statusBarTranslucent>
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <Text style={styles.lockIcon}>🔐</Text>
-          <Text style={styles.title}>App Locked</Text>
-          <Text style={styles.subtitle}>Verify your identity to continue</Text>
+          <Text style={styles.title}>{t.biometric?.appLocked || 'App Locked'}</Text>
+          <Text style={styles.subtitle}>{t.biometric?.verifyToContinue || 'Verify your identity to continue'}</Text>
 
           {authError ? <Text style={styles.error}>{authError}</Text> : null}
 
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={handleAuth}
-            accessibilityRole="button"
-            accessibilityLabel={biometricLabel}
-          >
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleAuth} accessibilityRole="button">
             <Text style={styles.primaryBtnText}>{biometricLabel}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={logout}
-            accessibilityRole="button"
-            accessibilityLabel="Logout instead"
-          >
-            <Text style={styles.secondaryBtnText}>Logout Instead</Text>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={logout} accessibilityRole="button">
+            <Text style={styles.secondaryBtnText}>{t.biometric?.logoutInstead || 'Logout Instead'}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

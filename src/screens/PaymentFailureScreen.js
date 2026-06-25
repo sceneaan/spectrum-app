@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 
 const PaymentFailureScreen = () => {
@@ -15,7 +16,7 @@ const PaymentFailureScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Image
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/753/753345.png' }}
+            source={ICONS.errorCircle}
             style={styles.icon}
         />
         <Text style={styles.title}>{t('paymentFailure.title') || 'Payment Failed'}</Text>

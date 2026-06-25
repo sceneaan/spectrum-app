@@ -36,7 +36,7 @@ const RedeemSupportCardModal = ({ visible, onClose, onSuccess }) => {
     } catch (error) {
       Alert.alert(
         t.common?.error || 'Error',
-        'Failed to paste from clipboard'
+        t.wallet?.pasteFailed || 'Failed to paste from clipboard'
       );
     }
   };

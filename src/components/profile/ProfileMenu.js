@@ -47,8 +47,8 @@ const ProfileMenu = ({ onEditPress, onLogout }) => {
          <View style={[rowStyle, { alignItems: 'center' }]}>
             {value && <Text style={styles.menuValue}>{value}</Text>}
             <Image
-               source={{ uri: isDestructive ? null : 'https://cdn-icons-png.flaticon.com/512/2985/2985150.png' }}
-               style={[styles.chevron, chevronStyle]}
+               source={isDestructive ? null : ICONS.chevronDown}
+               style={[styles.chevron, chevronStyle, !isDestructive && { tintColor: COLORS.gray500 }]}
             />
          </View>
       </TouchableOpacity>

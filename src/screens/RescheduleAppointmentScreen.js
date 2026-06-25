@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginLeft: 24,
+    marginStart: 24,
   },
 
   currentInfoCard: {

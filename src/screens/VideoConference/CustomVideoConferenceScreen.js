@@ -45,7 +45,7 @@ import {
   InvitationModal,
 } from './components';
 
-const PRIMARY_COLOR = '#65bed6';
+const PRIMARY_COLOR = COLORS.primary;
 const SESSION_EXIT_GRACE_MINS = 15;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -401,7 +401,10 @@ const CustomVideoConferenceScreen = () => {
       console.error('[Video] Twilio connect failed:', error);
       setIsConnecting(false);
       isConnectingRef.current = false;
-      Alert.alert('Error', 'Failed to join video room: ' + error.message);
+      Alert.alert(
+        t('videoConsultation.error', 'Error'),
+        t('videoConsultation.connectionError', 'Connection error occurred') + (error?.message ? `: ${error.message}` : ''),
+      );
     }
   }, [roomIdCheck, userID, userName, meetingRoomId, isJoined, isGuest, guestToken]);
 
@@ -652,7 +655,10 @@ const CustomVideoConferenceScreen = () => {
     setIsConnecting(false);
     isConnectingRef.current = false;
     setConnectionQuality('Failed');
-    Alert.alert('Error', 'Failed to join room. Please try again.');
+    Alert.alert(
+      t('videoConsultation.error', 'Error'),
+      t('videoConsultation.connectionError', 'Failed to join room. Please try again.'),
+    );
   };
 
   const isDisconnectingRef = useRef(false);

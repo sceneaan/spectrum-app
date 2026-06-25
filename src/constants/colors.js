@@ -5,6 +5,7 @@ export default {
   background: '#F8F9FA',
   white: '#FFFFFF',
   textPrimary: '#333333',
+  dark: '#333333',
   textSecondary: '#666666',
   border: '#EEEEEE',
 

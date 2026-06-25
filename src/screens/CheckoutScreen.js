@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
   reasonText: { fontSize: 14, color: COLORS.textPrimary, lineHeight: 20 },
 
   // New Input Row Styles (Promo & Support)
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingRight: 8, height: 50 },
+  inputRow: { alignItems: 'center', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingEnd: 8, height: 50 },
   inputIcon: { width: 18, height: 18, tintColor: COLORS.gray500 },
   flexInput: { flex: 1, paddingHorizontal: 10, color: COLORS.textPrimary, height: '100%' },
   
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
   // Payment Options
   payOption: { backgroundColor: COLORS.white, padding: 15, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   payOptionActive: { borderColor: COLORS.primary, backgroundColor: COLORS.highlight },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.disabled, marginRight: 10 },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.disabled, marginEnd: 10 },
   radioActive: { borderColor: COLORS.primary, borderWidth: 6 },
   payIcon: { width: 24, height: 24, resizeMode: 'contain' },
   payLabel: { fontWeight: 'bold', color: COLORS.textPrimary },

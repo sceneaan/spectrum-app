@@ -157,7 +157,7 @@ const FindTherapistScreen = () => {
 
     return (
         <View style={styles.container}>
-            <Header showBack onBack={() => navigation.goBack()} title={t?.findTherapist?.title || 'Find a Therapist'} />
+            <Header showProfile title={t?.findTherapist?.title || t?.tabs?.doctors || 'Find a Therapist'} />
 
             {/* Search bar */}
             <View style={[styles.searchBar, rowStyle]}>
@@ -175,8 +175,11 @@ const FindTherapistScreen = () => {
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterPillsContainer}
-                style={[{ maxHeight: 52 }, isRTL ? { transform: [{ scaleX: -1 }] } : {}]}
+                contentContainerStyle={[
+                  styles.filterPillsContainer,
+                  isRTL && { flexDirection: 'row-reverse' },
+                ]}
+                style={{ maxHeight: 52 }}
             >
                 {FILTER_TYPES.map(ft => {
                     const count = getFilterCount(ft.key);
@@ -188,7 +191,6 @@ const FindTherapistScreen = () => {
                                 styles.filterPill,
                                 { borderColor: ft.color + '40' },
                                 isActive && { backgroundColor: ft.color + '15', borderColor: ft.color },
-                                isRTL && { transform: [{ scaleX: -1 }] },
                             ]}
                             onPress={() => setActiveFilterSheet(ft.key)}
                             activeOpacity={0.7}

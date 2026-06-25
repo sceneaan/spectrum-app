@@ -661,15 +661,15 @@ const PaymentFormScreen = () => {
             if (statusResult.success) {
                handleSuccess(paymentType, statusResult.data);
             } else {
-               Alert.alert("Payment Failed", statusResult.message || "Status verification failed");
+               Alert.alert(t('payment.paymentFailed') || t('common.error') || 'Payment Failed', statusResult.message || t('payment.statusVerificationFailed') || 'Status verification failed');
             }
            } catch (e) {
              setIsStatusChecking(false);
-             Alert.alert("Error", e.message);
+             Alert.alert(t('common.error') || 'Error', e.message);
            }
         } else {
            setIsSubmitting(false);
-           Alert.alert("Payment Failed", event.message || "Transaction was not successful");
+           Alert.alert(t('payment.paymentFailed') || 'Payment Failed', event.message || t('payment.transactionNotSuccessful') || 'Transaction was not successful');
         }
       });
 

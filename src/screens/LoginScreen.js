@@ -14,6 +14,7 @@ const LoginScreen = () => {
   const { t, i18n } = useTranslation();
   const { targetScreen, targetParams } = route.params || {};
   const isRTL = I18nManager.isRTL || i18n.language === 'ar';
+  const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
 
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
@@ -135,8 +136,8 @@ const LoginScreen = () => {
               {t('auth.login.emailOrPhoneLabel') || "Email or Phone Number*"}
             </Text>
 
-            <View style={[styles.inputContainer, error ? { borderColor: 'red' } : {}]}>
-              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png' }} style={styles.inputIcon} />
+            <View style={[styles.inputContainer, rowStyle, error ? { borderColor: 'red' } : {}]}>
+              <Image source={ICONS.profile} style={[styles.inputIcon, { marginEnd: 10 }]} />
               <TextInput
                 style={[styles.input, { textAlign: 'left', writingDirection: 'ltr' }]}
                 placeholder={t('auth.login.phonePlaceholder') || "Enter phone +9665XXXXXXXX or email"}
@@ -192,8 +193,8 @@ const styles = StyleSheet.create({
   card: { width: '100%', backgroundColor: COLORS.white, padding: 20, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
   label: { fontSize: 14, color: COLORS.gray700, marginBottom: 10 },
   
-  inputContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.gray300, borderRadius: 8, paddingHorizontal: 15, height: 50, marginBottom: 20 },
-  inputIcon: { width: 20, height: 20, tintColor: COLORS.gray800, marginRight: 10 },
+  inputContainer: { alignItems: 'center', borderWidth: 1, borderColor: COLORS.gray300, borderRadius: 8, paddingHorizontal: 15, height: 50, marginBottom: 20 },
+  inputIcon: { width: 20, height: 20, tintColor: COLORS.gray800 },
   input: { flex: 1, color: COLORS.textPrimary },
 
   btn: { backgroundColor: COLORS.primary, borderRadius: 8, height: 50, alignItems: 'center', justifyContent: 'center' },

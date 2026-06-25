@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import Header from '../components/Header';
@@ -186,10 +186,11 @@ const NewMessageScreen = () => {
   );
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View style={styles.container}>
       <Header showBack onBack={() => navigation.goBack()} title={t.composeMessage?.title || t.newMessage || 'New Message'} />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
 
         {/* Provider Select */}
         <Text style={[styles.label, alignText]}>{t.composeMessage?.to || 'To :'}</Text>
@@ -214,9 +215,7 @@ const NewMessageScreen = () => {
           <View style={styles.warningBanner}>
             <Icon name="exclamation-circle" size={16} color={COLORS.warning || '#f59e0b'} />
             <Text style={styles.warningText}>
-              {isRTL
-                ? 'لا يمكنك إرسال رسالة إلى هذا الطبيب. يجب أن يكون آخر موعد مكتمل خلال الـ 30 يومًا الماضية.'
-                : 'You cannot message this doctor. Your last completed appointment must be within the past 30 days.'}
+              {t.messaging?.expiredBanner || 'You cannot message this doctor. Your last completed appointment must be within the past 30 days.'}
             </Text>
           </View>
         )}
@@ -293,6 +292,7 @@ const NewMessageScreen = () => {
         </TouchableOpacity>
       </View>
     </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   input: { backgroundColor: COLORS.white, borderRadius: 12, padding: 15, borderWidth: 1, borderColor: COLORS.gray200, marginBottom: 15, fontSize: 14, color: COLORS.textPrimary },
   textArea: { height: 120, textAlignVertical: 'top' },
 
-  chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.gray200, marginRight: 8, marginBottom: 5 },
+  chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.gray200, marginEnd: 8, marginBottom: 5 },
   activeChip: { backgroundColor: COLORS.promo1, borderColor: COLORS.primary },
   chipText: { color: COLORS.gray600, fontSize: 12 },
   activeChipText: { color: COLORS.primary, fontWeight: 'bold' },
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   
   filePreview: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.offWhite, padding: 15, borderRadius: 12, borderWidth: 1, borderColor: COLORS.gray200 },
 
-  footer: { padding: 20, backgroundColor: COLORS.white, borderTopWidth: 1, borderColor: COLORS.gray200, position: 'absolute', bottom: 0, left: 0, right: 0 },
+  footer: { padding: 20, backgroundColor: COLORS.white, borderTopWidth: 1, borderColor: COLORS.gray200 },
   sendBtn: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
   sendBtnDisabled: { backgroundColor: COLORS.gray400 || '#9ca3af', opacity: 0.7 },
 

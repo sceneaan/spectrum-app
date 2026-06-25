@@ -778,7 +778,7 @@ const AppointmentsScreen = () => {
           <View style={{ padding: 16 }}>
             {[0, 1, 2].map(i => (
               <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 15 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flexDirection: rowStyle.flexDirection, alignItems: 'center' }}>
                   <Skeleton width={55} height={55} style={{ borderRadius: 27.5 }} />
                   <View style={{ flex: 1, marginHorizontal: 12 }}>
                     <Skeleton width="70%" height={14} style={{ marginBottom: 8 }} />
@@ -809,7 +809,11 @@ const AppointmentsScreen = () => {
             }
             ListEmptyComponent={
               <View style={{ alignItems: 'center', marginTop: 50 }}>
-                <Text style={{ color: COLORS.gray500 }}>No appointments</Text>
+                <Text style={{ color: COLORS.gray500 }}>
+                  {activeTab === 'upcoming'
+                    ? (t.appointments?.noUpcoming || 'No upcoming appointments')
+                    : (t.appointments?.noPending || 'No pending appointments')}
+                </Text>
               </View>
             }
           />

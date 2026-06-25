@@ -190,15 +190,18 @@ const HomeScreen = () => {
    // Render promo card
    const renderPromoCard = ({ item, index }) => {
       const { bg, anim } = PROMO_THEMES[index % PROMO_THEMES.length];
-      const title = item.title || (isRTL ? 'صحتك أولويتنا' : 'Your Health, Our Priority');
-      const subtitle = item.subtitle || (isRTL ? 'احجز جلستك الآن' : 'Book your session today');
+      const title = item.title || t.home?.defaultPromoTitle || 'Your Health, Our Priority';
+      const subtitle = item.subtitle || t.home?.defaultPromoSubtitle || 'Book your session today';
 
       return (
          <View style={[styles.promoCard, { backgroundColor: bg, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <View style={[styles.promoTextBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                <Text style={[styles.promoTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{title}</Text>
                <Text style={[styles.promoSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{subtitle}</Text>
-               <TouchableOpacity style={styles.promoBtn}>
+               <TouchableOpacity
+                  style={styles.promoBtn}
+                  onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+               >
                   <Text style={styles.promoBtnText}>{t.home?.readMore || 'Read More'}</Text>
                </TouchableOpacity>
             </View>
@@ -286,11 +289,11 @@ const HomeScreen = () => {
 
                // Get time badge text
                const getTimeBadgeText = () => {
-                  if (isOngoing) return isRTL ? 'جارٍ الآن' : 'Ongoing';
-                  if (diffMinutes <= 0) return isRTL ? 'الآن' : 'Now';
-                  if (diffMinutes < 60) return isRTL ? `خلال ${diffMinutes} دقيقة` : `In ${diffMinutes} min`;
-                  if (diffHours < 24) return isRTL ? `خلال ${diffHours} ساعة` : `In ${diffHours} hours`;
-                  return isRTL ? `خلال ${diffDays} يوم` : `In ${diffDays} days`;
+                  if (isOngoing) return t.home?.ongoing || 'Ongoing';
+                  if (diffMinutes <= 0) return t.home?.now || 'Now';
+                  if (diffMinutes < 60) return t('home.inMinutes', { count: diffMinutes }) || `In ${diffMinutes} min`;
+                  if (diffHours < 24) return t('home.inHours', { count: diffHours }) || `In ${diffHours} hours`;
+                  return t('home.inDays', { count: diffDays }) || `In ${diffDays} days`;
                };
 
                // Check if appointment needs doctor approval
@@ -312,7 +315,7 @@ const HomeScreen = () => {
                      {/* Header with title and time badge */}
                      <View style={[styles.appointmentHeaderRow, rowStyle]}>
                         <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-                           {isRTL ? 'الموعد القادم' : 'Next Appointment'}
+                           {t.home?.nextAppointment || 'Next Appointment'}
                         </Text>
                         <View style={[styles.timeBadge, isOngoing && styles.timeBadgeOngoing]}>
                            <Text style={[styles.timeBadgeText, isOngoing && styles.timeBadgeTextOngoing]}>
@@ -351,7 +354,7 @@ const HomeScreen = () => {
                                     <Image source={ICONS.calendar} style={styles.badgeIcon} />
                                     <Text style={styles.badgeText}>
                                        {moment.utc(nearestAppointment.startTime).isSame(moment(), 'day')
-                                          ? (isRTL ? 'اليوم' : 'Today')
+                                          ? (t.home?.today || 'Today')
                                           : moment.utc(nearestAppointment.startTime).format('DD MMM')}
                                     </Text>
                                  </View>
@@ -407,13 +410,13 @@ const HomeScreen = () => {
                            alignItems: 'center',
                            gap: 4,
                            marginTop: 8,
-                           marginLeft: 12,
+                           marginStart: 12,
                         }}>
                            <Text style={{ fontSize: 10 }}>{needsApproval ? '⏳' : '✓'}</Text>
                            <Text style={{ color: needsApproval ? '#F57C00' : '#2E7D32', fontSize: 10, fontWeight: '600' }}>
                               {needsApproval
-                                 ? (isRTL ? 'بانتظار موافقة الطبيب' : 'Awaiting Approval')
-                                 : (isRTL ? 'مؤكد' : 'Confirmed')}
+                                 ? (t.home?.awaitingApproval || 'Awaiting Approval')
+                                 : (t.home?.confirmed || 'Confirmed')}
                            </Text>
                         </View>
                      </View>
@@ -424,10 +427,10 @@ const HomeScreen = () => {
             {/* Zone 2: How Can We Help You? */}
             <View style={styles.section}>
                <Text style={[styles.helpTitle, alignText]}>
-                  {t.home?.howCanWeHelp || (isRTL ? 'كيف يمكننا مساعدتك؟' : 'How Can We Help You?')}
+                  {t.home?.howCanWeHelp || 'How Can We Help You?'}
                </Text>
                <Text style={[styles.helpSubtitle, alignText]}>
-                  {t.home?.chooseCondition || (isRTL ? 'اختر ما يصف حالتك وسنساعدك في إيجاد الدعم المناسب' : 'Choose what describes you, and we\'ll help you find the right support')}
+                  {t.home?.chooseCondition || 'Choose what describes you, and we\'ll help you find the right support'}
                </Text>
                <View style={[styles.issueGrid, rowStyle]}>
                   {isFiltersLoading ? (
@@ -469,7 +472,7 @@ const HomeScreen = () => {
                   {isProvidersLoading ? (
                      // Skeleton Loading State
                      Array.from({ length: 5 }).map((_, index) => (
-                        <View key={index} style={[styles.docCard, { marginRight: 10 }]}>
+                        <View key={index} style={[styles.docCard, { marginEnd: 10 }]}>
                            <Skeleton width="100%" height={100} style={{ marginBottom: 8, borderRadius: 10 }} />
                            <Skeleton width="80%" height={14} style={{ marginBottom: 4 }} />
                            <Skeleton width="60%" height={12} />
@@ -479,14 +482,14 @@ const HomeScreen = () => {
                      // Error State
                      <View style={styles.errorContainer}>
                         <Text style={styles.errorText}>
-                           {isRTL ? 'خطأ في تحميل الأطباء' : 'Error loading providers'}
+                           {t.home?.providersError || 'Error loading providers'}
                         </Text>
                      </View>
                   ) : displayProviders.length === 0 ? (
                      // Empty State
                      <View style={styles.errorContainer}>
                         <Text style={styles.errorText}>
-                           {isRTL ? 'لا يوجد أطباء متاحون' : 'No providers available'}
+                           {t.home?.noProviders || 'No providers available'}
                         </Text>
                      </View>
                   ) : (
@@ -509,7 +512,7 @@ const HomeScreen = () => {
                               />
                               <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                                  <Text style={styles.docName} numberOfLines={1}>
-                                    {(isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)) || (isRTL ? 'غير معروف' : 'Unknown')}
+                                    {(isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)) || (t.home?.unknownProvider || 'Unknown')}
                                  </Text>
                                  <Text style={styles.docSpecialty} numberOfLines={1}>
                                     {specialtyName}
@@ -532,11 +535,11 @@ const HomeScreen = () => {
                </ScrollView>
                <TouchableOpacity
                   style={styles.findMoreBtn}
-                  onPress={() => navigation.navigate('FindTherapist')}
+                  onPress={() => navigation.navigate('Search')}
                   activeOpacity={0.8}
                >
                   <Image source={ICONS.search} style={styles.findMoreIcon} />
-                  <Text style={styles.findMoreText}>{t.home?.findMore || (isRTL ? 'عرض جميع مقدمي الخدمة' : 'Find More Providers')}</Text>
+                  <Text style={styles.findMoreText}>{t.home?.findMore || 'Find More Providers'}</Text>
                   <Image source={ICONS.chevronRight} style={styles.findMoreChevron} />
                </TouchableOpacity>
             </View>
@@ -574,8 +577,8 @@ const styles = StyleSheet.create({
    // Promos
    promoContainer: { marginTop: 20, marginBottom: 15 },
    slider: { paddingHorizontal: 20 },
-   promoCard: { width: PROMO_CARD_WIDTH, height: 165, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 18, alignItems: 'center', marginRight: 15, overflow: 'hidden' },
-   promoTextBlock: { flex: 1, justifyContent: 'center', paddingRight: 8 },
+   promoCard: { width: PROMO_CARD_WIDTH, height: 165, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 18, alignItems: 'center', marginEnd: 15, overflow: 'hidden' },
+   promoTextBlock: { flex: 1, justifyContent: 'center', paddingEnd: 8 },
    promoTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 5, lineHeight: 21 },
    promoSub: { fontSize: 11, color: 'rgba(255,255,255,0.82)', marginBottom: 14, lineHeight: 16 },
    promoBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', alignSelf: 'flex-start' },
@@ -610,7 +613,7 @@ const styles = StyleSheet.create({
    // Doctors
    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 15 },
    docSlider: { marginHorizontal: -20, paddingHorizontal: 20 },
-   docCard: { width: 140, backgroundColor: COLORS.white, padding: 10, borderRadius: 12, marginRight: 10, elevation: 2, shadowColor: COLORS.shadow, shadowOpacity: 0.05, marginBottom: 10 },
+   docCard: { width: 140, backgroundColor: COLORS.white, padding: 10, borderRadius: 12, marginEnd: 10, elevation: 2, shadowColor: COLORS.shadow, shadowOpacity: 0.05, marginBottom: 10 },
    docImg: { width: '100%', height: 100, borderRadius: 10, marginBottom: 8, backgroundColor: COLORS.gray200 },
    docName: { fontSize: 14, fontWeight: 'bold', color: COLORS.textPrimary },
    docSpecialty: { fontSize: 12, color: COLORS.textSecondary, marginVertical: 2 },

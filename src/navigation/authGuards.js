@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { canAuthenticatedUserJoinMobileVideo } from '../utils/videoAccess';
+import i18n from '../config/i18n';
 
 /**
  * Redirect unauthenticated users before rendering protected screens.
@@ -82,9 +83,9 @@ export const PatientOnlyVideo = ({ ScreenComponent, ...screenProps }) => {
 
       if (!canAuthenticatedUserJoinMobileVideo(currentUser)) {
         Alert.alert(
-          'Access Denied',
-          'Providers must join video sessions from the Spectrum website at the clinic, not the mobile app.',
-          [{ text: 'OK', onPress: () => navigation.replace('Main') }],
+          i18n.t('auth.videoAccessDeniedTitle'),
+          i18n.t('auth.videoAccessDeniedMessage'),
+          [{ text: i18n.t('common.ok'), onPress: () => navigation.replace('Main') }],
         );
       }
     }, 300);

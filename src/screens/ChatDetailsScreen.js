@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, FlatList, ActivityIndicator, Alert, Linking, ActionSheetIOS, Modal } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../store/LanguageContext';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
@@ -23,6 +24,7 @@ import moment from 'moment';
 const ChatDetailsScreen = () => {
    const navigation = useNavigation();
    const route = useRoute();
+   const insets = useSafeAreaInsets();
    const { t, isRTL } = useLanguage();
 
    const { thread } = route.params || {};
@@ -53,9 +55,9 @@ const ChatDetailsScreen = () => {
       if (hasValidThread || invalidThreadHandled.current) return;
       invalidThreadHandled.current = true;
       Alert.alert(
-         isRTL ? 'خطأ' : 'Error',
-         isRTL ? 'معلومات المحادثة غير متوفرة' : 'Chat information not available',
-         [{ text: 'OK', onPress: () => navigation.goBack() }]
+         t.common?.error || 'Error',
+         t.messaging?.chatUnavailable || 'Chat information not available',
+         [{ text: t.common?.ok || 'OK', onPress: () => navigation.goBack() }]
       );
    }, [hasValidThread, isRTL, navigation]);
 
@@ -387,7 +389,13 @@ const ChatDetailsScreen = () => {
 
        return (
            <View style={[styles.msgRow, isRTL ? { alignSelf: isMyMessage ? 'flex-start' : 'flex-end' } : { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>
-                  <View style={[styles.bubble, isMyMessage ? styles.bubbleSent : styles.bubbleReceived]}>
+                  <View style={[
+                    styles.bubble,
+                    isMyMessage ? styles.bubbleSent : styles.bubbleReceived,
+                    isMyMessage
+                      ? (isRTL ? { borderTopLeftRadius: 0 } : { borderTopRightRadius: 0 })
+                      : (isRTL ? { borderTopRightRadius: 0 } : { borderTopLeftRadius: 0 }),
+                  ]}>
                      {/* Show text first if exists */}
                      {item.body ? (
                         <Text style={isMyMessage ? styles.textSent : styles.textReceived}>{item.body}</Text>
@@ -445,11 +453,15 @@ const ChatDetailsScreen = () => {
 
    // Custom Chat Header
    const ChatHeader = () => (
-      <View style={[styles.header, rowStyle]}>
-         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
+      <View style={[styles.header, rowStyle, { paddingTop: insets.top + 10 }]}>
+         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Image source={ICONS.back} style={[styles.icon, isRTL && { transform: [{ rotate: '180deg' }] }]} />
          </TouchableOpacity>
-         <Image source={{ uri: provider.profileImage }} style={styles.headerAvatar} />
+         <Image
+           source={provider?.profileImage ? { uri: provider.profileImage } : ICONS.defaultAvatar}
+           style={styles.headerAvatar}
+           defaultSource={ICONS.defaultAvatar}
+         />
          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
             <Text style={styles.headerName}>{isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)}</Text>
             {/* Online status could be dynamic if we had socket presence events */}
@@ -469,6 +481,12 @@ const ChatDetailsScreen = () => {
              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                  <ActivityIndicator size="large" color={COLORS.primary} />
              </View>
+         ) : threadMessagesError ? (
+             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                 <Text style={{ color: COLORS.gray500, textAlign: 'center', marginBottom: 16 }}>
+                   {t.messaging?.loadError || 'Could not load messages.'}
+                 </Text>
+             </View>
          ) : (
              <FlatList
                 ref={flatListRef}
@@ -481,18 +499,19 @@ const ChatDetailsScreen = () => {
          )}
 
          {/* Footer Input */}
-         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+         <KeyboardAvoidingView
+           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+         >
             {isThreadExpired ? (
                <View style={styles.expiredBanner}>
                   <Icon name="clock" size={16} color={COLORS.gray500} />
                   <Text style={styles.expiredText}>
-                     {isRTL
-                        ? 'لا يمكنك إرسال رسائل. يجب أن يكون آخر موعد مكتمل خلال الـ 30 يومًا الماضية.'
-                        : 'You cannot send messages. Your last completed appointment must be within the past 30 days.'}
+                     {t.messaging?.expiredBanner || 'You cannot send messages. Your last completed appointment must be within the past 30 days.'}
                   </Text>
                </View>
             ) : (
-               <View style={[styles.footer, rowStyle]}>
+               <View style={[styles.footer, rowStyle, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                   <TouchableOpacity
                      style={styles.attachBtn}
                      onPress={showAttachmentOptions}
@@ -537,7 +556,7 @@ const ChatDetailsScreen = () => {
                      onPress={handleImageUpload}
                   >
                      <Icon name="image" size={20} color={COLORS.primary} />
-                     <Text style={styles.attachmentMenuText}>{isRTL ? 'صورة' : 'Image'}</Text>
+                     <Text style={styles.attachmentMenuText}>{t.messaging?.image || 'Image'}</Text>
                   </TouchableOpacity>
                   <View style={styles.attachmentMenuDivider} />
                   <TouchableOpacity
@@ -545,7 +564,7 @@ const ChatDetailsScreen = () => {
                      onPress={handleFileUpload}
                   >
                      <Icon name="file-pdf" size={20} color={COLORS.danger} />
-                     <Text style={styles.attachmentMenuText}>{isRTL ? 'ملف PDF' : 'PDF File'}</Text>
+                     <Text style={styles.attachmentMenuText}>{t.messaging?.pdfFile || 'PDF File'}</Text>
                   </TouchableOpacity>
                   <View style={styles.attachmentMenuDivider} />
                   <TouchableOpacity
@@ -553,7 +572,7 @@ const ChatDetailsScreen = () => {
                      onPress={() => setAttachmentMenuVisible(false)}
                   >
                      <Icon name="times" size={20} color={COLORS.gray500} />
-                     <Text style={[styles.attachmentMenuText, { color: COLORS.gray500 }]}>{isRTL ? 'إلغاء' : 'Cancel'}</Text>
+                     <Text style={[styles.attachmentMenuText, { color: COLORS.gray500 }]}>{t.messaging?.cancel || 'Cancel'}</Text>
                   </TouchableOpacity>
                </View>
             </TouchableOpacity>
@@ -574,7 +593,7 @@ const styles = StyleSheet.create({
    container: { flex: 1, backgroundColor: COLORS.background },
 
    // Header
-   header: { backgroundColor: COLORS.white, paddingHorizontal: 15, paddingTop: 50, paddingBottom: 15, alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.gray200 },
+   header: { backgroundColor: COLORS.white, paddingHorizontal: 15, paddingBottom: 15, alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.gray200 },
    icon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
    headerAvatar: { width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, backgroundColor: '#eee' },
    headerName: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
@@ -584,10 +603,10 @@ const styles = StyleSheet.create({
    msgRow: { maxWidth: '80%', marginBottom: 8 },
    bubble: { padding: 12, borderRadius: 14 },
 
-   bubbleReceived: { backgroundColor: COLORS.white, borderTopLeftRadius: 0, borderWidth: 1, borderColor: COLORS.gray200 },
+   bubbleReceived: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.gray200 },
    textReceived: { color: '#000', fontSize: 14 },
 
-   bubbleSent: { backgroundColor: COLORS.primary, borderTopRightRadius: 0 },
+   bubbleSent: { backgroundColor: COLORS.primary },
    textSent: { color: '#fff', fontSize: 14 },
 
    timestamp: { fontSize: 10, color: COLORS.gray500, marginTop: 4 },
