@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   icon: {
-    width: 20,
-    height: 20,
+    width: 26,
+    height: 26,
     tintColor: COLORS.primaryDark,
   },
   badge: {

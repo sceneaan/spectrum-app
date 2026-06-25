@@ -28,8 +28,8 @@ const styles = StyleSheet.create({
     maxWidth: 88,
   },
   iconWrap: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -38,15 +38,15 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   iconTintBg: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   icon: {
-    width: 26,
-    height: 26,
+    width: 30,
+    height: 30,
   },
   label: {
     fontWeight: '600',

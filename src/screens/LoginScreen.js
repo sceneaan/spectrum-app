@@ -169,7 +169,7 @@ const LoginScreen = () => {
           </View>
 
           <AppCard style={styles.card}>
-            <View style={[styles.tabBar, styles.ltrField]}>
+            <View style={styles.tabBar}>
               {LOGIN_TABS.map((tab) => {
                 const isActive = activeTab === tab.key;
                 return (
@@ -276,7 +276,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   backBtn: { padding: SPACING.xl },
-  backIcon: { width: 22, height: 22, tintColor: COLORS.textPrimary },
+  backIcon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
   content: {
     flex: 1,
     paddingHorizontal: SPACING.xl,
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   flagEmoji: { fontSize: 18 },
   countryCodeText: { fontWeight: '600', color: COLORS.textPrimary },
   inputError: { borderColor: COLORS.danger },
-  inputIcon: { width: 20, height: 20, tintColor: COLORS.textSecondary },
+  inputIcon: { width: 22, height: 22, tintColor: COLORS.textSecondary },
   input: {
     flex: 1,
     minWidth: 0,

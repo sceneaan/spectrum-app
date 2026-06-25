@@ -259,7 +259,6 @@ const HomeScreen = () => {
                   <QuickAction
                      icon={ICONS.video}
                      label={t.home?.quickVideo || 'Video'}
-                     tintColor={COLORS.secondary}
                      onPress={() => {
                         if (nearestAppointment?.roomId) {
                            requestJoinSession({ appointment: nearestAppointment });
@@ -751,8 +750,8 @@ const styles = StyleSheet.create({
       gap: 4,
    },
    trustChipIcon: {
-      width: 12,
-      height: 12,
+      width: 16,
+      height: 16,
       tintColor: COLORS.primaryDark,
    },
    trustChipText: {
@@ -1034,8 +1033,8 @@ const styles = StyleSheet.create({
       gap: 5,
    },
    badgeIcon: {
-      width: 14,
-      height: 14,
+      width: 16,
+      height: 16,
       tintColor: COLORS.textSecondary,
    },
    badgeText: {
@@ -1052,8 +1051,8 @@ const styles = StyleSheet.create({
       alignItems: 'center',
    },
    videoIconImg: {
-      width: 22,
-      height: 22,
+      width: 26,
+      height: 26,
       tintColor: COLORS.white,
    },
 });

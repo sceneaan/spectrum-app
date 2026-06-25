@@ -155,8 +155,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primaryDark,
   },
   bubbleIcon: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     tintColor: COLORS.primaryDark,
   },
   bubbleIconEmphasis: {

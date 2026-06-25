@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import AppText from './AppText';
 import COLORS from '../../constants/colors';
-import { RADIUS, SPACING } from '../../theme';
+import { SPACING } from '../../theme';
 
 const TrustBadge = ({ icon, label, isRTL }) => (
   <View style={[styles.badge, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -20,9 +20,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
   },
   icon: {
-    width: 16,
-    height: 16,
-    tintColor: COLORS.primary,
+    width: 20,
+    height: 20,
+    tintColor: COLORS.primaryDark,
   },
   label: {
     fontWeight: '500',

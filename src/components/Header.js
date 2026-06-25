@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.white,
   },
-  icon: { width: 22, height: 22, tintColor: COLORS.textPrimary },
+  icon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
   iconBtn: {
     padding: SPACING.sm,
     backgroundColor: COLORS.surfaceMuted,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
     marginStart: SPACING.xs,
   },
-  bellIcon: { width: 22, height: 22, tintColor: COLORS.textPrimary },
+  bellIcon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
   badge: {
     position: 'absolute',
     top: 2,

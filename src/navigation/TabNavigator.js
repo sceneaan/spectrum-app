@@ -30,11 +30,19 @@ const ProtectedInboxScreen = makeProtected(InboxScreen, {
   targetParams: {},
 });
 
-const TabIcon = ({ icon, color, focused }) => (
+const TAB_ICONS = {
+  HomeTab: ICONS.home,
+  SearchTab: ICONS.docs,
+  AppointmentsTab: ICONS.calendar,
+  InboxTab: ICONS.inbox,
+};
+
+const TabIcon = ({ tabName, color, focused }) => (
   <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
     <Image
-      source={icon}
-      style={[styles.icon, { tintColor: color }]}
+      source={TAB_ICONS[tabName]}
+      style={[styles.icon, focused && styles.iconFocused, { tintColor: focused ? COLORS.primaryDark : color }]}
+      resizeMode="contain"
     />
   </View>
 );
@@ -139,19 +147,16 @@ const TabNavigator = () => {
         name: 'HomeTab',
         component: HomeScreen,
         label: t.tabs?.home || 'Home',
-        icon: ICONS.home,
       },
       {
         name: 'SearchTab',
         component: FindTherapistScreen,
         label: t.tabs?.doctors || 'Doctors',
-        icon: ICONS.docs,
       },
       {
         name: 'AppointmentsTab',
         component: ProtectedAppointmentsScreen,
         label: t.tabs?.appointments || 'Appointments',
-        icon: ICONS.calendar,
         lazy: true,
         longPress: openAppointmentRadial,
       },
@@ -159,7 +164,6 @@ const TabNavigator = () => {
         name: 'InboxTab',
         component: ProtectedInboxScreen,
         label: t.tabs?.inbox || 'Inbox',
-        icon: ICONS.inbox,
         lazy: true,
         longPress: () => setShortcutSheet('inbox'),
       },
@@ -200,7 +204,7 @@ const TabNavigator = () => {
               tabBarLabel: tab.label,
               lazy: tab.lazy,
               tabBarIcon: ({ color, focused }) => (
-                <TabIcon icon={tab.icon} color={color} focused={focused} />
+                <TabIcon tabName={tab.name} color={color} focused={focused} />
               ),
               tabBarButton: tab.longPress
                 ? (props) => (
@@ -237,8 +241,8 @@ const TabNavigator = () => {
 
 const styles = StyleSheet.create({
   iconWrap: {
-    width: 40,
-    height: 32,
+    width: 44,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIUS.md,
@@ -247,8 +251,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   icon: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
+    opacity: 0.85,
+  },
+  iconFocused: {
+    width: 28,
+    height: 28,
+    opacity: 1,
   },
 });
 
