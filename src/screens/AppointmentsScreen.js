@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, RefreshControl, ActivityIndicator, Linking, Alert, Platform } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, RefreshControl, ActivityIndicator, Linking, Alert, Platform, DeviceEventEmitter } from 'react-native';
 import { useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,9 @@ import {
   useGetPendingAppointmentsGroupedByDoctor,
 } from '../api/services/Appointment.Service';
 import socketService from '../utils/socket';
+import { filterUpcomingAppointments } from '../utils/appointmentFilters';
+import { getUserId } from '../utils/userId';
+import { canAuthenticatedUserJoinMobileVideo } from '../utils/videoAccess';
 import Skeleton from '../components/Skeleton';
 
 const CountdownTimer = ({ startTime, clientTz, label }) => {
@@ -64,12 +67,12 @@ const AppointmentsScreen = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('upcoming');
   const [refreshing, setRefreshing] = useState(false);
   const [callEndedRooms, setCallEndedRooms] = useState(new Set());
-  const [userId, setUserId] = useState(null);
-  const hasRedirected = useRef(false);
+  const [nowTick, setNowTick] = useState(0);
+  const attachedRef = useRef(false);
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
 
   // Real API calls - must be called before any conditional returns
@@ -91,64 +94,31 @@ const AppointmentsScreen = () => {
   // Update filtered appointments when raw data changes
   useEffect(() => {
     if (upcomingAppointmentsRaw) {
-      const filtered = upcomingAppointmentsRaw.filter(appt => {
-        const clientTz = appt.clientTz || moment.tz.guess();
-        const endTime = moment.tz(appt.endTime, clientTz);
-        const now = moment.tz(clientTz);
-        return endTime.isSameOrAfter(now);
-      });
-      setUpcomingAppointments(filtered);
+      setUpcomingAppointments(filterUpcomingAppointments(upcomingAppointmentsRaw));
     }
-  }, [upcomingAppointmentsRaw]);
+  }, [upcomingAppointmentsRaw, nowTick]);
 
-  // Filter expired appointments every 30 seconds
+  // Re-evaluate join windows and expiry every 30 seconds
   useEffect(() => {
     const filterTimer = setInterval(() => {
-      setUpcomingAppointments(prev => {
+      setNowTick(Date.now());
+      setUpcomingAppointments((prev) => {
         if (!prev || prev.length === 0) return prev;
-
-        const filtered = prev.filter(appt => {
-          const clientTz = appt.clientTz || moment.tz.guess();
-          const endTime = moment.tz(appt.endTime, clientTz);
-          const now = moment.tz(clientTz);
-          return endTime.isSameOrAfter(now);
-        });
-
-        // Only update if something was filtered out
-        if (filtered.length !== prev.length) {
-          return filtered;
-        }
-        return prev;
+        const filtered = filterUpcomingAppointments(prev);
+        return filtered.length !== prev.length ? filtered : prev;
       });
-    }, 30000); // Check every 30 seconds like frontend
+    }, 30000);
 
     return () => clearInterval(filterTimer);
   }, []);
 
-  // Get user ID for socket connection
-  useEffect(() => {
-    const getUserId = async () => {
-      try {
-        // Try to get from appointments data
-        if (upcomingAppointments && upcomingAppointments.length > 0) {
-          const firstAppointment = upcomingAppointments[0];
-          const id = firstAppointment?.patient?.id || firstAppointment?.patient?._id;
-          if (id) {
-            setUserId(id);
-          }
-        }
-      } catch (error) {
-      }
-    };
-    getUserId();
-  }, [upcomingAppointments]);
+  const authUserId = getUserId(user);
 
-  // Socket connection for real-time updates
+  // Socket listeners for real-time updates (connection handled globally in App.tsx)
   useEffect(() => {
-    if (userId) {
-      socketService.connect(userId);
+    if (!authUserId || !isAuthenticated) return;
 
-      const handleCallEnded = (data) => {
+    const handleCallEnded = (data) => {
         const isProviderEndedCall = data?.message?.includes('provider') || data?.message?.includes('doctor');
 
         if (isProviderEndedCall && data?.roomId) {
@@ -184,23 +154,27 @@ const AppointmentsScreen = () => {
         queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
       };
 
-      if (socketService.socket) {
-        socketService.socket.on('callEnded', handleCallEnded);
-        socketService.socket.on('appointmentRejected', handleAppointmentRejected);
-        socketService.socket.on('appointmentCancelled', handleAppointmentCancelled);
-        socketService.socket.on('appointmentStatusChanged', handleAppointmentStatusChanged);
-      }
+    const attachListeners = () => {
+      if (attachedRef.current) return;
+      attachedRef.current = true;
+      socketService.on('callEnded', handleCallEnded);
+      socketService.on('appointmentRejected', handleAppointmentRejected);
+      socketService.on('appointmentCancelled', handleAppointmentCancelled);
+      socketService.on('appointmentStatusChanged', handleAppointmentStatusChanged);
+    };
 
-      return () => {
-        if (socketService.socket) {
-          socketService.socket.off('callEnded', handleCallEnded);
-          socketService.socket.off('appointmentRejected', handleAppointmentRejected);
-          socketService.socket.off('appointmentCancelled', handleAppointmentCancelled);
-          socketService.socket.off('appointmentStatusChanged', handleAppointmentStatusChanged);
-        }
-      };
-    }
-  }, [userId, refetchUpcoming, refetchPending, queryClient]);
+    attachListeners();
+    const connectSub = DeviceEventEmitter.addListener('socket:connected', attachListeners);
+
+    return () => {
+      connectSub.remove();
+      attachedRef.current = false;
+      socketService.off('callEnded', handleCallEnded);
+      socketService.off('appointmentRejected', handleAppointmentRejected);
+      socketService.off('appointmentCancelled', handleAppointmentCancelled);
+      socketService.off('appointmentStatusChanged', handleAppointmentStatusChanged);
+    };
+  }, [authUserId, isAuthenticated, refetchUpcoming, refetchPending, queryClient]);
 
   // Pull to refresh
   const onRefresh = async () => {
@@ -223,36 +197,6 @@ const AppointmentsScreen = () => {
     }, [isAuthenticated, refetchUpcoming, refetchPending])
   );
 
-  // Check authentication - redirect to login if not authenticated - AFTER all hooks
-  // Delay to let auth store hydrate before checking (prevents redirect loop after login)
-  useEffect(() => {
-    if (!isAuthenticated && !hasRedirected.current) {
-      const timer = setTimeout(() => {
-        // Re-check after delay — store may have hydrated by now
-        if (!hasRedirected.current) {
-          hasRedirected.current = true;
-          navigation.reset({
-            index: 1,
-            routes: [
-              { name: 'Main', state: { routes: [{ name: 'HomeTab' }] } },
-              {
-                name: 'LoginScreen',
-                params: {
-                  targetScreen: 'AppointmentsTab',
-                  targetParams: {}
-                }
-              }
-            ],
-          });
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-    if (isAuthenticated) {
-      hasRedirected.current = false;
-    }
-  }, [isAuthenticated, navigation]);
-
   // Get data based on active tab
   const filteredData = activeTab === 'upcoming'
     ? (upcomingAppointments || [])
@@ -260,40 +204,64 @@ const AppointmentsScreen = () => {
 
   const isLoading = activeTab === 'upcoming' ? upcomingLoading : pendingLoading;
 
-  const handlePay = (item) => {
-    // For pending appointments grouped by doctor
-    // Since UI doesn't support bulk payment, we pay for the first appointment
-    const firstAppointment = item.appointments?.[0];
-
-    if (!firstAppointment) {
-      Alert.alert(t.appointments?.error || 'Error', 'No appointment found to pay for');
-      return;
-    }
-
-    // Get appointment ID - the API returns it as 'appointmentId', not '_id'
-    const appointmentId = firstAppointment.appointmentId || firstAppointment._id || firstAppointment.id;
-
+  const navigateToCheckout = (appointment) => {
+    const appointmentId = appointment.appointmentId || appointment._id || appointment.id;
     if (!appointmentId) {
       Alert.alert(t.appointments?.error || 'Error', 'Appointment ID not found');
       return;
     }
+    navigation.navigate('Checkout', { id: appointmentId });
+  };
 
-    // Navigate to checkout with the appointment ID
-    navigation.navigate('Checkout', {
-      id: appointmentId
-    });
+  const handlePay = (item) => {
+    const appointments = item.appointments || [];
+
+    if (appointments.length === 0) {
+      Alert.alert(t.appointments?.error || 'Error', 'No appointment found to pay for');
+      return;
+    }
+
+    if (appointments.length === 1) {
+      navigateToCheckout(appointments[0]);
+      return;
+    }
+
+    Alert.alert(
+      t.appointments?.selectAppointmentTitle || 'Select appointment',
+      t.appointments?.selectAppointmentToPay || 'Choose which appointment to pay for',
+      [
+        ...appointments.map((appointment) => ({
+          text: moment(appointment.startTime).format('MMM D h:mm A'),
+          onPress: () => navigateToCheckout(appointment),
+        })),
+        { text: t.common?.cancel || 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handlePayAppointment = (appointment) => {
+    navigateToCheckout(appointment);
   };
 
   const handleJoinCall = (item) => {
-    // Check if appointment has required data
-    if (!item?.roomId) {
-      return; // Don't show alert, timer is already visible
+    if (!item?.roomId) return;
+
+    if (!canAuthenticatedUserJoinMobileVideo(user)) {
+      Alert.alert(
+        t('auth.otp.accessDenied') || 'Access Denied',
+        t('videoConsultation.providersUseWeb')
+          || 'Providers must join video sessions from the Spectrum website at the clinic, not the mobile app.',
+      );
+      return;
     }
+
+    const loggedInUserId = getUserId(user);
+    if (!loggedInUserId) return;
 
     navigation.navigate('VideoConsultation', {
       meetingRoomId: item.roomId,
-      userID: item.patient?.id || item.patient?._id,
-      userName: item.patient?.fullName,
+      userID: String(loggedInUserId),
+      userName: user?.fullName || user?.fullNameArabic || item.patient?.fullName || 'Patient',
     });
   };
 
@@ -503,8 +471,13 @@ const AppointmentsScreen = () => {
       canReschedule = appointmentStart.isAfter(sixHoursFromNow)
         && (item.reschedulingAttempts || 0) < 3;
 
-      canCancel = appointmentStart.isAfter(now);
+      canCancel = appointmentStart.isAfter(now) && now.isBefore(joinWindowStart);
     }
+
+    const isRescheduledUnpaid = isUpcoming
+      && item.status === 'Rescheduled'
+      && item.paymentStatus !== 'Completed'
+      && item.expiresAt;
 
     // Check if call was ended by provider
     const callWasEnded = callEndedRooms.has(item?.roomId);
@@ -514,7 +487,7 @@ const AppointmentsScreen = () => {
       item?.approvedByDoctor === false ||
       item?.paymentStatus !== 'Completed' ||
       item?.status === 'Pending'
-    );
+    ) && !isRescheduledUnpaid;
 
     return (
       <View style={styles.card}>
@@ -557,6 +530,22 @@ const AppointmentsScreen = () => {
             </Text>
           </View>
         </View>
+
+        {/* Rescheduled — payment required before join */}
+        {isRescheduledUnpaid && (
+          <TouchableOpacity
+            style={styles.rescheduledPayBanner}
+            onPress={() => navigation.navigate('Checkout', {
+              id: item._id || item.id || item.appointmentId,
+            })}
+          >
+            <Text style={styles.rescheduledPayText}>
+              {isRTL
+                ? `يرجى إتمام الدفع قبل ${moment(item.expiresAt).format('h:mm A')} للحفاظ على موعدك`
+                : `Complete payment by ${moment(item.expiresAt).format('h:mm A')} to keep your slot`}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* "Starts in Xh Ym" badge — visible before the 10-min join window opens */}
         {isUpcoming && startsInLabel && !needsVerification && (
@@ -682,33 +671,82 @@ const AppointmentsScreen = () => {
 
         {/* --- PENDING ACTIONS --- */}
         {!isUpcoming && (
-          <View style={[styles.actionRow, rowStyle]}>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() => handleCancel(item)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelBtnText}>
-                {t.appointments?.cancel || 'Cancel'}
-              </Text>
-            </TouchableOpacity>
+          <View style={{ marginTop: 15 }}>
+            {(item.appointments || []).length > 1 ? (
+              <>
+                <Text style={[styles.pendingListTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {t.appointments?.pendingAppointmentsCount || 'Appointments to confirm'}
+                  {' '}({item.appointments.length})
+                </Text>
+                {(item.appointments || []).map((appointment, index) => (
+                  <View key={appointment.appointmentId || appointment._id || appointment.id || index} style={[styles.pendingApptRow, rowStyle]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.pendingApptDate, { textAlign: isRTL ? 'right' : 'left' }]}>
+                        {moment.utc(appointment.startTime).format('MMM D, YYYY')}
+                      </Text>
+                      <Text style={[styles.pendingApptTime, { textAlign: isRTL ? 'right' : 'left' }]}>
+                        {moment(appointment.startTime).format('h:mm A')}
+                        {appointment.reason ? ` • ${appointment.reason}` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.pendingPayBtn}
+                      onPress={() => handlePayAppointment(appointment)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.pendingPayBtnText}>
+                        {t.appointments?.payNow || 'Pay Now'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <View style={[styles.actionRow, rowStyle, { marginTop: 10 }]}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => handleCancel(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.cancelBtnText}>
+                      {t.appointments?.cancel || 'Cancel'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <View style={[styles.actionRow, rowStyle]}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => handleCancel(item)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelBtnText}>
+                    {t.appointments?.cancel || 'Cancel'}
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.payBtn}
-              onPress={() => handlePay(item)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.payBtnText}>
-                {t.appointments?.payNow || 'Pay Now'}
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.payBtn}
+                  onPress={() => handlePay(item)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.payBtnText}>
+                    {t.appointments?.payNow || 'Pay Now'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </View>
     );
   };
 
-  const showLoading = (!isAuthenticated) || (isLoading && !refreshing);
+  const showLoading = isLoading && !refreshing;
+
+  const listKeyExtractor = useCallback(
+    (item, index) => item._id?.toString() || item.id?.toString() || `item-${index}`,
+    []
+  );
 
   return (
     <View style={styles.container}>
@@ -755,8 +793,12 @@ const AppointmentsScreen = () => {
           <FlatList
             data={filteredData}
             renderItem={renderCard}
-            keyExtractor={(item, index) => item._id?.toString() || item.id?.toString() || `item-${index}`}
+            keyExtractor={listKeyExtractor}
             contentContainerStyle={{ paddingTop: 10 }}
+            removeClippedSubviews
+            initialNumToRender={8}
+            maxToRenderPerBatch={6}
+            windowSize={7}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -790,6 +832,52 @@ const styles = StyleSheet.create({
 
   // Card
   card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 15, marginBottom: 15, shadowColor: COLORS.shadow, shadowOpacity: 0.05, elevation: 2 },
+  rescheduledPayBanner: {
+    backgroundColor: '#FFF3E0',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  rescheduledPayText: {
+    color: '#E65100',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  pendingListTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 10,
+  },
+  pendingApptRow: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
+  },
+  pendingApptDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  pendingApptTime: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  pendingPayBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  pendingPayBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   cardHeader: { alignItems: 'center' },
   avatar: { width: 55, height: 55, borderRadius: 27.5 },
   docName: { fontWeight: 'bold', fontSize: 15, color: COLORS.textPrimary },

@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Linking, DeviceEventEmitter } from 'react-native';
 import { NavigationContainer, useNavigation, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
-import { AuthProvider } from '../store/AuthContext';
 import { useAuthStore } from '../store/authStore';
+import socketService from '../utils/socket';
 import InAppToast from '../components/InAppToast';
 import OfflineBanner from '../components/OfflineBanner';
 import BiometricLockModal from '../components/BiometricLockModal';
 
 // Shared ref for imperative navigation outside React context (toasts, deep links, etc.)
 export const navigationRef = createNavigationContainerRef();
-
-// Wraps any screen that requires authentication.
 // Immediately redirects to LoginScreen if the user is not authenticated.
 const RequireAuth = ({ Screen }) => {
   const { isAuthenticated } = useAuthStore();
@@ -60,6 +58,10 @@ import TermsScreen from '../screens/TermsScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import AboutUsScreen from '../screens/AboutUsScreen';
 import { CustomVideoConferenceScreen as VideoConsultationScreen } from '../screens/VideoConference';
+import GuestVideoInviteScreen from '../screens/GuestVideoInviteScreen';
+import { makePatientOnlyVideo } from './authGuards';
+
+const PatientVideoConsultationScreen = makePatientOnlyVideo(VideoConsultationScreen);
 import RescheduleAppointmentScreen from '../screens/RescheduleAppointmentScreen';
 import CancelAppointmentScreen from '../screens/CancelAppointmentScreen';
 import PaymentFormScreen from '../screens/PaymentFormScreen';
@@ -67,6 +69,65 @@ import FindTherapistScreen from '../screens/FindTherapistScreen';
 import TherapistProfileScreen from '../screens/TherapistProfileScreen';
 
 const Stack = createNativeStackNavigator();
+
+// Screens that FCM may deep-link to (allowlist only — prevents open redirect)
+const ALLOWED_NOTIFICATION_SCREENS = new Set([
+  'Main',
+  'Notifications',
+  'ChatDetails',
+  'VideoConsultation',
+  'GuestVideoInvite',
+  'DoctorProfile',
+  'TherapistProfile',
+  'Checkout',
+  'RescheduleAppointment',
+  'CancelAppointment',
+  'Profile',
+  'FindTherapist',
+  'SearchResults',
+]);
+
+// Require login before navigating to these targets
+const PROTECTED_NOTIFICATION_SCREENS = new Set([
+  'Notifications',
+  'ChatDetails',
+  'VideoConsultation',
+  'Checkout',
+  'RescheduleAppointment',
+  'CancelAppointment',
+  'Profile',
+  'WalletScreen',
+  'BillingScreen',
+]);
+
+const parseNotificationParams = (raw) => {
+  if (!raw) return undefined;
+  try {
+    const params = JSON.parse(raw);
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+    return params;
+  } catch {
+    return undefined;
+  }
+};
+
+export const navigateFromNotification = (remoteMessage) => {
+  if (!remoteMessage || !navigationRef.isReady()) return;
+
+  const screen = remoteMessage.data?.screen;
+  const targetScreen = ALLOWED_NOTIFICATION_SCREENS.has(screen) ? screen : 'Notifications';
+
+  if (PROTECTED_NOTIFICATION_SCREENS.has(targetScreen)) {
+    const { isAuthenticated } = useAuthStore.getState();
+    if (!isAuthenticated) {
+      navigationRef.navigate('LoginScreen');
+      return;
+    }
+  }
+
+  const params = parseNotificationParams(remoteMessage.data?.params);
+  navigationRef.navigate(targetScreen, params);
+};
 
 // Wrapper component that checks ELM verification
 const ElmVerifiedTabNavigator = ({ navigation }) => {
@@ -88,12 +149,58 @@ const ElmVerifiedTabNavigator = ({ navigation }) => {
   return <TabNavigator />;
 };
 
-const navigateFromNotification = (remoteMessage) => {
-  if (!remoteMessage || !navigationRef.isReady()) return;
-  const screen = remoteMessage.data?.screen;
-  let params;
-  try { params = remoteMessage.data?.params ? JSON.parse(remoteMessage.data.params) : undefined; } catch {}
-  navigationRef.navigate(screen || 'Notifications', params);
+const linking = {
+  prefixes: [
+    'spectrum://',
+    'https://spectrumclinics.care',
+    'https://www.spectrumclinics.care',
+  ],
+  config: {
+    screens: {
+      GuestVideoInvite: {
+        path: 'video-conference/invite/:roomId',
+        parse: {
+          roomId: (roomId) => roomId,
+        },
+      },
+    },
+  },
+  async getInitialURL() {
+    const url = await Linking.getInitialURL();
+    return url;
+  },
+  subscribe(listener) {
+    const sub = Linking.addEventListener('url', ({ url }) => listener(url));
+    return () => sub.remove();
+  },
+  getStateFromPath(path, options) {
+    const inviteMatch = path.match(/^\/?video-conference\/invite\/([^/?]+)/);
+    if (!inviteMatch) {
+      return undefined;
+    }
+
+    const roomId = decodeURIComponent(inviteMatch[1]);
+    const queryIndex = path.indexOf('?');
+    const params = {};
+    if (queryIndex !== -1) {
+      const search = path.slice(queryIndex + 1);
+      search.split('&').forEach((pair) => {
+        const [key, value] = pair.split('=');
+        if (key) params[key] = decodeURIComponent(value || '');
+      });
+    }
+
+    return {
+      routes: [{
+        name: 'GuestVideoInvite',
+        params: {
+          roomId,
+          token: params.token,
+          name: params.name,
+        },
+      }],
+    };
+  },
 };
 
 const AppNavigator = () => {
@@ -107,10 +214,8 @@ const AppNavigator = () => {
 
   // Deep links from push notifications
   useEffect(() => {
-    // App opened from background by tapping a notification
     const unsubscribe = messaging().onNotificationOpenedApp(navigateFromNotification);
 
-    // App cold-started by tapping a notification
     messaging().getInitialNotification().then((msg) => {
       if (msg) setTimeout(() => navigateFromNotification(msg), 1200);
     });
@@ -118,12 +223,26 @@ const AppNavigator = () => {
     return unsubscribe;
   }, []);
 
+  // Navigate to login after inactivity timeout
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('auth:sessionTimeout', () => {
+      socketService.disconnect();
+      if (navigationRef.isReady()) {
+        navigationRef.reset({
+          index: 0,
+          routes: [{ name: 'LoginScreen' }],
+        });
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   // Wait until we know the initial route before mounting NavigationContainer
   if (!initialRoute) return null;
 
   return (
     <View style={{ flex: 1 }}>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Main" component={ElmVerifiedTabNavigator} />
@@ -132,15 +251,15 @@ const AppNavigator = () => {
           <Stack.Screen name="OTPScreen" component={OTPScreen} />
           <Stack.Screen name="Consent" component={ConsentScreen} />
           <Stack.Screen name="PatientInfoScreen" component={PatientInfoScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Profile" component={makeProtected(ProfileScreen)} />
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="SupportCard" component={SupportCardScreen} />
           <Stack.Screen name="SupportCardSuccessScreen" component={SupportCardSuccessScreen} options={{ gestureEnabled: false }} />
-          <Stack.Screen name="NewMessage" component={NewMessageScreen} />
-          <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
+          <Stack.Screen name="NewMessage" component={makeProtected(NewMessageScreen)} />
+          <Stack.Screen name="ChatDetails" component={makeProtected(ChatDetailsScreen)} />
           <Stack.Screen name="DoctorProfile" component={DoctorProfileScreen} />
-          <Stack.Screen name="Checkout" component={CheckoutScreen} />
-          <Stack.Screen name="PaymentFormScreen" component={PaymentFormScreen} />
+          <Stack.Screen name="Checkout" component={makeProtected(CheckoutScreen)} />
+          <Stack.Screen name="PaymentFormScreen" component={makeProtected(PaymentFormScreen)} />
           <Stack.Screen name="PaymentSuccessScreen" component={PaymentSuccessScreen} options={{ gestureEnabled: false }} />
           <Stack.Screen name="PaymentFailureScreen" component={PaymentFailureScreen} />
           <Stack.Screen name="Notifications" component={makeProtected(NotificationsScreen)} />
@@ -153,9 +272,10 @@ const AppNavigator = () => {
           <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
           <Stack.Screen name="AboutUsScreen" component={AboutUsScreen} />
           <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
-          <Stack.Screen name="VideoConsultation" component={VideoConsultationScreen} options={{ gestureEnabled: false }} />
-          <Stack.Screen name="RescheduleAppointment" component={RescheduleAppointmentScreen} />
-          <Stack.Screen name="CancelAppointment" component={CancelAppointmentScreen} />
+          <Stack.Screen name="GuestVideoInvite" component={GuestVideoInviteScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="VideoConsultation" component={PatientVideoConsultationScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="RescheduleAppointment" component={makeProtected(RescheduleAppointmentScreen)} />
+          <Stack.Screen name="CancelAppointment" component={makeProtected(CancelAppointmentScreen)} />
           <Stack.Screen name="FindTherapist" component={FindTherapistScreen} />
           <Stack.Screen name="TherapistProfile" component={TherapistProfileScreen} />
         </Stack.Navigator>

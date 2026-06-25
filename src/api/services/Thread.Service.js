@@ -103,7 +103,8 @@ export function useSendThreadReply() {
 
 export function useGetThreadMessages(threadId) {
     return useQuery({
-        queryKey: ['threadMessages',threadId],
+        queryKey: ['threadMessages', threadId],
+        enabled: Boolean(threadId),
         queryFn: async () => {
             try {
                 const result = await getRequest(`${MODEL_NAME}/messages/${threadId}`);

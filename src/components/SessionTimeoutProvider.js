@@ -1,8 +1,10 @@
 import React, { useEffect, createContext, useContext } from 'react';
 import { View, DeviceEventEmitter, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSessionTimeout } from '../hooks/useSessionTimeout';
 import SessionTimeoutWarning from './SessionTimeoutWarning';
 import { useAuthStore } from '../store/authStore';
+import socketService from '../utils/socket';
 
 // Context for session timeout functionality
 const SessionTimeoutContext = createContext(null);
@@ -25,6 +27,7 @@ export function useSessionTimeoutContext() {
  * Compliant with Saudi healthcare regulations (NCA ECC, SHIE)
  */
 export function SessionTimeoutProvider({ children, navigation }) {
+  const { t } = useTranslation();
   const {
     showWarning,
     remainingTime,
@@ -43,24 +46,18 @@ export function SessionTimeoutProvider({ children, navigation }) {
   // Get logout from auth store for force logout
   const authLogout = useAuthStore((state) => state.logout);
 
-  // Listen for session timeout events and handle navigation
+  // Listen for force logout when user logs in from another device
   useEffect(() => {
-    const sessionTimeoutSubscription = DeviceEventEmitter.addListener('auth:sessionTimeout', () => {
-      // Navigation to login screen should be handled in AppNavigator
-      // based on auth state change
-    });
-
-    // Listen for force logout when user logs in from another device
     const forceLogoutSubscription = DeviceEventEmitter.addListener('socket:forceLogout', (data) => {
       Alert.alert(
-        'Session Ended',
-        data?.message || 'You have been logged out because your account was accessed from another device.',
+        t('session.forceLogout.title', 'Session Ended'),
+        data?.message || t('session.forceLogout.message', 'You have been logged out because your account was accessed from another device.'),
         [
           {
             text: 'OK',
             onPress: () => {
               authLogout();
-              // Navigation will be handled automatically by auth state change
+              socketService.disconnect();
             },
           },
         ],
@@ -69,10 +66,9 @@ export function SessionTimeoutProvider({ children, navigation }) {
     });
 
     return () => {
-      sessionTimeoutSubscription?.remove();
       forceLogoutSubscription?.remove();
     };
-  }, [authLogout]);
+  }, [authLogout, t]);
 
   const contextValue = {
     recordActivity,

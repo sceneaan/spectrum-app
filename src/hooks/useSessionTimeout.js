@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { Logout } from '../api/services/Auth.Service';
+import socketService from '../utils/socket';
+import { isSessionTimeoutPaused } from '../utils/sessionPause';
 
 // Session timeout duration in milliseconds (15 minutes for healthcare compliance)
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
@@ -34,6 +36,8 @@ export function useSessionTimeout() {
 
   // Handle session timeout - logout user
   const handleSessionTimeout = useCallback(async () => {
+    if (isSessionTimeoutPaused()) return;
+
     setShowWarning(false);
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -44,7 +48,7 @@ export function useSessionTimeout() {
       console.warn('Logout failed during session timeout:', error);
     }
     await storeLogout();
-    // Emit event for navigation handling
+    socketService.disconnect();
     DeviceEventEmitter.emit('auth:sessionTimeout', { reason: 'inactivity' });
   }, [storeLogout]);
 
@@ -64,8 +68,8 @@ export function useSessionTimeout() {
       clearInterval(countdownIntervalRef.current);
     }
 
-    // Only set timers if user is authenticated
-    if (!token) return;
+    // Only set timers if user is authenticated and timeout is not paused (e.g. video call)
+    if (!token || isSessionTimeoutPaused()) return;
 
     // Set warning timer (fires 2 minutes before timeout)
     warningTimeoutRef.current = setTimeout(() => {
@@ -110,6 +114,12 @@ export function useSessionTimeout() {
       const previousState = appStateRef.current;
 
       if (previousState.match(/inactive|background/) && nextAppState === 'active') {
+        if (isSessionTimeoutPaused()) {
+          backgroundTimestampRef.current = null;
+          appStateRef.current = nextAppState;
+          return;
+        }
+
         // App came to foreground
         if (backgroundTimestampRef.current) {
           const timeInBackground = Date.now() - backgroundTimestampRef.current;
@@ -132,6 +142,11 @@ export function useSessionTimeout() {
         backgroundTimestampRef.current = null;
         resetTimer();
       } else if (nextAppState.match(/inactive|background/)) {
+        if (isSessionTimeoutPaused()) {
+          appStateRef.current = nextAppState;
+          return;
+        }
+
         // App went to background
         backgroundTimestampRef.current = Date.now();
 

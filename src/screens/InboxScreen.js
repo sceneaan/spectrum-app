@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
-import { useNavigation, useIsFocused, CommonActions } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
@@ -10,6 +10,7 @@ import ICONS from '../constants/icons';
 import { usePatientGetThreads } from '@api/services/Thread.Service';
 import { useGetCompletedAppointments } from '@api/services/Appointment.Service';
 import { daysAgo } from '@utils/timeFormatter';
+import { getProviderId } from '@utils/userId';
 import { wp, hp } from '@utils/responsive';
 import { rtlRow, rtlLeft, rtlTextAlign, isRTL } from '@utils/rtlUtils';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -24,7 +25,6 @@ const InboxScreen = () => {
   const [search, setSearch] = useState('');
   const [threads, setThreads] = useState([]);
   const [filteredThreads, setFilteredThreads] = useState([]);
-  const hasRedirected = useRef(false);
 
   const rowStyle = { flexDirection: isRTL() ? 'row-reverse' : 'row' };
   const alignText = { textAlign: isRTL() ? 'right' : 'left' };
@@ -49,9 +49,8 @@ const InboxScreen = () => {
 
     return appointments.some(apt => {
       // Get provider ID from appointment (handle different formats)
-      const aptProviderId = apt.provider?._id || apt.provider?.id || apt.provider;
-      const aptProviderIdStr = String(aptProviderId);
-      const targetProviderIdStr = String(providerId);
+      const aptProviderIdStr = getProviderId(apt.provider);
+      const targetProviderIdStr = getProviderId(providerId);
 
       // Check if this appointment is with the same provider
       const isSameProvider = aptProviderIdStr === targetProviderIdStr;
@@ -105,45 +104,6 @@ const InboxScreen = () => {
     }
   }, [search, threads]);
 
-  // Check authentication - redirect to login if not authenticated
-  // Delay navigation.reset to let Fabric finish mounting — prevents "child already has a parent" crash
-  React.useEffect(() => {
-    if (!isAuthenticated && !hasRedirected.current) {
-      hasRedirected.current = true;
-      const timer = setTimeout(() => {
-        navigation.reset({
-          index: 1,
-          routes: [
-            { name: 'Main', state: { routes: [{ name: 'HomeTab' }] } },
-            {
-              name: 'LoginScreen',
-              params: {
-                targetScreen: 'InboxTab',
-                targetParams: {}
-              }
-            }
-          ],
-        });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-    if (isAuthenticated) {
-      hasRedirected.current = false;
-    }
-  }, [isAuthenticated, navigation]);
-
-  // Return loading if not authenticated - AFTER all hooks
-  if (!isAuthenticated) {
-    return (
-      <View style={styles.container}>
-        <Header title={t.inbox?.title || "Inbox"} showBack onBack={() => navigation.goBack()} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </View>
-    );
-  }
-
   const renderItem = ({ item }) => {
     // Get provider image or use default user icon
     const profileImageSource = item?.provider?.profileImage
@@ -188,12 +148,12 @@ const InboxScreen = () => {
             <View style={[styles.fileChip, rowStyle]}>
               <Image source={ICONS.file} style={{ width: 12, height: 12, tintColor: COLORS.gray700, marginHorizontal: 4 }} />
               <Text style={{ fontSize: 12, color: COLORS.textPrimary }}>
-                 {t.attachment || 'Attachment'}
+                 {t.messaging?.attachment || 'Attachment'}
               </Text>
             </View>
           ) : (
             <Text numberOfLines={1} style={[styles.msgPreview, alignText]}>
-              {item?.lastMessage?.body || t.noMessages || 'No messages yet'}
+              {item?.lastMessage?.body || t.messaging?.noMessages || 'No messages yet'}
             </Text>
           )}
         </View>
@@ -204,14 +164,14 @@ const InboxScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={t.inbox} showProfile={false} />
+      <Header title={t.tabs?.inbox || 'Inbox'} showProfile={false} />
       <View style={styles.content}>
 
         {/* Search Bar */}
         <View style={[styles.searchBox, rowStyle]}>
           <Image source={ICONS.search} style={styles.searchIcon} />
           <TextInput
-            placeholder={t.searchMessages}
+            placeholder={t.messaging?.searchMessages || 'Search messages...'}
             style={[styles.input, alignText]}
             value={search}
             onChangeText={setSearch}
@@ -233,7 +193,7 @@ const InboxScreen = () => {
             </View>
         ) : filteredThreads.length === 0 ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: COLORS.gray500 }}>{t.noMessagesFound || 'No messages found'}</Text>
+                <Text style={{ color: COLORS.gray500 }}>{t.messaging?.noMessagesFound || 'No messages found'}</Text>
             </View>
         ) : (
             <FlatList

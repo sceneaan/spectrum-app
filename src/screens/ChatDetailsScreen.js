@@ -25,28 +25,41 @@ const ChatDetailsScreen = () => {
    const route = useRoute();
    const { t, isRTL } = useLanguage();
 
-   // Get thread item from navigation params
    const { thread } = route.params || {};
+   const hasValidThread = Boolean(thread?.provider);
+   const provider = thread?.provider;
+   const providerId = provider?._id || provider?.id;
 
-   // Validate thread data
-   if (!thread || !thread.provider) {
+   const [messages, setMessages] = useState([]);
+   const [inputText, setInputText] = useState('');
+   const flatListRef = useRef(null);
+   const invalidThreadHandled = useRef(false);
+
+   const { data: appointments } = useGetCompletedAppointments();
+   const { data: loggedInUser } = useGetCurrentUser();
+   const {
+     data: threadMessages,
+     error: threadMessagesError,
+     isLoading: isLoadingMessages
+   } = useGetThreadMessages(thread?._id);
+   const { mutate: sendMessage } = useSendThreadReply();
+   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+   const [attachmentViewerVisible, setAttachmentViewerVisible] = useState(false);
+   const [attachmentViewerContent, setAttachmentViewerContent] = useState('');
+   const [attachmentViewerTitle, setAttachmentViewerTitle] = useState('');
+   const [attachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
+
+   useEffect(() => {
+      if (hasValidThread || invalidThreadHandled.current) return;
+      invalidThreadHandled.current = true;
       Alert.alert(
          isRTL ? 'خطأ' : 'Error',
          isRTL ? 'معلومات المحادثة غير متوفرة' : 'Chat information not available',
          [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
-      return null;
-   }
+   }, [hasValidThread, isRTL, navigation]);
 
-   const provider = thread.provider;
-   const providerId = provider?._id || provider?.id;
-
-   // Fetch completed appointments to check 30-day restriction
-   const { data: appointments } = useGetCompletedAppointments();
-
-   // Check if patient has a completed appointment with this provider within the last 30 days
    const hasRecentAppointment = () => {
-      // If appointments haven't loaded yet or no provider ID, allow messaging (optimistic)
       if (!appointments || appointments.length === 0 || !providerId) {
          return true;
       }
@@ -55,16 +68,13 @@ const ChatDetailsScreen = () => {
       const today = moment().endOf('day');
 
       return appointments.some(apt => {
-         // Get provider ID from appointment (handle different formats)
          const aptProviderId = apt.provider?._id || apt.provider?.id || apt.provider;
          const aptProviderIdStr = String(aptProviderId);
          const targetProviderIdStr = String(providerId);
 
-         // Check if this appointment is with the same provider
          const isSameProvider = aptProviderIdStr === targetProviderIdStr;
          if (!isSameProvider) return false;
 
-         // Check if appointment end time is within last 30 days
          const appointmentDate = moment(apt.endTime || apt.startTime);
          const isWithin30Days = appointmentDate.isSameOrAfter(thirtyDaysAgo) && appointmentDate.isSameOrBefore(today);
 
@@ -72,37 +82,11 @@ const ChatDetailsScreen = () => {
       });
    };
 
-   // Check if messaging is disabled (no recent appointment within 30 days)
    const isThreadExpired = !hasRecentAppointment();
 
    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
    }
-
-   const [messages, setMessages] = useState([]);
-   const [inputText, setInputText] = useState('');
-   const flatListRef = useRef(null);
-   
-   // Get Current User to identify "My" messages
-   const { data: loggedInUser } = useGetCurrentUser();
-
-   // API Hooks
-   const { 
-     data: threadMessages, 
-     error: threadMessagesError,
-     isLoading: isLoadingMessages
-   } = useGetThreadMessages(thread?._id);
-
-   const { mutate: sendMessage } = useSendThreadReply();
-   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
-
-   // Attachment viewer state
-   const [attachmentViewerVisible, setAttachmentViewerVisible] = useState(false);
-   const [attachmentViewerContent, setAttachmentViewerContent] = useState('');
-   const [attachmentViewerTitle, setAttachmentViewerTitle] = useState('');
-
-   // Attachment menu state (for Android)
-   const [attachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
 
    // Load messages
    useEffect(() => {
@@ -472,6 +456,10 @@ const ChatDetailsScreen = () => {
          </View>
       </View>
    );
+
+   if (!hasValidThread) {
+      return null;
+   }
 
    return (
       <View style={styles.container}>

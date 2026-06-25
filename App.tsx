@@ -7,7 +7,6 @@ import { LanguageProvider } from './src/store/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { requestUserPermission } from './src/utils/notificationService'; // Import the utility
 import { useAuthStore } from './src/store/authStore'; // Import the auth store
-import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BootSplash from "react-native-bootsplash";
 import * as Sentry from '@sentry/react-native';
@@ -32,9 +31,10 @@ Sentry.init({
   // spotlight: __DEV__,
 });
 import './src/config/i18n'; // Initialize i18n configuration
+import socketService from './src/utils/socket';
 
 const App = () => {
-  const { user, token, isAuthenticated, isTokenExpiringSoon, refreshToken, updateTokens, logout } = useAuthStore();
+  const { user, token, isAuthenticated, isTokenExpiringSoon, refreshToken, updateTokens } = useAuthStore();
 
   useEffect(() => {
     BootSplash.hide({ fade: true });
@@ -56,6 +56,7 @@ const App = () => {
             const data = await response.json();
             const { token: newToken, refreshToken: newRefreshToken, expiresIn } = data.data;
             updateTokens(newToken, newRefreshToken, expiresIn);
+            socketService.updateToken();
           }
         } catch {
           // Proactive refresh failed — reactive refresh on next 401 will handle it
@@ -64,7 +65,20 @@ const App = () => {
     }, 60 * 1000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, refreshToken]);
+  }, [isAuthenticated, refreshToken, updateTokens]);
+
+  // Keep socket connected for authenticated users (appointments, video, chat)
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      socketService.disconnect();
+      return;
+    }
+
+    const authUserId = user.id || user._id;
+    if (!authUserId) return;
+
+    socketService.connect(String(authUserId)).catch(() => {});
+  }, [isAuthenticated, user?.id, user?._id]);
 
   useEffect(() => {
     // Request notification permissions and register token on app start
@@ -76,7 +90,6 @@ const App = () => {
   }, [user, token]); // Re-run if user or token changes (e.g., after login/logout)
 
   useEffect(() => {
-    // Create notification channel for Android
     const createNotificationChannel = async () => {
       try {
         await notifee.createChannel({
@@ -89,57 +102,9 @@ const App = () => {
       }
     };
 
-    // Only create channel on Android
     if (Platform.OS === 'android') {
       createNotificationChannel();
     }
-
-    // Handle foreground messages (when app is open)
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      try {
-        // Display notification manually when app is in foreground
-        await notifee.displayNotification({
-          title: remoteMessage.notification?.title || 'New Message',
-          body: remoteMessage.notification?.body || 'You have a new notification',
-          data: remoteMessage.data,
-          android: {
-            channelId: 'default',
-            smallIcon: 'ic_notification', // Ensure this resource exists or use 'ic_launcher'
-            pressAction: {
-              id: 'default',
-            },
-            importance: AndroidImportance.HIGH,
-            color: '#2196F3',
-            sound: 'default',
-            vibrationPattern: [300, 500],
-          },
-          ios: {
-            foregroundPresentationOptions: {
-              badge: true,
-              sound: true,
-              banner: true,
-              list: true,
-            },
-            sound: 'default',
-            badge: 1,
-          },
-        });
-      } catch (error) {
-        console.error('Error displaying foreground notification:', error);
-        // Fallback
-        try {
-           await notifee.displayNotification({
-            title: remoteMessage.notification?.title,
-            body: remoteMessage.notification?.body,
-            android: { channelId: 'default' }
-           });
-        } catch(e) {
-          console.error('Fallback failed', e);
-        }
-      }
-    });
-
-    return unsubscribe;
   }, []);
 
   return (

@@ -1,23 +1,31 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Image, View, I18nManager } from 'react-native';
+import { Image } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import InboxScreen from '../screens/InboxScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
-// ProfileScreen import is removed from here as it's no longer a tab
 import { useLanguage } from '../store/LanguageContext';
+import { makeProtected } from './authGuards';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 
 const Tab = createBottomTabNavigator();
 
+const ProtectedAppointmentsScreen = makeProtected(AppointmentsScreen, {
+  targetScreen: 'AppointmentsTab',
+  targetParams: {},
+});
+
+const ProtectedInboxScreen = makeProtected(InboxScreen, {
+  targetScreen: 'InboxTab',
+  targetParams: {},
+});
+
 const TabNavigator = () => {
   const { t, isRTL } = useLanguage();
 
-  // Memoize tabs configuration to prevent unnecessary re-renders
   const orderedTabs = useMemo(() => {
-    // Define tab screens
     const tabs = [
       {
         name: 'HomeTab',
@@ -33,25 +41,26 @@ const TabNavigator = () => {
       },
       {
         name: 'AppointmentsTab',
-        component: AppointmentsScreen,
+        component: ProtectedAppointmentsScreen,
         label: t.tabs?.appointments || 'Appointments',
         icon: ICONS.calendar,
+        lazy: true,
       },
       {
         name: 'InboxTab',
-        component: InboxScreen,
+        component: ProtectedInboxScreen,
         label: t.tabs?.inbox || 'Inbox',
         icon: ICONS.inbox,
+        lazy: true,
       },
     ];
 
-    // Reverse tabs for RTL
     return isRTL ? [...tabs].reverse() : tabs;
   }, [isRTL, t.tabs]);
 
   return (
     <Tab.Navigator
-      detachInactiveScreens={false}
+      detachInactiveScreens
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -71,7 +80,7 @@ const TabNavigator = () => {
           fontSize: 10,
           marginTop: 5,
           fontWeight: '500',
-        }
+        },
       }}
     >
       {orderedTabs.map((tab) => (
@@ -81,6 +90,7 @@ const TabNavigator = () => {
           component={tab.component}
           options={{
             tabBarLabel: tab.label,
+            lazy: tab.lazy,
             tabBarIcon: ({ color }) => (
               <Image
                 source={tab.icon}

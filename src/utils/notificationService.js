@@ -1,7 +1,41 @@
+import EncryptedStorage from 'react-native-encrypted-storage';
 import messaging from '@react-native-firebase/messaging';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setNotificationToken } from '@api/services/User.Service';
+
+const NOTIFY_TOKEN_KEY = 'notifyToken';
+
+async function persistNotifyToken(token) {
+    if (!token) return;
+    await EncryptedStorage.setItem(NOTIFY_TOKEN_KEY, token);
+    // Remove legacy plaintext copy if present
+    try {
+        await AsyncStorage.removeItem(NOTIFY_TOKEN_KEY);
+    } catch {
+        // ignore
+    }
+}
+
+async function readStoredNotifyToken() {
+    try {
+        const encrypted = await EncryptedStorage.getItem(NOTIFY_TOKEN_KEY);
+        if (encrypted) return encrypted;
+    } catch {
+        // fall through to migration
+    }
+
+    try {
+        const legacy = await AsyncStorage.getItem(NOTIFY_TOKEN_KEY);
+        if (legacy) {
+            await persistNotifyToken(legacy);
+            return legacy;
+        }
+    } catch {
+        // ignore
+    }
+    return null;
+}
 
 // State management to prevent repetitive calls
 let isTokenRetrievalInProgress = false;
@@ -55,8 +89,7 @@ async function getToken(role, oldToken) {
             }
         }
 
-        // Store token in async storage for future checking
-        await AsyncStorage.setItem('notifyToken', token);
+        await persistNotifyToken(token);
 
     } catch (error) {
         console.log('ERROR getting FCM Token:', error);
@@ -157,21 +190,11 @@ export async function requestUserPermission(role, oldToken) {
                 authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
             if (enabled) {
-                // On iOS, we need to wait for the APNS token to be set
                 if (Platform.OS === 'ios') {
-                    // Set up a listener for when the APNS token is available
-                    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
-                        // This ensures the messaging service is properly initialized
-                        unsubscribe();
-
-                        // Now try to get the FCM token
-                        await getToken(role, oldToken);
-                    });
-
-                    // Also try to get token after a delay as fallback
+                    // APNS token may lag behind permission grant on iOS
                     setTimeout(() => {
                         getToken(role, oldToken);
-                    }, 3000);
+                    }, 2000);
                 } else {
                     await getToken(role, oldToken);
                 }
@@ -250,8 +273,8 @@ export async function retryGetToken() {
     // Reset state before manual retry
     resetTokenRetrievalState();
 
-    const oldToken = await AsyncStorage.getItem('notifyToken');
-    await getToken(oldToken);
+    const oldToken = await readStoredNotifyToken();
+    await getToken('patient', oldToken);
 }
 
 // Function to check if notification service is properly initialized

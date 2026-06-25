@@ -2,6 +2,37 @@ import { create } from 'zustand';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+const decodeJwtExpMs = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url || typeof atob !== 'function') return null;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
+        .join('')
+    );
+    const payload = JSON.parse(json);
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveTokenExpiresAt = (state, data) => {
+  if (data.expiresIn) {
+    return Date.now() + data.expiresIn * 1000;
+  }
+  if (data.tokenExpiresAt !== undefined) {
+    return data.tokenExpiresAt;
+  }
+  if (data.token) {
+    return decodeJwtExpMs(data.token) ?? state.tokenExpiresAt;
+  }
+  return state.tokenExpiresAt;
+};
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -11,48 +42,44 @@ export const useAuthStore = create(
       tokenExpiresAt: null,
       isAuthenticated: false,
 
-      // Helper to check if user is a patient
       isPatient: () => {
         const user = get().user;
         return user?.role?.toLowerCase() === 'patient';
       },
 
-      // Get user role
       getUserRole: () => {
         return get().user?.role?.toLowerCase() || null;
       },
 
-      // Updated to handle new auth response with refresh token
-      setAuth: (data) => set({
-        user: data.user,
-        token: data.token,
-        refreshToken: data.refreshToken || null,
-        tokenExpiresAt: data.expiresIn
-          ? Date.now() + (data.expiresIn * 1000)
-          : null,
+      // Merge partial updates — preserve refreshToken when omitted (e.g. patient consent)
+      setAuth: (data) => set((state) => ({
+        user: data.user !== undefined ? data.user : state.user,
+        token: data.token ?? state.token,
+        refreshToken: data.refreshToken ?? state.refreshToken,
+        tokenExpiresAt: resolveTokenExpiresAt(state, data),
         isAuthenticated: true,
-      }),
+      })),
 
-      // Update tokens after refresh
       updateTokens: (token, refreshToken, expiresIn) => set({
-        token: token,
-        refreshToken: refreshToken,
-        tokenExpiresAt: expiresIn ? Date.now() + (expiresIn * 1000) : null,
+        token,
+        refreshToken,
+        tokenExpiresAt: expiresIn ? Date.now() + expiresIn * 1000 : null,
       }),
 
-      // Check if token is about to expire (within 5 minutes)
       isTokenExpiringSoon: () => {
-        const { tokenExpiresAt } = get();
-        if (!tokenExpiresAt) return false;
+        const { tokenExpiresAt, token } = get();
+        const expiresAt = tokenExpiresAt ?? (token ? decodeJwtExpMs(token) : null);
+        if (!expiresAt) return false;
         const fiveMinutes = 5 * 60 * 1000;
-        return Date.now() > (tokenExpiresAt - fiveMinutes);
+        return Date.now() > expiresAt - fiveMinutes;
       },
 
-      // Check if token is expired
       isTokenExpired: () => {
-        const { tokenExpiresAt } = get();
-        if (!tokenExpiresAt) return false;
-        return Date.now() > tokenExpiresAt;
+        const { tokenExpiresAt, token } = get();
+        if (!token) return false;
+        const expiresAt = tokenExpiresAt ?? decodeJwtExpMs(token);
+        if (!expiresAt) return false;
+        return Date.now() > expiresAt;
       },
 
       logout: async () => {
@@ -63,10 +90,9 @@ export const useAuthStore = create(
           tokenExpiresAt: null,
           isAuthenticated: false,
         });
-        await EncryptedStorage.clear();
+        await EncryptedStorage.removeItem('auth-storage');
       },
 
-      // Biometric app-lock preference (persisted)
       biometricsEnabled: false,
       setBiometricsEnabled: (enabled) => set({ biometricsEnabled: enabled }),
 
@@ -98,7 +124,6 @@ export const useAuthStore = create(
         biometricsEnabled: state.biometricsEnabled,
       }),
       onRehydrateStorage: () => (rehydratedState) => {
-        // Derive isAuthenticated from persisted user+token in case it was missing
         if (rehydratedState && rehydratedState.user && rehydratedState.token) {
           rehydratedState.isAuthenticated = true;
         }

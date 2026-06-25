@@ -6,6 +6,7 @@ import { DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { queryClient } from './queryClient';
 import i18n from '../config/i18n';
+import socketService from '../utils/socket';
 
 // ==========================================
 // CONFIGURATION
@@ -170,6 +171,7 @@ axios.interceptors.response.use(
 
         // Update Zustand store directly — persist middleware writes to EncryptedStorage automatically
         useAuthStore.getState().updateTokens(newToken, newRefreshToken, expiresIn);
+        socketService.updateToken();
 
         processQueue(null, newToken);
 
@@ -177,7 +179,10 @@ axios.interceptors.response.use(
         return axios(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        await handleSessionExpired();
+        const refreshStatus = refreshError.response?.status;
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          await handleSessionExpired();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

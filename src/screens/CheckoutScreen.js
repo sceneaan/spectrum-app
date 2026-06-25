@@ -22,6 +22,7 @@ import { useApplyDiscountCode } from '../api/services/Discount.Service';
 import { CheckSupportCard } from '../api/services/SupportCard.Service';
 import { useGetUserProfile } from '../api/services/User.Service';
 import { useAuthStore } from '../store/authStore';
+import { getUserId } from '../utils/userId';
 import { useLanguage } from '../store/LanguageContext';
 import { usePaymentMachine } from '../machines/paymentMachine';
 
@@ -36,7 +37,7 @@ const CheckoutScreen = () => {
   const insets = useSafeAreaInsets();
 
   const { user } = useAuthStore();
-  const patientId = user?._id;
+  const patientId = getUserId(user);
 
   // Parameters passed from DoctorProfileScreen
   // New flow: Receive appointment ID (appointment already created)
@@ -347,12 +348,17 @@ const CheckoutScreen = () => {
                 supportCardId: context.supportCard?.supportCardId,
             }
         });
-    } else {
-        // Wallet - Execute directly via Machine
+    } else if (context.paymentMethod === 'Wallet') {
         setTimeout(() => {
             actions.executePayment();
             setIsProcessingBooking(false);
         }, 100);
+    } else {
+        setIsProcessingBooking(false);
+        Alert.alert(
+            t('common.error') || 'Error',
+            t('checkout.selectPaymentMethod') || 'Please select a payment method.'
+        );
     }
   };
 

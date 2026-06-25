@@ -14,7 +14,8 @@ import {
 } from '../api/services/Notification.Service';
 import { requestUserPermission } from '../utils/notificationService';
 import { useAuthStore } from '../store/authStore';
-import messaging from '@react-native-firebase/messaging';
+import { FCM_FOREGROUND_EVENT } from '../utils/fcmEvents';
+import { DeviceEventEmitter } from 'react-native';
 import Skeleton from '../components/Skeleton';
 
 const NotificationsScreen = () => {
@@ -45,17 +46,16 @@ const NotificationsScreen = () => {
   // Request Permission on Mount & Listen for Updates
   useEffect(() => {
       const initNotifications = async () => {
-          await requestUserPermission(user?.role || 'patient', token); // Pass role/token if needed by updated logic
+          await requestUserPermission(user?.role || 'patient', token);
       };
       initNotifications();
 
-      // Listen for foreground messages
-      const unsubscribe = messaging().onMessage(async remoteMessage => {
+      const sub = DeviceEventEmitter.addListener(FCM_FOREGROUND_EVENT, () => {
           refetch();
       });
 
-      return unsubscribe;
-  }, []);
+      return () => sub.remove();
+  }, [refetch, user?.role, token]);
 
   const notifications = notificationsData?.docs || [];
 

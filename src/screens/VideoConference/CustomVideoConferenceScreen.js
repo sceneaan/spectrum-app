@@ -12,6 +12,7 @@ import {
   ScrollView,
   AppState,
   TouchableOpacity,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -29,9 +30,12 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import 'react-native-get-random-values';
 import { Client as ConversationsClient } from '@twilio/conversations';
 import socketService from '../../utils/socket';
+import { pauseSessionTimeout, resumeSessionTimeout } from '../../utils/sessionPause';
 import COLORS from '../../constants/colors';
 import { useCheckRoomId, useSendInvitation } from '../../api/services/Appointment.Service';
-import { getVideoToken } from '../../api/services/Video.Service';
+import { getVideoToken, getGuestVideoToken } from '../../api/services/Video.Service';
+import { useAuthStore } from '../../store/authStore';
+import { canAuthenticatedUserJoinMobileVideo } from '../../utils/videoAccess';
 
 import {
   TopBar,
@@ -42,13 +46,23 @@ import {
 } from './components';
 
 const PRIMARY_COLOR = '#65bed6';
+const SESSION_EXIT_GRACE_MINS = 15;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CustomVideoConferenceScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { t, i18n } = useTranslation();
-  const { meetingRoomId, userID, userName, isGuest = false } = route?.params || {};
+  const { user: authUser } = useAuthStore();
+  const { meetingRoomId, userID, userName, isGuest = false, guestToken } = route?.params || {};
+
+  const [sessionUserId, setSessionUserId] = useState(userID ? String(userID) : null);
+  const sessionUserIdRef = useRef(sessionUserId);
+  useEffect(() => {
+    sessionUserIdRef.current = sessionUserId;
+  }, [sessionUserId]);
+
+  const activeUserId = sessionUserId || (userID ? String(userID) : null);
 
   // Refs
   const twilioRef = useRef(null);
@@ -65,6 +79,7 @@ const CustomVideoConferenceScreen = () => {
   const [isJoined, setIsJoined] = useState(false);
   const [isRoomExpired, setIsRoomExpired] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [wasDropped, setWasDropped] = useState(false);
 
   // Call state
   const [callDuration, setCallDuration] = useState('00:00:00');
@@ -125,7 +140,7 @@ const CustomVideoConferenceScreen = () => {
     // Check our name map first
     if (displayNamesRef.current[id]) return displayNamesRef.current[id];
     // Check if it's the local user
-    if (id === String(userID)) return userName;
+    if (id === String(activeUserId)) return userName;
     // Check room data (backend returns .id not ._id after populate)
     const currentRoom = roomRef.current;
     const providerId = String(currentRoom?.provider?.id || currentRoom?.provider?._id || currentRoom?.provider || '');
@@ -135,7 +150,7 @@ const CustomVideoConferenceScreen = () => {
     // Guest fallback
     if (id.startsWith('guest_')) return 'Guest';
     return 'Participant';
-  }, [userID, userName]);
+  }, [activeUserId, userName]);
 
   // Check permissions
   const checkPermissions = async () => {
@@ -174,7 +189,38 @@ const CustomVideoConferenceScreen = () => {
   };
 
   useEffect(() => {
+    if (isGuest) {
+      Alert.alert(
+        t('auth.otp.accessDenied', 'Access Denied'),
+        t('auth.loginRequiredForSession', 'Please log in to join this session.'),
+        [{
+          text: t('videoConsultation.goBack', 'Go Back'),
+          onPress: () => navigation.replace('LoginScreen', {
+            targetScreen: 'GuestVideoInvite',
+            targetParams: { roomId: meetingRoomId },
+          }),
+        }],
+      );
+      return;
+    }
+    if (!canAuthenticatedUserJoinMobileVideo(authUser)) {
+      Alert.alert(
+        t('videoConsultation.error', 'Error'),
+        t('videoConsultation.providersUseWeb',
+          'Providers must join video sessions from the Spectrum website at the clinic, not the mobile app.'),
+        [{ text: t('videoConsultation.goBack', 'Go Back'), onPress: () => navigation.goBack() }],
+      );
+    }
+  }, [isGuest, authUser, navigation, t]);
+
+  useEffect(() => {
     checkPermissions();
+  }, []);
+
+  // Don't auto-logout during an active video session
+  useEffect(() => {
+    pauseSessionTimeout();
+    return () => resumeSessionTimeout();
   }, []);
 
   // Validate room
@@ -205,8 +251,9 @@ const CustomVideoConferenceScreen = () => {
 
       const currentTime = new Date();
       const endTime = new Date(roomIdCheck?.room?.endTime);
+      const hardEndTime = new Date(endTime.getTime() + SESSION_EXIT_GRACE_MINS * 60 * 1000);
 
-      if (endTime < currentTime) {
+      if (hardEndTime < currentTime) {
         setIsRoomExpired(true);
         Alert.alert(
           t('videoConsultation.roomExpired', 'Room Expired'),
@@ -217,49 +264,31 @@ const CustomVideoConferenceScreen = () => {
     }
   }, [roomIdCheck]);
 
-  // Socket listener for session extension
+  // Socket listeners — attach when connected
   useEffect(() => {
-    if (!socketService.socket) return;
+    if (!meetingRoomId || !userName) return;
+    if (!isGuest && !activeUserId) return;
 
     const handleSessionExtended = (data) => {
-      // Update the room end time when provider extends the session
       if (data?.newEndTime || data?.endTime) {
         const newEndTime = data.newEndTime || data.endTime;
         setRoom((prevRoom) => {
           const updatedRoom = { ...prevRoom, endTime: newEndTime };
-          roomRef.current = updatedRoom; // Keep ref in sync
+          roomRef.current = updatedRoom;
           return updatedRoom;
         });
         setIsRoomExpired(false);
-        Alert.alert(
-          t('videoConsultation.sessionExtended', 'Session Extended'),
-          t('videoConsultation.sessionExtendedMessage', 'The session has been extended by the provider.')
-        );
       }
     };
-
-    socketService.socket.on('sessionExtended', handleSessionExtended);
-
-    return () => {
-      if (socketService.socket) {
-        socketService.socket.off('sessionExtended', handleSessionExtended);
-      }
-    };
-  }, [t]);
-
-  // Socket listeners for provider disconnect / session end
-  useEffect(() => {
-    if (!socketService.socket) return;
 
     const handleUserLeft = (data) => {
       if (String(data?.roomId) !== String(meetingRoomId)) return;
-      if (String(data?.userId) === String(userID)) return; // ignore self
+      if (String(data?.userId) === String(activeUserId)) return;
 
       const currentRoom = roomRef.current;
       const providerId = String(currentRoom?.provider?.id || currentRoom?.provider?._id || currentRoom?.provider || '');
       if (!providerId || String(data?.userId) !== providerId) return;
 
-      // Start 8-second grace period before alerting — provider may quickly reconnect
       if (pendingDisconnectTimerRef.current) clearTimeout(pendingDisconnectTimerRef.current);
       pendingDisconnectTimerRef.current = setTimeout(() => {
         pendingDisconnectTimerRef.current = null;
@@ -291,63 +320,94 @@ const CustomVideoConferenceScreen = () => {
       );
     };
 
-    socketService.socket.on('userLeft', handleUserLeft);
-    socketService.socket.on('userJoined', handleUserJoined);
-    socketService.socket.on('meetingEnded', handleSessionEnded);
-    socketService.socket.on('callEnded', handleSessionEnded);
+    let listenersAttached = false;
+
+    const attachListeners = () => {
+      if (listenersAttached) return;
+      listenersAttached = true;
+      socketService.joinRoom(meetingRoomId, isGuest ? userName : null);
+      socketService.on('sessionExtended', handleSessionExtended);
+      socketService.on('userLeft', handleUserLeft);
+      socketService.on('userJoined', handleUserJoined);
+      socketService.on('meetingEnded', handleSessionEnded);
+      socketService.on('callEnded', handleSessionEnded);
+    };
+
+    const detachListeners = () => {
+      if (!listenersAttached) return;
+      listenersAttached = false;
+      socketService.off('sessionExtended', handleSessionExtended);
+      socketService.off('userLeft', handleUserLeft);
+      socketService.off('userJoined', handleUserJoined);
+      socketService.off('meetingEnded', handleSessionEnded);
+      socketService.off('callEnded', handleSessionEnded);
+    };
+
+    const connectSocket = isGuest && guestToken
+      ? socketService.connectAsGuest(guestToken, userName)
+      : activeUserId
+        ? socketService.connect(activeUserId)
+        : Promise.resolve();
+
+    connectSocket.then(attachListeners).catch(() => {});
+    const connectSub = DeviceEventEmitter.addListener('socket:connected', attachListeners);
 
     return () => {
-      if (socketService.socket) {
-        socketService.socket.off('userLeft', handleUserLeft);
-        socketService.socket.off('userJoined', handleUserJoined);
-        socketService.socket.off('meetingEnded', handleSessionEnded);
-        socketService.socket.off('callEnded', handleSessionEnded);
-      }
+      connectSub.remove();
+      detachListeners();
     };
-  }, [meetingRoomId, userID, t]);
+  }, [activeUserId, meetingRoomId, userName, isGuest, guestToken, t]);
 
   // Connect to Twilio room once API response is ready
   const isConnectingRef = useRef(false);
 
-  useEffect(() => {
-    const connectToRoom = async () => {
-      if (!roomIdCheck?.room || !userID || !userName || !meetingRoomId) return;
-      if (isConnectingRef.current || isJoined) return;
-      isConnectingRef.current = true;
+  const connectToTwilio = useCallback(async () => {
+    if (isGuest) return;
+    if (!roomIdCheck?.room || !userName || !meetingRoomId) return;
+    if (!isGuest && !userID) return;
+    if (isConnectingRef.current || isJoined) return;
+    isConnectingRef.current = true;
+    setWasDropped(false);
 
-      try {
-        setIsConnecting(true);
+    try {
+      setIsConnecting(true);
 
-        // Get Twilio access token from backend
-        const tokenData = await getVideoToken(meetingRoomId);
+      const tokenData = isGuest
+        ? await getGuestVideoToken(meetingRoomId, userName, guestToken || null)
+        : await getVideoToken(meetingRoomId);
 
-        console.log('[Video] Connecting to Twilio room:', tokenData.roomName);
-        tokenRef.current = tokenData.token;
-
-        // Store display name mapping from token response
-        if (tokenData.identity && tokenData.displayName) {
-          displayNamesRef.current[String(tokenData.identity)] = tokenData.displayName;
-        }
-
-        // Connect via TwilioVideo ref
-        twilioRef.current.connect({
-          accessToken: tokenData.token,
-          roomName: tokenData.roomName,
-          enableAudio: true,  // Must be true to receive remote audio
-          enableVideo: false,
-          enableNetworkQualityReporting: true,
-          dominantSpeakerEnabled: true,
-        });
-      } catch (error) {
-        console.error('[Video] Twilio connect failed:', error);
-        setIsConnecting(false);
-        isConnectingRef.current = false;
-        Alert.alert('Error', 'Failed to join video room: ' + error.message);
+      if (tokenData.identity) {
+        const identity = String(tokenData.identity);
+        setSessionUserId(identity);
+        sessionUserIdRef.current = identity;
       }
-    };
 
-    connectToRoom();
-  }, [roomIdCheck, userID, userName, meetingRoomId]);
+      console.log('[Video] Connecting to Twilio room:', tokenData.roomName);
+      tokenRef.current = tokenData.token;
+
+      if (tokenData.identity && tokenData.displayName) {
+        displayNamesRef.current[String(tokenData.identity)] = tokenData.displayName;
+      }
+
+      twilioRef.current.connect({
+        accessToken: tokenData.token,
+        roomName: tokenData.roomName,
+        enableAudio: true,
+        enableVideo: false,
+        enableNetworkQualityReporting: true,
+        dominantSpeakerEnabled: true,
+      });
+    } catch (error) {
+      console.error('[Video] Twilio connect failed:', error);
+      setIsConnecting(false);
+      isConnectingRef.current = false;
+      Alert.alert('Error', 'Failed to join video room: ' + error.message);
+    }
+  }, [roomIdCheck, userID, userName, meetingRoomId, isJoined, isGuest, guestToken]);
+
+  useEffect(() => {
+    connectToTwilio();
+  }, [connectToTwilio]);
 
   // Cleanup on unmount only
   useEffect(() => {
@@ -356,7 +416,7 @@ const CustomVideoConferenceScreen = () => {
       try {
         socketService.sendMessage('leaveRoom', {
           roomId: meetingRoomId,
-          userId: userID,
+          userId: activeUserId,
           timestamp: Date.now(),
         });
       } catch (e) {
@@ -370,7 +430,7 @@ const CustomVideoConferenceScreen = () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (pendingDisconnectTimerRef.current) clearTimeout(pendingDisconnectTimerRef.current);
     };
-  }, [meetingRoomId, userID]);
+  }, [meetingRoomId, activeUserId]);
 
   // Heartbeat for presence detection - sends signal every 10 seconds
   const startHeartbeat = useCallback(() => {
@@ -379,12 +439,12 @@ const CustomVideoConferenceScreen = () => {
       if (socketService.isConnected()) {
         socketService.sendMessage('heartbeat', {
           roomId: meetingRoomId,
-          userId: userID,
+          userId: activeUserId,
           timestamp: Date.now(),
         });
       }
     }, 10000); // Every 10 seconds
-  }, [meetingRoomId, userID]);
+  }, [meetingRoomId, activeUserId]);
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatRef.current) {
@@ -400,33 +460,29 @@ const CustomVideoConferenceScreen = () => {
       // Socket.IO will queue the message if reconnecting
       socketService.sendMessage('leaveRoom', {
         roomId: meetingRoomId,
-        userId: userID,
+        userId: activeUserId,
         timestamp: Date.now(),
       });
       socketService.leaveRoom(meetingRoomId);
     } catch (error) {
       console.warn('[Video] Error sending leave signal:', error);
     }
-  }, [meetingRoomId, userID]);
+  }, [meetingRoomId, activeUserId]);
 
-  // Handle app going to background - cleanup video call
+  // Handle app going to background — pause heartbeat only (do not mark as left)
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (
         appStateRef.current.match(/active/) &&
         nextAppState === 'background'
       ) {
-        // App is going to background - send leave signal immediately
-        console.log('[Video] App going to background, sending leave signal');
-        sendLeaveSignal();
+        console.log('[Video] App going to background, pausing heartbeat');
         stopHeartbeat();
       } else if (
         appStateRef.current.match(/background/) &&
         nextAppState === 'active'
       ) {
-        // App coming back to foreground
         console.log('[Video] App returning to foreground');
-        // Restart heartbeat if still in call
         if (isJoined) {
           startHeartbeat();
         }
@@ -439,7 +495,7 @@ const CustomVideoConferenceScreen = () => {
     return () => {
       subscription?.remove();
     };
-  }, [isJoined, sendLeaveSignal, stopHeartbeat, startHeartbeat]);
+  }, [isJoined, stopHeartbeat, startHeartbeat]);
 
   // Start heartbeat when joined
   useEffect(() => {
@@ -501,7 +557,7 @@ const CustomVideoConferenceScreen = () => {
               senderId: m.author,
               text: m.body,
               time: m.dateCreated?.toLocaleTimeString('en-us', { hour: 'numeric', minute: 'numeric' }),
-              role: m.author === String(userID) ? userRole : 'provider',
+              role: m.author === String(activeUserId) ? userRole : 'provider',
             }));
             setChatMessages(formatted);
           }
@@ -515,7 +571,7 @@ const CustomVideoConferenceScreen = () => {
               senderId: m.author,
               text: m.body,
               time: m.dateCreated?.toLocaleTimeString('en-us', { hour: 'numeric', minute: 'numeric' }),
-              role: m.author === String(userID) ? userRole : 'provider',
+              role: m.author === String(activeUserId) ? userRole : 'provider',
             };
             setChatMessages(prev => [...prev, newMsg]);
             if (!isChatOpen) setUnreadMessages(prev => prev + 1);
@@ -533,13 +589,15 @@ const CustomVideoConferenceScreen = () => {
       cancelled = true;
       chatClientRef.current?.shutdown?.();
     };
-  }, [isJoined, userID, userRole, resolveDisplayName]);
+  }, [isJoined, activeUserId, userRole, resolveDisplayName]);
 
   // ========== Twilio Event Handlers ==========
 
   const _onRoomDidConnect = ({ roomName, roomSid, participants: roomParticipants }) => {
     console.log('[Video] ✅ Successfully joined room:', roomName, 'SID:', roomSid, 'existing participants:', roomParticipants?.length);
     roomSidRef.current = roomSid;
+    isConnectingRef.current = false;
+    setWasDropped(false);
     setIsJoined(true);
     setIsConnecting(false);
     setConnectionQuality('Connected');
@@ -552,7 +610,7 @@ const CustomVideoConferenceScreen = () => {
     if (socketService.isConnected()) {
       socketService.sendMessage('joinRoom', {
         roomId: meetingRoomId,
-        userId: userID,
+        userId: activeUserId,
       });
     }
 
@@ -579,7 +637,7 @@ const CustomVideoConferenceScreen = () => {
 
     setParticipants([
       {
-        id: String(userID),
+        id: String(activeUserId),
         name: userName,
         role: userRole,
         isMuted: false,
@@ -592,6 +650,7 @@ const CustomVideoConferenceScreen = () => {
   const _onRoomDidFailToConnect = (error) => {
     console.error('[Video] Room connect failed:', error);
     setIsConnecting(false);
+    isConnectingRef.current = false;
     setConnectionQuality('Failed');
     Alert.alert('Error', 'Failed to join room. Please try again.');
   };
@@ -601,6 +660,18 @@ const CustomVideoConferenceScreen = () => {
   const _onRoomDidDisconnect = ({ error }) => {
     console.log('[Video] Disconnected from room', error);
     if (isDisconnectingRef.current) return;
+
+    stopHeartbeat();
+    isConnectingRef.current = false;
+
+    if (error) {
+      setWasDropped(true);
+      setIsJoined(false);
+      setIsConnecting(false);
+      setConnectionQuality('Disconnected');
+      return;
+    }
+
     isDisconnectingRef.current = true;
     handleEndCall();
   };
@@ -802,7 +873,8 @@ const CustomVideoConferenceScreen = () => {
     const calculateTimeRemaining = () => {
       const now = new Date();
       const endTime = new Date(room.endTime);
-      const timeDiff = endTime - now;
+      const hardEndTime = new Date(endTime.getTime() + SESSION_EXIT_GRACE_MINS * 60 * 1000);
+      const timeDiff = hardEndTime - now;
 
       if (timeDiff <= 0) {
         setIsRoomExpired(true);
@@ -838,9 +910,9 @@ const CustomVideoConferenceScreen = () => {
     setIsMuted(newMutedState);
 
     setParticipants((prev) =>
-      prev.map((p) => (p.id === String(userID) ? { ...p, isMuted: newMutedState } : p))
+      prev.map((p) => (p.id === String(activeUserId) ? { ...p, isMuted: newMutedState } : p))
     );
-  }, [isMuted, userID]);
+  }, [isMuted, activeUserId]);
 
   const handleToggleVideo = useCallback(async () => {
     const newVideoState = !isVideoOn;
@@ -852,9 +924,9 @@ const CustomVideoConferenceScreen = () => {
     setIsVideoOn(newVideoState);
 
     setParticipants((prev) =>
-      prev.map((p) => (p.id === String(userID) ? { ...p, isVideoOn: newVideoState } : p))
+      prev.map((p) => (p.id === String(activeUserId) ? { ...p, isVideoOn: newVideoState } : p))
     );
-  }, [isVideoOn, userID]);
+  }, [isVideoOn, activeUserId]);
 
   const handleSwitchCamera = useCallback(async () => {
     twilioRef.current.flipCamera();
@@ -881,7 +953,7 @@ const CustomVideoConferenceScreen = () => {
         setChatMessages((prev) => [...prev, {
           id: Date.now(),
           sender: userName,
-          senderId: String(userID),
+          senderId: String(activeUserId),
           text: messageText,
           time: moment().format('h:mm a'),
           role: userRole,
@@ -892,13 +964,13 @@ const CustomVideoConferenceScreen = () => {
       setChatMessages((prev) => [...prev, {
         id: Date.now(),
         sender: userName,
-        senderId: String(userID),
+        senderId: String(activeUserId),
         text: messageText,
         time: moment().format('h:mm a'),
         role: userRole,
       }]);
     }
-  }, [userName, userID, userRole]);
+  }, [userName, activeUserId, userRole]);
 
   const handleLayoutChange = useCallback((newLayout) => {
     setLayout(newLayout);
@@ -932,10 +1004,10 @@ const CustomVideoConferenceScreen = () => {
       {
         roomId: meetingRoomId,
         phoneNumber: phone,
-        providerName: room?.providerName || userName,
+        providerName: room?.provider?.fullName || room?.provider?.fullNameEnglish || userName,
         message,
         timezone: currentTimezone,
-        invitedBy: userID, // Add user ID as fallback for backend auth
+        invitedBy: activeUserId, // Add user ID as fallback for backend auth
         isDoctor: userRole === 'provider',
       },
       {
@@ -948,19 +1020,24 @@ const CustomVideoConferenceScreen = () => {
         },
       }
     );
-  }, [meetingRoomId, room, userName, currentTimezone, sendInvitation, userID, userRole]);
+  }, [meetingRoomId, room, userName, currentTimezone, sendInvitation, activeUserId, userRole]);
 
   const handleEndCall = useCallback(async () => {
+    isDisconnectingRef.current = true;
     if (pendingDisconnectTimerRef.current) {
       clearTimeout(pendingDisconnectTimerRef.current);
       pendingDisconnectTimerRef.current = null;
     }
     stopHeartbeat();
-    sendLeaveSignal(); // Sends leaveRoom + socketService.leaveRoom
+    sendLeaveSignal();
     twilioRef.current?.disconnect();
-    isDisconnectingRef.current = false; // Reset for potential reconnect
-    navigation.goBack();
-  }, [navigation, stopHeartbeat, sendLeaveSignal]);
+    if (isGuest) {
+      socketService.disconnect();
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    } else {
+      navigation.goBack();
+    }
+  }, [navigation, stopHeartbeat, sendLeaveSignal, isGuest]);
 
   // Keep ref up-to-date every render so socket/timer callbacks always have the latest version
   handleEndCallRef.current = handleEndCall;
@@ -984,7 +1061,9 @@ const CustomVideoConferenceScreen = () => {
 
   // Determine overlay state
   const showLoading = roomIdCheckLoader || isConnecting;
-  const showError = !showLoading && (roomIdCheckError || !meetingRoomId || !userID || !userName);
+  const showError = !showLoading && !wasDropped && (
+    roomIdCheckError || !meetingRoomId || !userName || (!isGuest && !userID)
+  );
 
   // Error state — no TwilioVideo needed
   if (showError) {
@@ -999,9 +1078,41 @@ const CustomVideoConferenceScreen = () => {
     );
   }
 
+  if (wasDropped && !showLoading) {
+    return (
+      <SafeAreaView style={styles.errorContainer} edges={['all']}>
+        <Icon name="wifi-off" size={48} color={COLORS.gray500} style={{ marginBottom: 16 }} />
+        <Text style={styles.errorText}>
+          {t('videoConsultation.connectionLost', 'Connection lost')}
+        </Text>
+        <Text style={[styles.errorText, { fontSize: 14, marginTop: 8, fontWeight: 'normal' }]}>
+          {t('videoConsultation.connectionLostMessage', 'Your video connection was interrupted. You can try to rejoin.')}
+        </Text>
+        <TouchableOpacity
+          style={styles.rejoinButton}
+          onPress={() => {
+            isConnectingRef.current = false;
+            setIsJoined(false);
+            twilioRef.current?.disconnect();
+            connectToTwilio();
+          }}
+        >
+          <Text style={styles.rejoinButtonText}>
+            {t('videoConsultation.rejoin', 'Rejoin Call')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.leaveButton} onPress={handleEndCall}>
+          <Text style={styles.leaveButtonText}>
+            {t('videoConsultation.endCall', 'End Call')}
+          </Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
   // Get participants
-  const localParticipant = participants.find((p) => p.id === String(userID));
-  const remoteParticipants = participants.filter((p) => p.id !== String(userID));
+  const localParticipant = participants.find((p) => p.id === String(activeUserId));
+  const remoteParticipants = participants.filter((p) => p.id !== String(activeUserId));
   const totalParticipants = participants.length;
 
   // Calculate grid layout based on number of participants and view mode
@@ -1028,7 +1139,7 @@ const CustomVideoConferenceScreen = () => {
   const getMainSpeaker = () => {
     if (selectedSpeakerId) {
       // Check if selected speaker is local user
-      if (selectedSpeakerId === String(userID)) {
+      if (selectedSpeakerId === String(activeUserId)) {
         return localParticipant;
       }
       // Find selected remote participant
@@ -1039,7 +1150,7 @@ const CustomVideoConferenceScreen = () => {
     return remoteParticipants.length > 0 ? remoteParticipants[0] : localParticipant;
   };
   const mainSpeaker = getMainSpeaker();
-  const isMainSpeakerLocal = mainSpeaker?.id === String(userID);
+  const isMainSpeakerLocal = mainSpeaker?.id === String(activeUserId);
 
   // Other participants (excluding main speaker) for thumbnail strip
   const thumbnailParticipants = participants.filter(p => p.id !== mainSpeaker?.id);
@@ -1195,7 +1306,7 @@ const CustomVideoConferenceScreen = () => {
                     contentContainerStyle={styles.thumbnailStripContent}
                   >
                     {thumbnailParticipants.map((participant) => {
-                      const isLocal = participant.id === String(userID);
+                      const isLocal = participant.id === String(activeUserId);
                       return (
                         <TouchableOpacity
                           key={participant.id}
@@ -1426,6 +1537,27 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 16,
     textAlign: 'center',
+  },
+  rejoinButton: {
+    marginTop: 24,
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  rejoinButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  leaveButton: {
+    marginTop: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  leaveButtonText: {
+    color: '#94A3B8',
+    fontSize: 14,
   },
   videoArea: {
     flex: 1,

@@ -255,12 +255,14 @@ export const requireBiometricAuth = async (options = {}) => {
  * 2. Or use online tools like SSL Labs
  */
 export const SSL_PINS = {
-  // Example pins - REPLACE with your actual API certificate pins
-  'api.yourapp.com': [
+  // Replace placeholders with real SHA-256 pins before enabling native pinning.
+  // openssl s_client -servername testapi.spectrumclinics.care -connect testapi.spectrumclinics.care:443 | ...
+  'testapi.spectrumclinics.care': [
     'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-    'sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=', // Backup pin
   ],
-  // Add more domains as needed
+  'api.spectrumclinics.care': [
+    'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+  ],
 };
 
 /**
@@ -314,21 +316,15 @@ export const validateSSLPinConfig = () => {
  */
 
 /**
- * Wrapper for fetch with SSL pinning (requires native module)
- * This is a placeholder - actual implementation requires native SSL pinning library
+ * Wrapper for fetch with SSL pinning.
+ * Native pinning is not wired yet — falls back to fetch until react-native-ssl-pinning (or similar) is added.
  */
 export const pinnedFetch = async (url, options = {}) => {
-  // TODO: Implement actual SSL pinning using native module like react-native-ssl-pinning
-  // For now, this uses regular fetch with validation warning
-
   const pinConfig = validateSSLPinConfig();
 
-  if (!pinConfig.valid) {
-    console.warn('[Security] SSL pinning not properly configured:', pinConfig.message);
+  if (!pinConfig.valid && !__DEV__) {
+    console.warn('[Security] SSL pinning not configured — using standard fetch:', pinConfig.message);
   }
-
-  // This would be replaced with actual pinned fetch from native module
-  // Example: return sslPinning.fetch(url, options);
 
   return fetch(url, options);
 };

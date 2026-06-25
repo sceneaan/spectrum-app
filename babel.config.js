@@ -24,8 +24,7 @@ module.exports = api => {
           "@navigation": "./src/navigation",
         }
       }],
-      // Remove console.log in production for better performance
-      ...(isProduction ? ['transform-remove-console'] : []),
+      ...(isProduction ? [['transform-remove-console', { exclude: ['error', 'warn'] }]] : []),
     ]
   };
 };

@@ -10,7 +10,7 @@ export const usePaymentMachine = ({
     state: 'idle',
     appointment: null,
     wallet: null,
-    paymentMethod: 'Credit Card',
+    paymentMethod: 'card',
     discount: null,
     supportCard: null,
     priceCalculation: null,

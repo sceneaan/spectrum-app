@@ -14,6 +14,7 @@ import Skeleton from '../components/Skeleton';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 import moment from 'moment-timezone';
+import { getNearestUpcomingAppointment } from '../utils/appointmentFilters';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PROMO_CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -52,27 +53,28 @@ const HomeScreen = () => {
    const alignText = { textAlign: isRTL ? 'right' : 'left' };
 
    const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
+   const [nowTick, setNowTick] = useState(0);
    const promoFlatListRef = useRef(null);
    const autoScrollTimer = useRef(null);
 
    // Check if user is logged in
    const { user, isAuthenticated } = useAuthStore();
    const isLoggedIn = isAuthenticated && user;
+   const isPatient = user?.role?.toLowerCase() === 'patient';
 
    // Fetch upcoming appointments (only for logged in users)
    const { data: upcomingAppointments } = useGetUpcomingAppointments();
 
-   // Get the nearest upcoming appointment
-   const nearestAppointment = useMemo(() => {
-      if (!upcomingAppointments || upcomingAppointments.length === 0) return null;
-      // Sort by date and get the nearest one
-      const sorted = [...upcomingAppointments].sort((a, b) => {
-         const dateA = new Date(`${a.date}T${a.startTime}`);
-         const dateB = new Date(`${b.date}T${b.startTime}`);
-         return dateA - dateB;
-      });
-      return sorted[0];
-   }, [upcomingAppointments]);
+   // Refresh join-window UI every 30 seconds
+   useEffect(() => {
+      const interval = setInterval(() => setNowTick(Date.now()), 30000);
+      return () => clearInterval(interval);
+   }, []);
+
+   const nearestAppointment = useMemo(
+      () => getNearestUpcomingAppointment(upcomingAppointments),
+      [upcomingAppointments, nowTick]
+   );
 
    // Fetch issue categories for "How Can We Help You?" section
    const { data: searchFilters, isLoading: isFiltersLoading } = useGetSearchFilters();
@@ -293,12 +295,17 @@ const HomeScreen = () => {
 
                // Check if appointment needs doctor approval
                const needsApproval = nearestAppointment.approvedByDoctor === false;
+               const isRescheduledUnpaid =
+                  nearestAppointment.status === 'Rescheduled'
+                  && nearestAppointment.paymentStatus !== 'Completed'
+                  && nearestAppointment.expiresAt;
 
                // Show video button only for confirmed appointments, 10 minutes before start until end
                const isConfirmed = !needsApproval
                   && nearestAppointment.paymentStatus === 'Completed'
-                  && nearestAppointment.status !== 'Pending';
-               const showVideoButton = nearestAppointment.roomId && isInJoinWindow && isConfirmed;
+                  && nearestAppointment.status !== 'Pending'
+                  && !isRescheduledUnpaid;
+               const showVideoButton = isPatient && nearestAppointment.roomId && isInJoinWindow && isConfirmed;
 
                return (
                   <View style={styles.section}>
@@ -373,6 +380,21 @@ const HomeScreen = () => {
                               </TouchableOpacity>
                            )}
                         </View>
+
+                        {isRescheduledUnpaid && (
+                           <TouchableOpacity
+                              style={styles.rescheduledPayBanner}
+                              onPress={() => navigation.navigate('Checkout', {
+                                 id: nearestAppointment._id || nearestAppointment.id || nearestAppointment.appointmentId,
+                              })}
+                           >
+                              <Text style={styles.rescheduledPayText}>
+                                 {isRTL
+                                    ? `يرجى إتمام الدفع قبل ${moment(nearestAppointment.expiresAt).format('h:mm A')} للحفاظ على موعدك`
+                                    : `Complete payment by ${moment(nearestAppointment.expiresAt).format('h:mm A')} to keep your slot`}
+                              </Text>
+                           </TouchableOpacity>
+                        )}
 
                         {/* Status Tag */}
                         <View style={{
@@ -645,6 +667,19 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.06,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 2 },
+   },
+   rescheduledPayBanner: {
+      backgroundColor: '#FFF3E0',
+      marginHorizontal: 12,
+      marginBottom: 8,
+      padding: 10,
+      borderRadius: 8,
+   },
+   rescheduledPayText: {
+      color: '#E65100',
+      fontSize: 12,
+      fontWeight: '600',
+      textAlign: 'center',
    },
    appointmentAccent: {
       width: 4,

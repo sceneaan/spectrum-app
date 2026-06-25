@@ -44,26 +44,34 @@ const OTPScreen = () => {
     }
     setError('');
 
-    verifyOtp({ otp: parseInt(enteredOtp, 10), emailOrPhone }, {
+    verifyOtp({ otp: enteredOtp, emailOrPhone }, {
       onSuccess: async (response) => {
-        // Block only providers (matching old app logic)
-        if (response?.role?.toLowerCase() === 'provider') {
+        // Mobile app is patient-only — providers and admins use the website
+        const role = response?.role?.toLowerCase();
+        if (role !== 'patient') {
           Alert.alert(
-            t('auth.otp.accessDenied') || "Access Denied",
-            t('auth.otp.providersUseWeb') || "You are a provider. Please use the web application.",
+            t('auth.otp.accessDenied') || 'Access Denied',
+            role === 'provider'
+              ? (t('auth.otp.youAreProviderContinueWeb') || 'You are a provider. Please join video sessions from the clinic website.')
+              : (t('auth.otp.patientsOnly') || 'This application is for patients only. Please use the website for your role.'),
             [
               {
-                text: t('common.ok') || "OK",
-                onPress: () => navigation.navigate('LoginScreen')
-              }
-            ]
+                text: t('common.ok') || 'OK',
+                onPress: () => navigation.navigate('LoginScreen'),
+              },
+            ],
           );
           return;
         }
 
-        // Proceed with login for non-providers (patients, etc.)
+        // Proceed with login for patients
         // Note: Response object IS the user object (not nested under response.user)
-        setAuth({ user: response, token: response.token, refreshToken: response.refreshToken });
+        setAuth({
+          user: response,
+          token: response.token,
+          refreshToken: response.refreshToken,
+          expiresIn: response.expiresIn,
+        });
         haptics.success();
 
         // Offer biometric lock to first-time users on devices that support it

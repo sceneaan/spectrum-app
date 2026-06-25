@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
+import { emitForegroundMessage } from '../utils/fcmEvents';
+import { navigateFromNotification } from '../navigation/AppNavigator';
 
 const VARIANTS = {
   notification: { accent: '#4F46E5', bg: '#EEF2FF', icon: '🔔' },
@@ -59,6 +61,7 @@ const InAppToast = ({ navigationRef }) => {
 
     // Handle Firebase foreground notifications as in-app toasts
     const unsubFirebase = messaging().onMessage(async (msg) => {
+      emitForegroundMessage(msg);
       const n = msg.notification;
       if (n) {
         present({
@@ -84,9 +87,13 @@ const InAppToast = ({ navigationRef }) => {
 
   const handlePress = () => {
     dismiss();
-    if (toast.navigateTo && navigationRef?.current) {
-      navigationRef.current.navigate(toast.navigateTo, toast.navigateParams);
-    }
+    if (!toast.navigateTo) return;
+    navigateFromNotification({
+      data: {
+        screen: toast.navigateTo,
+        params: toast.navigateParams ? JSON.stringify(toast.navigateParams) : undefined,
+      },
+    });
   };
 
   return (
