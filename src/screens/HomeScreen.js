@@ -11,8 +11,14 @@ import { useGetUpcomingAppointments } from '../api/services/Appointment.Service'
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
 import Skeleton from '../components/Skeleton';
+import { SectionHeader, QuickAction, AppButton, AppText } from '../components/ui';
+import SessionCountdownHero from '../components/SessionCountdownHero';
+import ProviderThumb from '../components/ProviderThumb';
+import { usePreSessionJoin } from '../context/PreSessionJoinContext';
+import { getAppointmentTiming } from '../utils/sessionTiming';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 import moment from 'moment-timezone';
 import { getNearestUpcomingAppointment } from '../utils/appointmentFilters';
 
@@ -20,9 +26,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PROMO_CARD_WIDTH = SCREEN_WIDTH - 40;
 
 const PROMO_THEMES = [
-  { bg: '#5DBCD2', anim: require('../assets/animations/promo-pulse.json') },
-  { bg: '#4F46E5', anim: require('../assets/animations/promo-dots.json') },
-  { bg: '#B45309', anim: require('../assets/animations/promo-orbit.json') },
+  { bg: '#5DBCD2', icon: ICONS.calendar },
+  { bg: '#4F46E5', icon: ICONS.shield },
+  { bg: '#B45309', icon: ICONS.video },
 ];
 
 const FEATURED_ISSUES = [
@@ -59,22 +65,31 @@ const HomeScreen = () => {
 
    // Check if user is logged in
    const { user, isAuthenticated } = useAuthStore();
+   const { requestJoinSession } = usePreSessionJoin();
    const isLoggedIn = isAuthenticated && user;
    const isPatient = user?.role?.toLowerCase() === 'patient';
 
    // Fetch upcoming appointments (only for logged in users)
    const { data: upcomingAppointments } = useGetUpcomingAppointments();
 
-   // Refresh join-window UI every 30 seconds
-   useEffect(() => {
-      const interval = setInterval(() => setNowTick(Date.now()), 30000);
-      return () => clearInterval(interval);
-   }, []);
-
    const nearestAppointment = useMemo(
       () => getNearestUpcomingAppointment(upcomingAppointments),
       [upcomingAppointments, nowTick]
    );
+
+   const sessionTiming = useMemo(
+      () => getAppointmentTiming(nearestAppointment, nowTick),
+      [nearestAppointment, nowTick]
+   );
+
+   const showSessionHero = isLoggedIn && isPatient && Boolean(sessionTiming.heroState);
+
+   // Refresh join-window UI every 30 seconds (every second when session hero is visible)
+   useEffect(() => {
+      const intervalMs = showSessionHero ? 1000 : 30000;
+      const interval = setInterval(() => setNowTick(Date.now()), intervalMs);
+      return () => clearInterval(interval);
+   }, [showSessionHero]);
 
    // Fetch issue categories for "How Can We Help You?" section
    const { data: searchFilters, isLoading: isFiltersLoading } = useGetSearchFilters();
@@ -91,6 +106,8 @@ const HomeScreen = () => {
          };
       });
    }, [searchFilters, isRTL]);
+
+   const visibleIssues = useMemo(() => displayIssues.slice(0, 6), [displayIssues]);
 
    // Fetch top-rated providers (same endpoint as Find Therapist — only active + published)
    const { data: searchResult, isLoading: isProvidersLoading, error: providersError } = useSearchProviders(
@@ -189,12 +206,12 @@ const HomeScreen = () => {
 
    // Render promo card
    const renderPromoCard = ({ item, index }) => {
-      const { bg, anim } = PROMO_THEMES[index % PROMO_THEMES.length];
+      const { bg, icon } = PROMO_THEMES[index % PROMO_THEMES.length];
       const title = item.title || t.home?.defaultPromoTitle || 'Your Health, Our Priority';
       const subtitle = item.subtitle || t.home?.defaultPromoSubtitle || 'Book your session today';
 
       return (
-         <View style={[styles.promoCard, { backgroundColor: bg, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+         <View style={[styles.promoCard, { backgroundColor: bg, height: isLoggedIn ? 165 : 130, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <View style={[styles.promoTextBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                <Text style={[styles.promoTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{title}</Text>
                <Text style={[styles.promoSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{subtitle}</Text>
@@ -205,7 +222,13 @@ const HomeScreen = () => {
                   <Text style={styles.promoBtnText}>{t.home?.readMore || 'Read More'}</Text>
                </TouchableOpacity>
             </View>
-            <LottieView source={anim} autoPlay loop style={styles.promoLottie} />
+            <View style={styles.promoVisual}>
+               <View style={styles.promoRingOuter}>
+                  <View style={styles.promoRingInner}>
+                     <Image source={icon} style={styles.promoIconImg} resizeMode="contain" />
+                  </View>
+               </View>
+            </View>
          </View>
       );
    };
@@ -213,66 +236,106 @@ const HomeScreen = () => {
    return (
       <View style={styles.container}>
          <Header showProfile title={data.user} />
-         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-            {/* Zone 1: Promo Slider with Auto-scroll - Only show if promotions exist */}
-            {promoCards.length > 0 && (
-               <View style={styles.promoContainer}>
-                  <FlatList
-                     ref={promoFlatListRef}
-                     data={promoCards}
-                     renderItem={renderPromoCard}
-                     keyExtractor={(item) => item._id || item.id}
-                     horizontal
-                     pagingEnabled={false}
-                     showsHorizontalScrollIndicator={false}
-                     snapToInterval={PROMO_CARD_WIDTH + 15}
-                     decelerationRate="fast"
-                     contentContainerStyle={styles.slider}
-                     onScroll={handlePromoScroll}
-                     onScrollBeginDrag={handleScrollBeginDrag}
-                     onScrollEndDrag={handleScrollEndDrag}
-                     scrollEventThrottle={16}
-                     initialNumToRender={1}
-                     maxToRenderPerBatch={2}
-                     windowSize={3}
-                     removeClippedSubviews={true}
-                     getItemLayout={(data, index) => ({
-                        length: PROMO_CARD_WIDTH + 15,
-                        offset: (PROMO_CARD_WIDTH + 15) * index,
-                        index,
-                     })}
+            {/* Quick actions for logged-in patients */}
+            {isLoggedIn && isPatient && (
+               <View style={[styles.quickActions, rowStyle]}>
+                  <QuickAction
+                     icon={ICONS.search}
+                     label={t.home?.quickBook || 'Find Therapist'}
+                     onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
                   />
-
-                  {/* Pagination Dots */}
-                  {promoCards.length > 1 && (
-                     <View style={styles.paginationContainer}>
-                        {promoCards.map((_, index) => (
-                           <TouchableOpacity
-                              key={index}
-                              onPress={() => {
-                                 setCurrentPromoIndex(index);
-                                 promoFlatListRef.current?.scrollToIndex({
-                                    index,
-                                    animated: true,
-                                 });
-                              }}
-                              style={[
-                                 styles.paginationDot,
-                                 {
-                                    backgroundColor: currentPromoIndex === index ? COLORS.primary : COLORS.gray400,
-                                    transform: [{ scale: currentPromoIndex === index ? 1.2 : 1 }],
-                                 },
-                              ]}
-                           />
-                        ))}
-                     </View>
-                  )}
+                  <QuickAction
+                     icon={ICONS.calendar}
+                     label={t.home?.quickAppointments || 'Appointments'}
+                     onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
+                  />
+                  <QuickAction
+                     icon={ICONS.inbox}
+                     label={t.home?.quickInbox || 'Messages'}
+                     onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
+                  />
+                  <QuickAction
+                     icon={ICONS.video}
+                     label={t.home?.quickVideo || 'Video'}
+                     tintColor={COLORS.secondary}
+                     onPress={() => {
+                        if (nearestAppointment?.roomId) {
+                           requestJoinSession({ appointment: nearestAppointment });
+                        } else {
+                           navigation.navigate('Main', { screen: 'AppointmentsTab' });
+                        }
+                     }}
+                  />
                </View>
             )}
 
-            {/* Upcoming Appointment - Only for logged in users */}
-            {isLoggedIn && nearestAppointment && (() => {
+            {showSessionHero && (
+               <SessionCountdownHero
+                  appointment={nearestAppointment}
+                  onJoin={() => requestJoinSession({ appointment: nearestAppointment })}
+                  onViewAppointments={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
+                  onPay={() => navigation.navigate('Checkout', {
+                     id: nearestAppointment._id || nearestAppointment.id || nearestAppointment.appointmentId,
+                  })}
+               />
+            )}
+
+            {/* Guest welcome hero */}
+            {!isLoggedIn && (
+               <View style={styles.guestHero}>
+                  <View style={[styles.guestHeroDecor, isRTL ? { left: -30 } : { right: -30 }]} />
+                  <View style={[styles.guestHeroTop, rowStyle]}>
+                     <View style={styles.guestHeroCopy}>
+                        <AppText variant="h2" align={alignText.textAlign} style={styles.guestHeroTitle}>
+                           {t.home?.guestHeroTitle || 'Start your care journey'}
+                        </AppText>
+                        <AppText variant="bodySmall" align={alignText.textAlign} color={COLORS.textSecondary} style={styles.guestHeroSub}>
+                           {t.home?.guestHeroSubtitle || 'Licensed therapists. Secure video. Care in Arabic & English.'}
+                        </AppText>
+                        <View style={[styles.trustRow, rowStyle]}>
+                           <View style={[styles.trustChip, rowStyle]}>
+                              <Image source={ICONS.shield} style={styles.trustChipIcon} />
+                              <AppText variant="caption" style={styles.trustChipText}>
+                                 {t.auth?.login?.trustSecure || 'Secure'}
+                              </AppText>
+                           </View>
+                           <View style={[styles.trustChip, rowStyle]}>
+                              <Image source={ICONS.verified} style={styles.trustChipIcon} />
+                              <AppText variant="caption" style={styles.trustChipText}>
+                                 {t.auth?.login?.trustLicensed || 'Licensed'}
+                              </AppText>
+                           </View>
+                        </View>
+                     </View>
+                     <LottieView
+                        source={require('../assets/animations/wellness-hero.json')}
+                        autoPlay
+                        loop
+                        style={styles.guestHeroLottie}
+                     />
+                  </View>
+                  <AppButton
+                     title={t.home?.guestCtaButton || 'Sign In'}
+                     onPress={() => navigation.navigate('LoginScreen')}
+                     size="md"
+                     style={styles.guestHeroBtn}
+                  />
+                  <TouchableOpacity
+                     onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+                     style={styles.guestBrowseLink}
+                     activeOpacity={0.7}
+                  >
+                     <AppText variant="bodySmall" color={COLORS.primaryDark} style={styles.guestBrowseText}>
+                        {t.home?.guestBrowseTherapists || 'Browse therapists without signing in'}
+                     </AppText>
+                  </TouchableOpacity>
+               </View>
+            )}
+
+            {/* Upcoming Appointment - compact card when session hero is not shown */}
+            {isLoggedIn && nearestAppointment && !showSessionHero && (() => {
                // Calculate time status for the appointment
                const clientTz = nearestAppointment.clientTz || moment.tz.guess();
                const appointmentStart = moment.tz(nearestAppointment.startTime, clientTz);
@@ -371,15 +434,9 @@ const HomeScreen = () => {
                            {showVideoButton && (
                               <TouchableOpacity
                                  style={styles.videoIconBtn}
-                                 onPress={() => {
-                                    navigation.navigate('VideoConsultation', {
-                                       meetingRoomId: nearestAppointment.roomId,
-                                       userID: String(user?.id || user?._id),
-                                       userName: user?.fullName || user?.fullNameArabic || 'Patient',
-                                    });
-                                 }}
+                                 onPress={() => requestJoinSession({ appointment: nearestAppointment })}
                               >
-                                 <Image source={ICONS.video || ICONS.camera} style={styles.videoIconImg} />
+                                 <Image source={ICONS.video} style={styles.videoIconImg} />
                               </TouchableOpacity>
                            )}
                         </View>
@@ -424,54 +481,23 @@ const HomeScreen = () => {
                );
             })()}
 
-            {/* Zone 2: How Can We Help You? */}
+            {/* Top Providers — above the fold */}
             <View style={styles.section}>
-               <Text style={[styles.helpTitle, alignText]}>
-                  {t.home?.howCanWeHelp || 'How Can We Help You?'}
-               </Text>
-               <Text style={[styles.helpSubtitle, alignText]}>
-                  {t.home?.chooseCondition || 'Choose what describes you, and we\'ll help you find the right support'}
-               </Text>
-               <View style={[styles.issueGrid, rowStyle]}>
-                  {isFiltersLoading ? (
-                     <>
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                           <View key={i} style={styles.issueItem}>
-                              <Skeleton width={44} height={44} borderRadius={22} />
-                              <Skeleton width={55} height={10} style={{ marginTop: 6 }} />
-                           </View>
-                        ))}
-                     </>
-                  ) : (
-                     displayIssues.map(issue => (
-                        <TouchableOpacity
-                           key={issue._id || issue.id}
-                           style={styles.issueItem}
-                           onPress={() => navigation.navigate('FindTherapist', { preSelectedIssue: issue._id || issue.id })}
-                        >
-                           <View style={styles.issueIconCircle}>
-                              <Image source={issue.icon} style={styles.issueIcon} />
-                           </View>
-                           <Text style={styles.issueText} numberOfLines={2}>
-                              {issue.displayName}
-                           </Text>
-                        </TouchableOpacity>
-                     ))
-                  )}
-               </View>
-            </View>
-
-            {/* Zone 3: Top Providers */}
-            <View style={styles.section}>
-               <Text style={[styles.sectionTitle, alignText]}>{t.home?.topProviders || 'Top Providers'}</Text>
+               <SectionHeader
+                  title={t.home?.topProviders || 'Top Providers'}
+                  actionLabel={t.home?.seeMore || 'See more'}
+                  onAction={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+                  align={alignText.textAlign}
+                  style={{ marginBottom: SPACING.md }}
+               />
                <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.docSlider}
+                  contentContainerStyle={styles.docSliderContent}
                >
                   {isProvidersLoading ? (
-                     // Skeleton Loading State
-                     Array.from({ length: 5 }).map((_, index) => (
+                     Array.from({ length: 4 }).map((_, index) => (
                         <View key={index} style={[styles.docCard, { marginEnd: 10 }]}>
                            <Skeleton width="100%" height={100} style={{ marginBottom: 8, borderRadius: 10 }} />
                            <Skeleton width="80%" height={14} style={{ marginBottom: 4 }} />
@@ -479,21 +505,18 @@ const HomeScreen = () => {
                         </View>
                      ))
                   ) : providersError ? (
-                     // Error State
                      <View style={styles.errorContainer}>
                         <Text style={styles.errorText}>
                            {t.home?.providersError || 'Error loading providers'}
                         </Text>
                      </View>
                   ) : displayProviders.length === 0 ? (
-                     // Empty State
                      <View style={styles.errorContainer}>
                         <Text style={styles.errorText}>
                            {t.home?.noProviders || 'No providers available'}
                         </Text>
                      </View>
                   ) : (
-                     // Display randomly selected 5 providers
                      displayProviders.map(provider => {
                         const specialtyName = isRTL
                            ? (provider.specialty?.nameArabic || 'غير محدد')
@@ -506,8 +529,8 @@ const HomeScreen = () => {
                               activeOpacity={0.8}
                               onPress={() => navigation.navigate('TherapistProfile', { providerId: provider.id || provider._id })}
                            >
-                              <Image
-                                 source={provider.profileImage ? { uri: provider.profileImage } : ICONS.defaultAvatar}
+                              <ProviderThumb
+                                 uri={provider.profileImage}
                                  style={styles.docImg}
                               />
                               <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
@@ -533,16 +556,111 @@ const HomeScreen = () => {
                      })
                   )}
                </ScrollView>
-               <TouchableOpacity
-                  style={styles.findMoreBtn}
-                  onPress={() => navigation.navigate('Search')}
-                  activeOpacity={0.8}
-               >
-                  <Image source={ICONS.search} style={styles.findMoreIcon} />
-                  <Text style={styles.findMoreText}>{t.home?.findMore || 'Find More Providers'}</Text>
-                  <Image source={ICONS.chevronRight} style={styles.findMoreChevron} />
-               </TouchableOpacity>
             </View>
+
+            {/* How Can We Help — 6 conditions + view all */}
+            <View style={styles.section}>
+               <SectionHeader
+                  title={t.home?.howCanWeHelp || 'How Can We Help You?'}
+                  subtitle={t.home?.chooseCondition || 'Choose what describes you, and we\'ll help you find the right support'}
+                  align={alignText.textAlign}
+                  style={{ marginBottom: SPACING.md }}
+               />
+               <View style={[styles.issueGrid, rowStyle]}>
+                  {isFiltersLoading ? (
+                     <>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                           <View key={i} style={styles.issueItem}>
+                              <Skeleton width={44} height={44} borderRadius={22} />
+                              <Skeleton width={55} height={10} style={{ marginTop: 6 }} />
+                           </View>
+                        ))}
+                     </>
+                  ) : (
+                     visibleIssues.map(issue => (
+                        <TouchableOpacity
+                           key={issue._id || issue.id}
+                           style={styles.issueItem}
+                           onPress={() => navigation.navigate('Main', {
+                              screen: 'SearchTab',
+                              params: { preSelectedIssue: issue._id || issue.id },
+                           })}
+                           activeOpacity={0.75}
+                        >
+                           <View style={styles.issueIconCircle}>
+                              <Image source={issue.icon} style={styles.issueIcon} />
+                           </View>
+                           <Text style={styles.issueText} numberOfLines={2}>
+                              {issue.displayName}
+                           </Text>
+                        </TouchableOpacity>
+                     ))
+                  )}
+               </View>
+               {!isFiltersLoading && displayIssues.length > 6 && (
+                  <TouchableOpacity
+                     style={[styles.viewAllBtn, rowStyle]}
+                     onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+                     activeOpacity={0.8}
+                  >
+                     <AppText variant="bodySmall" color={COLORS.primary} style={styles.viewAllText}>
+                        {t.home?.viewAllConditions || 'View all conditions'}
+                     </AppText>
+                     <Image source={ICONS.chevronRight} style={styles.viewAllChevron} />
+                  </TouchableOpacity>
+               )}
+            </View>
+
+            {/* Promotions — after browse content */}
+            {promoCards.length > 0 && (
+               <View style={styles.promoContainer}>
+                  <FlatList
+                     ref={promoFlatListRef}
+                     data={promoCards}
+                     renderItem={renderPromoCard}
+                     keyExtractor={(item) => item._id || item.id}
+                     horizontal
+                     pagingEnabled={false}
+                     showsHorizontalScrollIndicator={false}
+                     snapToInterval={PROMO_CARD_WIDTH + 15}
+                     decelerationRate="fast"
+                     contentContainerStyle={styles.slider}
+                     onScroll={handlePromoScroll}
+                     onScrollBeginDrag={handleScrollBeginDrag}
+                     onScrollEndDrag={handleScrollEndDrag}
+                     scrollEventThrottle={16}
+                     initialNumToRender={1}
+                     maxToRenderPerBatch={2}
+                     windowSize={3}
+                     removeClippedSubviews
+                     getItemLayout={(data, index) => ({
+                        length: PROMO_CARD_WIDTH + 15,
+                        offset: (PROMO_CARD_WIDTH + 15) * index,
+                        index,
+                     })}
+                  />
+                  {promoCards.length > 1 && (
+                     <View style={styles.paginationContainer}>
+                        {promoCards.map((_, index) => (
+                           <TouchableOpacity
+                              key={index}
+                              onPress={() => {
+                                 setCurrentPromoIndex(index);
+                                 promoFlatListRef.current?.scrollToIndex({ index, animated: true });
+                              }}
+                              style={[
+                                 styles.paginationDot,
+                                 {
+                                    backgroundColor: currentPromoIndex === index ? COLORS.primary : COLORS.gray400,
+                                    transform: [{ scale: currentPromoIndex === index ? 1.2 : 1 }],
+                                 },
+                              ]}
+                           />
+                        ))}
+                     </View>
+                  )}
+               </View>
+            )}
 
             {/* Zone 4: Support Card */}
             <View style={styles.section}>
@@ -573,66 +691,250 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
    container: { flex: 1, backgroundColor: COLORS.background },
+   scrollContent: { paddingTop: SPACING.xl, paddingBottom: 100 },
+
+   quickActions: {
+      paddingHorizontal: SPACING.xl,
+      paddingTop: SPACING.md,
+      paddingBottom: SPACING.sm,
+      justifyContent: 'space-between',
+      gap: SPACING.sm,
+   },
+   guestHero: {
+      marginHorizontal: SPACING.xl,
+      marginTop: SPACING.lg,
+      marginBottom: SPACING.xl,
+      padding: SPACING.xl,
+      backgroundColor: COLORS.primaryLight,
+      borderRadius: RADIUS.xl,
+      borderWidth: 1,
+      borderColor: COLORS.primaryMuted,
+      overflow: 'hidden',
+      ...SHADOWS.md,
+   },
+   guestHeroDecor: {
+      position: 'absolute',
+      top: -40,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: 'rgba(93, 188, 210, 0.15)',
+   },
+   guestHeroTop: {
+      alignItems: 'center',
+      marginBottom: SPACING.lg,
+      gap: SPACING.md,
+   },
+   guestHeroCopy: {
+      flex: 1,
+      paddingEnd: SPACING.sm,
+   },
+   guestHeroTitle: {
+      color: COLORS.primaryDark,
+      marginBottom: SPACING.sm,
+      lineHeight: 28,
+   },
+   guestHeroSub: {
+      lineHeight: 20,
+      marginBottom: SPACING.md,
+   },
+   trustRow: {
+      flexWrap: 'wrap',
+      gap: SPACING.sm,
+   },
+   trustChip: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.65)',
+      paddingHorizontal: SPACING.sm,
+      paddingVertical: SPACING.xs,
+      borderRadius: RADIUS.pill,
+      gap: 4,
+   },
+   trustChipIcon: {
+      width: 12,
+      height: 12,
+      tintColor: COLORS.primaryDark,
+   },
+   trustChipText: {
+      fontWeight: '600',
+      color: COLORS.primaryDark,
+      fontSize: 11,
+   },
+   guestHeroLottie: {
+      width: 88,
+      height: 88,
+   },
+   guestHeroBtn: {
+      marginBottom: SPACING.sm,
+   },
+   guestBrowseLink: {
+      alignItems: 'center',
+      paddingVertical: SPACING.xs,
+   },
+   guestBrowseText: {
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+   },
 
    // Promos
-   promoContainer: { marginTop: 20, marginBottom: 15 },
-   slider: { paddingHorizontal: 20 },
-   promoCard: { width: PROMO_CARD_WIDTH, height: 165, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 18, alignItems: 'center', marginEnd: 15, overflow: 'hidden' },
+   promoContainer: { marginBottom: SPACING.lg, paddingHorizontal: SPACING.xl },
+   slider: { paddingHorizontal: 0 },
+   promoCard: {
+      width: PROMO_CARD_WIDTH,
+      height: 165,
+      borderRadius: RADIUS.xl,
+      paddingHorizontal: 22,
+      paddingVertical: 18,
+      alignItems: 'center',
+      marginEnd: 15,
+      overflow: 'hidden',
+      ...SHADOWS.md,
+   },
    promoTextBlock: { flex: 1, justifyContent: 'center', paddingEnd: 8 },
    promoTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 5, lineHeight: 21 },
    promoSub: { fontSize: 11, color: 'rgba(255,255,255,0.82)', marginBottom: 14, lineHeight: 16 },
    promoBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', alignSelf: 'flex-start' },
    promoBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
-   promoLottie: { width: 110, height: 110 },
+   promoVisual: {
+      width: 104,
+      height: 104,
+      alignItems: 'center',
+      justifyContent: 'center',
+   },
+   promoRingOuter: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: 'rgba(255,255,255,0.16)',
+      alignItems: 'center',
+      justifyContent: 'center',
+   },
+   promoRingInner: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: 'rgba(255,255,255,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+   },
+   promoIconImg: {
+      width: 32,
+      height: 32,
+      tintColor: '#FFFFFF',
+   },
 
    // Pagination
    paginationContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
    paginationDot: { width: 7, height: 7, borderRadius: 4, marginHorizontal: 3 },
 
    // Widget
-   section: { paddingHorizontal: 20, marginBottom: 25 },
-   widgetCard: { backgroundColor: COLORS.white, padding: 20, borderRadius: 16, elevation: 3, shadowColor: COLORS.shadow, shadowOpacity: 0.05, shadowRadius: 10 },
+   section: { paddingHorizontal: SPACING.xl, marginBottom: SPACING.xxl },
+   widgetCard: {
+      backgroundColor: COLORS.surface,
+      padding: SPACING.xl,
+      borderRadius: RADIUS.lg,
+      ...SHADOWS.sm,
+      ...cardBorder,
+   },
    widgetTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
    widgetSub: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 15 },
    helpTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary, marginBottom: 4 },
    helpSubtitle: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 16 },
    issueGrid: { flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start' },
    issueItem: { alignItems: 'center', width: (Dimensions.get('window').width - 40 - 36) / 4 },
-   issueIconCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.promo1, justifyContent: 'center', alignItems: 'center', marginBottom: 6, borderWidth: 1, borderColor: COLORS.primary + '20' },
+   issueIconCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: COLORS.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 6,
+      borderWidth: 1,
+      borderColor: COLORS.primaryMuted,
+   },
    issueIcon: { width: 32, height: 32 },
    issueText: { fontSize: 11, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 15 },
-   findMoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white, borderRadius: 12, paddingVertical: 14, marginTop: 14, borderWidth: 1.5, borderColor: COLORS.primary, gap: 8 },
+   viewAllBtn: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: SPACING.md,
+      gap: SPACING.xs,
+   },
+   viewAllText: { fontWeight: '700' },
+   viewAllChevron: { width: 12, height: 12, tintColor: COLORS.primary },
+   findMoreBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.surface,
+      borderRadius: RADIUS.md,
+      paddingVertical: 14,
+      marginTop: 14,
+      borderWidth: 1.5,
+      borderColor: COLORS.primary,
+      gap: 8,
+      ...SHADOWS.sm,
+   },
    findMoreText: { color: COLORS.primary, fontSize: 15, fontWeight: '700' },
    findMoreIcon: { width: 16, height: 16, tintColor: COLORS.primary },
    findMoreChevron: { width: 12, height: 12, tintColor: COLORS.primary },
    errorText: { fontSize: 12, color: COLORS.error || '#FF0000', textAlign: 'center' },
    errorContainer: { padding: 20, alignItems: 'center', justifyContent: 'center' },
-   mainBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' },
-   mainBtnText: { color: COLORS.white, fontWeight: 'bold', fontSize: 16 },
+   mainBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: RADIUS.md, alignItems: 'center', ...SHADOWS.primary },
 
    // Doctors
-   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 15 },
-   docSlider: { marginHorizontal: -20, paddingHorizontal: 20 },
-   docCard: { width: 140, backgroundColor: COLORS.white, padding: 10, borderRadius: 12, marginEnd: 10, elevation: 2, shadowColor: COLORS.shadow, shadowOpacity: 0.05, marginBottom: 10 },
+   sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 15 },
+   docSlider: { marginHorizontal: -SPACING.xl },
+   docSliderContent: { paddingHorizontal: SPACING.xl },
+   docCard: {
+      width: 148,
+      backgroundColor: COLORS.surface,
+      padding: SPACING.md,
+      borderRadius: RADIUS.lg,
+      marginEnd: 10,
+      marginBottom: 10,
+      ...SHADOWS.sm,
+      ...cardBorder,
+   },
    docImg: { width: '100%', height: 100, borderRadius: 10, marginBottom: 8, backgroundColor: COLORS.gray200 },
    docName: { fontSize: 14, fontWeight: 'bold', color: COLORS.textPrimary },
    docSpecialty: { fontSize: 12, color: COLORS.textSecondary, marginVertical: 2 },
    ratingRow: { alignItems: 'center', gap: 4 },
    ratingText: { fontSize: 12, fontWeight: 'bold', color: COLORS.textPrimary },
-   bookNowBtn: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center', marginTop: 8 },
+   bookNowBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.sm, paddingVertical: 7, paddingHorizontal: 12, alignItems: 'center', marginTop: 8 },
    bookNowText: { color: COLORS.white, fontSize: 12, fontWeight: '600' },
 
    // Support
-   supportCard: { backgroundColor: COLORS.white, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: COLORS.promo1, justifyContent: 'space-between', alignItems: 'center' },
+   supportCard: {
+      backgroundColor: COLORS.surface,
+      padding: SPACING.xl,
+      borderRadius: RADIUS.lg,
+      borderWidth: 1,
+      borderColor: COLORS.primaryMuted,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      ...SHADOWS.sm,
+   },
    supportTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.secondary },
    supportSub: { fontSize: 12, color: COLORS.textSecondary, marginVertical: 5 },
-   pillBtn: { backgroundColor: COLORS.secondary, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginTop: 5 },
+   pillBtn: { backgroundColor: COLORS.secondary, paddingHorizontal: 15, paddingVertical: 8, borderRadius: RADIUS.pill, marginTop: 5 },
    pillBtnText: { color: COLORS.white, fontSize: 12, fontWeight: '600' },
    giftImg: { width: 60, height: 60 },
 
    // Join
-   joinContainer: { marginHorizontal: 20, padding: 20, backgroundColor: COLORS.lavender, borderRadius: 16, justifyContent: 'space-between', alignItems: 'center' },
-   joinTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.darkSlateBlue },
+   joinContainer: {
+      marginHorizontal: SPACING.xl,
+      padding: SPACING.xl,
+      backgroundColor: COLORS.primaryLight,
+      borderRadius: RADIUS.lg,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: COLORS.primaryMuted,
+      marginBottom: SPACING.xl,
+   },
+   joinTitle: { fontSize: 16, fontWeight: '700', color: COLORS.primaryDark },
    joinSub: { fontSize: 12, color: COLORS.textSecondary },
 
    // Upcoming Appointment
@@ -661,15 +963,12 @@ const styles = StyleSheet.create({
       color: COLORS.white,
    },
    appointmentCard: {
-      backgroundColor: COLORS.white,
-      borderRadius: 12,
+      backgroundColor: COLORS.surface,
+      borderRadius: RADIUS.lg,
       flexDirection: 'row',
       overflow: 'hidden',
-      elevation: 2,
-      shadowColor: COLORS.shadow,
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
+      ...SHADOWS.sm,
+      ...cardBorder,
    },
    rescheduledPayBanner: {
       backgroundColor: '#FFF3E0',

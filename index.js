@@ -15,34 +15,15 @@ if (Platform.OS === 'android') {
   enableScreens(false);
 }
 import messaging from '@react-native-firebase/messaging';
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import { displaySpectrumPushNotification } from './src/utils/pushNotifications';
 
 // IMPORTANT: Register the app component FIRST before setting up background handlers
 AppRegistry.registerComponent(appName, () => App);
 
 // Handle background messages - Set this AFTER app registration
-// This prevents blocking the app startup
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('Background message received:', remoteMessage);
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
   try {
-    await notifee.displayNotification({
-      title: remoteMessage.notification?.title || 'New Message',
-      body: remoteMessage.notification?.body || 'You have a new notification',
-      data: remoteMessage.data,
-      android: {
-        channelId: 'default',
-        smallIcon: 'ic_notification',
-        pressAction: {
-          id: 'default',
-        },
-        importance: AndroidImportance.HIGH,
-        color: '#2196F3',
-      },
-      ios: {
-        sound: 'default',
-        badge: 1,
-      },
-    });
+    await displaySpectrumPushNotification(remoteMessage);
   } catch (error) {
     console.error('Error displaying background notification:', error);
   }

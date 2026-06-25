@@ -1,13 +1,19 @@
 
 export default {
   primary: '#5DBCD2', // Teal/Cyan
+  primaryDark: '#3A9DB5',
+  primaryLight: '#E8F7FA',
+  primaryMuted: '#B8E4EE',
   secondary: '#005f73',
-  background: '#F8F9FA',
+  background: '#F4F7F8',
+  surface: '#FFFFFF',
+  surfaceMuted: '#F0F4F5',
   white: '#FFFFFF',
-  textPrimary: '#333333',
-  dark: '#333333',
-  textSecondary: '#666666',
-  border: '#EEEEEE',
+  textPrimary: '#1A2B32',
+  dark: '#1A2B32',
+  textSecondary: '#5C6B73',
+  border: '#E8ECEE',
+  borderLight: 'rgba(0,0,0,0.06)',
 
   // Promo Backgrounds
   promo1: '#E0F7FA', // Light Cyan

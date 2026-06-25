@@ -8,18 +8,15 @@ import { isSessionTimeoutPaused } from '../utils/sessionPause';
 // Session timeout duration in milliseconds (15 minutes for healthcare compliance)
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 const WARNING_BEFORE_TIMEOUT_MS = 2 * 60 * 1000; // Show warning 2 minutes before timeout
-const BACKGROUND_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes when app is in background
 
 /**
- * Hook for managing session timeout based on user inactivity
- * Compliant with Saudi healthcare regulations (NCA ECC, SHIE)
+ * Hook for managing session timeout based on user inactivity.
+ * Background privacy is handled by BiometricLockModal — not full logout.
  *
  * Features:
  * - Tracks user activity via touch events
- * - Handles app background/foreground state
  * - Shows warning before session expires
- * - Automatically logs out user after inactivity period
- * - Shorter timeout when app is in background
+ * - Logs out after 15 minutes of true inactivity (including time in background)
  */
 export function useSessionTimeout() {
   const { token, logout: storeLogout } = useAuthStore();
@@ -120,17 +117,8 @@ export function useSessionTimeout() {
           return;
         }
 
-        // App came to foreground
+        // App came to foreground — logout only if total idle time exceeds limit
         if (backgroundTimestampRef.current) {
-          const timeInBackground = Date.now() - backgroundTimestampRef.current;
-
-          // If app was in background longer than background timeout, logout
-          if (timeInBackground >= BACKGROUND_TIMEOUT_MS) {
-            handleSessionTimeout();
-            return;
-          }
-
-          // Otherwise, check if total inactivity exceeds session timeout
           const totalInactivity = Date.now() - lastActivityRef.current;
           if (totalInactivity >= SESSION_TIMEOUT_MS) {
             handleSessionTimeout();
@@ -197,7 +185,6 @@ export function useSessionTimeout() {
     recordActivity,
     timeoutDuration: SESSION_TIMEOUT_MS,
     warningDuration: WARNING_BEFORE_TIMEOUT_MS,
-    backgroundTimeout: BACKGROUND_TIMEOUT_MS,
   };
 }
 

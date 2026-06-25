@@ -1,15 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Image } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import InboxScreen from '../screens/InboxScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
 import { useLanguage } from '../store/LanguageContext';
+import { useAuthStore } from '../store/authStore';
 import { makeProtected } from './authGuards';
+import { useGetUnreadCount } from '../api/services/Notification.Service';
+import TabBarButton from '../components/TabBarButton';
+import TabShortcutSheet from '../components/TabShortcutSheet';
+import TabRadialShortcuts from '../components/TabRadialShortcuts';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+import { SPACING, RADIUS, SHADOWS } from '../theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -23,10 +30,108 @@ const ProtectedInboxScreen = makeProtected(InboxScreen, {
   targetParams: {},
 });
 
+const TabIcon = ({ icon, color, focused }) => (
+  <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+    <Image
+      source={icon}
+      style={[styles.icon, { tintColor: color }]}
+    />
+  </View>
+);
+
 const TabNavigator = () => {
+  const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
+  const { isAuthenticated } = useAuthStore();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 56 + insets.bottom;
+  const tabBarHeight = 60 + insets.bottom;
+  const [shortcutSheet, setShortcutSheet] = useState(null);
+  const [appointmentRadial, setAppointmentRadial] = useState(null);
+
+  const { data: unreadCount = 0 } = useGetUnreadCount();
+
+  const closeSheet = () => setShortcutSheet(null);
+  const closeRadial = () => setAppointmentRadial(null);
+
+  const goToTab = useCallback((screen, params) => {
+    navigation.navigate('Main', { screen, params });
+  }, [navigation]);
+
+  const appointmentRadialItems = useMemo(() => {
+    if (!isAuthenticated) {
+      return [
+        {
+          key: 'sign-in-left',
+          label: t.tabs?.shortcuts?.signIn || 'Sign in',
+          icon: ICONS.calendar,
+          onPress: () => navigation.navigate('LoginScreen', { targetScreen: 'AppointmentsTab' }),
+        },
+        {
+          key: 'sign-in-right',
+          label: t.appointments?.upcoming || 'Upcoming',
+          icon: ICONS.clock,
+          onPress: () => navigation.navigate('LoginScreen', { targetScreen: 'AppointmentsTab' }),
+        },
+      ];
+    }
+
+    return [
+      {
+        key: 'upcoming',
+        label: t.appointments?.upcoming || 'Upcoming',
+        icon: ICONS.calendar,
+        onPress: () => goToTab('AppointmentsTab', { initialTab: 'upcoming' }),
+      },
+      {
+        key: 'pending',
+        label: t.appointments?.pending || 'Pending',
+        icon: ICONS.clock,
+        onPress: () => goToTab('AppointmentsTab', { initialTab: 'pending' }),
+      },
+    ];
+  }, [goToTab, isAuthenticated, navigation, t]);
+
+  const openAppointmentRadial = useCallback((anchor) => {
+    if (!anchor) return;
+    setAppointmentRadial({ anchor, items: appointmentRadialItems });
+  }, [appointmentRadialItems]);
+
+  const inboxActions = useMemo(() => {
+    if (!isAuthenticated) {
+      return [
+        {
+          key: 'sign-in',
+          label: t.tabs?.shortcuts?.signIn || 'Sign in',
+          hint: t.tabs?.shortcuts?.messagesSignInHint || 'Message your care team',
+          icon: ICONS.inbox,
+          onPress: () => navigation.navigate('LoginScreen', { targetScreen: 'InboxTab' }),
+        },
+      ];
+    }
+
+    return [
+      {
+        key: 'compose',
+        label: t.messaging?.newMessage || 'New Message',
+        hint: t.tabs?.shortcuts?.composeHint || 'Start a conversation',
+        icon: ICONS.inbox,
+        onPress: () => navigation.navigate('NewMessage'),
+      },
+      {
+        key: 'unread',
+        label: t.messaging?.unread || 'Unread',
+        hint: t.tabs?.shortcuts?.unreadHint || 'Focus on new messages',
+        icon: ICONS.bell,
+        badge: unreadCount > 0 ? (unreadCount > 9 ? '9+' : String(unreadCount)) : null,
+        onPress: () => goToTab('InboxTab', { filterUnread: true }),
+      },
+      {
+        key: 'all',
+        label: t.messaging?.allMessages || 'All Messages',
+        onPress: () => goToTab('InboxTab', { filterUnread: false }),
+      },
+    ];
+  }, [goToTab, isAuthenticated, navigation, t, unreadCount]);
 
   const orderedTabs = useMemo(() => {
     const tabs = [
@@ -48,6 +153,7 @@ const TabNavigator = () => {
         label: t.tabs?.appointments || 'Appointments',
         icon: ICONS.calendar,
         lazy: true,
+        longPress: openAppointmentRadial,
       },
       {
         name: 'InboxTab',
@@ -55,57 +161,95 @@ const TabNavigator = () => {
         label: t.tabs?.inbox || 'Inbox',
         icon: ICONS.inbox,
         lazy: true,
+        longPress: () => setShortcutSheet('inbox'),
       },
     ];
 
     return isRTL ? [...tabs].reverse() : tabs;
-  }, [isRTL, t.tabs, insets.bottom, tabBarHeight]);
+  }, [isRTL, openAppointmentRadial, t.tabs]);
 
   return (
-    <Tab.Navigator
-      detachInactiveScreens
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.inactive,
-        tabBarStyle: {
-          height: tabBarHeight,
-          paddingBottom: insets.bottom + 8,
-          paddingTop: 10,
-          backgroundColor: COLORS.white,
-          borderTopColor: COLORS.gray200,
-          elevation: 10,
-          shadowColor: COLORS.shadow,
-          shadowOpacity: 0.05,
-          shadowRadius: 5,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          marginTop: 5,
-          fontWeight: '500',
-        },
-      }}
-    >
-      {orderedTabs.map((tab) => (
-        <Tab.Screen
-          key={tab.name}
-          name={tab.name}
-          component={tab.component}
-          options={{
-            tabBarLabel: tab.label,
-            lazy: tab.lazy,
-            tabBarIcon: ({ color }) => (
-              <Image
-                source={tab.icon}
-                style={{ width: 24, height: 24, tintColor: color }}
-              />
-            ),
-          }}
-          listeners={tab.listeners}
-        />
-      ))}
-    </Tab.Navigator>
+    <>
+      <Tab.Navigator
+        detachInactiveScreens
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: COLORS.primary,
+          tabBarInactiveTintColor: COLORS.gray500,
+          tabBarStyle: {
+            height: tabBarHeight,
+            paddingBottom: insets.bottom + SPACING.sm,
+            paddingTop: SPACING.sm,
+            backgroundColor: COLORS.surface,
+            borderTopWidth: 0,
+            ...SHADOWS.md,
+          },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            marginTop: 2,
+            fontWeight: '600',
+          },
+        }}
+      >
+        {orderedTabs.map((tab) => (
+          <Tab.Screen
+            key={tab.name}
+            name={tab.name}
+            component={tab.component}
+            options={{
+              tabBarLabel: tab.label,
+              lazy: tab.lazy,
+              tabBarIcon: ({ color, focused }) => (
+                <TabIcon icon={tab.icon} color={color} focused={focused} />
+              ),
+              tabBarButton: tab.longPress
+                ? (props) => (
+                    <TabBarButton
+                      {...props}
+                      onLongPress={tab.longPress}
+                    />
+                  )
+                : undefined,
+            }}
+          />
+        ))}
+      </Tab.Navigator>
+
+      <TabRadialShortcuts
+        visible={Boolean(appointmentRadial)}
+        anchor={appointmentRadial?.anchor}
+        items={appointmentRadial?.items || []}
+        onClose={closeRadial}
+        isRTL={isRTL}
+      />
+
+      <TabShortcutSheet
+        visible={shortcutSheet === 'inbox'}
+        title={t.tabs?.shortcuts?.inboxTitle || 'Messages'}
+        subtitle={t.tabs?.shortcuts?.holdHint || 'Quick shortcuts'}
+        actions={inboxActions}
+        onClose={closeSheet}
+        isRTL={isRTL}
+      />
+    </>
   );
 };
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    width: 40,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIUS.md,
+  },
+  iconWrapActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  icon: {
+    width: 22,
+    height: 22,
+  },
+});
 
 export default TabNavigator;

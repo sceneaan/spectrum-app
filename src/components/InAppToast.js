@@ -11,6 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
 import { emitForegroundMessage } from '../utils/fcmEvents';
 import { navigateFromNotification } from '../navigation/AppNavigator';
+import { displaySpectrumPushNotification, isJoinablePushPayload } from '../utils/pushNotifications';
+import { emitPreSessionJoinFromPush } from '../utils/pushNotificationHandlers';
 
 const VARIANTS = {
   notification: { accent: '#4F46E5', bg: '#EEF2FF', icon: '🔔' },
@@ -19,7 +21,6 @@ const VARIANTS = {
   info: { accent: '#0284C7', bg: '#F0F9FF', icon: 'ℹ️' },
 };
 
-// Imperative helper — call from anywhere to show a toast
 export const showToast = (options) => {
   DeviceEventEmitter.emit('__in_app_toast__', options);
 };
@@ -51,7 +52,7 @@ const InAppToast = ({ navigationRef }) => {
         friction: 11,
         useNativeDriver: true,
       }).start();
-      dismissTimer.current = setTimeout(dismiss, options.duration ?? 4000);
+      dismissTimer.current = setTimeout(dismiss, options.duration ?? 5000);
     },
     [translateY, dismiss],
   );
@@ -59,17 +60,29 @@ const InAppToast = ({ navigationRef }) => {
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('__in_app_toast__', present);
 
-    // Handle Firebase foreground notifications as in-app toasts
     const unsubFirebase = messaging().onMessage(async (msg) => {
       emitForegroundMessage(msg);
+      const data = msg.data || {};
       const n = msg.notification;
+      const joinable = isJoinablePushPayload(data);
+
+      if (joinable) {
+        try {
+          await displaySpectrumPushNotification(msg);
+        } catch {
+          // Fall back to in-app toast below
+        }
+      }
+
       if (n) {
         present({
           type: 'notification',
           title: n.title || 'New Notification',
           message: n.body || '',
-          navigateTo: msg.data?.screen,
-          navigateParams: msg.data?.params ? JSON.parse(msg.data.params) : undefined,
+          navigateTo: data.screen,
+          navigateParams: data.params ? JSON.parse(data.params) : undefined,
+          joinable,
+          pushData: data,
         });
       }
     });
@@ -94,6 +107,13 @@ const InAppToast = ({ navigationRef }) => {
         params: toast.navigateParams ? JSON.stringify(toast.navigateParams) : undefined,
       },
     });
+  };
+
+  const handleJoin = () => {
+    dismiss();
+    if (toast.pushData) {
+      emitPreSessionJoinFromPush(toast.pushData);
+    }
   };
 
   return (
@@ -137,6 +157,11 @@ const InAppToast = ({ navigationRef }) => {
           <Text style={[styles.close, { color: variant.accent }]}>✕</Text>
         </TouchableOpacity>
       </TouchableOpacity>
+      {toast.joinable ? (
+        <TouchableOpacity style={[styles.joinBtn, { backgroundColor: variant.accent }]} onPress={handleJoin}>
+          <Text style={styles.joinBtnText}>Join Session</Text>
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 };
@@ -166,6 +191,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
   message: { fontSize: 13, color: '#374151', lineHeight: 18 },
   close: { fontSize: 13, fontWeight: '700', paddingLeft: 4 },
+  joinBtn: {
+    marginHorizontal: 14,
+    marginBottom: 12,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  joinBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });
 
 export default InAppToast;

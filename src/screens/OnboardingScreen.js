@@ -1,17 +1,20 @@
 import React, { useState, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
+import { AppText, AppButton } from '../components/ui';
+import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+import { SPACING, RADIUS, SHADOWS } from '../theme';
 
 const { width } = Dimensions.get('window');
 
@@ -24,25 +27,28 @@ const OnboardingScreen = () => {
   const SLIDES = [
     {
       id: '1',
-      emoji: '🔍',
+      icon: ICONS.search,
+      tint: COLORS.primary,
       title: t.onboarding?.slide1Title || 'Find Your Therapist',
       subtitle: t.onboarding?.slide1Subtitle || '',
     },
     {
       id: '2',
-      emoji: '📅',
+      icon: ICONS.calendar,
+      tint: COLORS.secondary,
       title: t.onboarding?.slide2Title || 'Book with Ease',
       subtitle: t.onboarding?.slide2Subtitle || '',
     },
     {
       id: '3',
-      emoji: '💙',
+      icon: ICONS.shield,
+      tint: COLORS.primaryDark,
       title: t.onboarding?.slide3Title || 'Begin Your Journey',
       subtitle: t.onboarding?.slide3Subtitle || '',
     },
   ];
 
-  const alignText = { textAlign: isRTL ? 'right' : 'center' };
+  const alignText = isRTL ? 'right' : 'center';
 
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -66,9 +72,17 @@ const OnboardingScreen = () => {
 
   const renderSlide = ({ item }) => (
     <View style={[styles.slide, { width }]}>
-      <Text style={styles.emoji}>{item.emoji}</Text>
-      <Text style={[styles.slideTitle, alignText]}>{item.title}</Text>
-      <Text style={[styles.slideSubtitle, alignText]}>{item.subtitle}</Text>
+      <View style={styles.decorCircle} />
+      <View style={[styles.decorCircleSmall, { backgroundColor: `${item.tint}22` }]} />
+      <View style={[styles.iconCircle, { backgroundColor: `${item.tint}18` }]}>
+        <Image source={item.icon} style={[styles.slideIcon, { tintColor: item.tint }]} />
+      </View>
+      <AppText variant="h1" align={alignText} style={styles.slideTitle}>
+        {item.title}
+      </AppText>
+      <AppText variant="body" align={alignText} color={COLORS.textSecondary} style={styles.slideSubtitle}>
+        {item.subtitle}
+      </AppText>
     </View>
   );
 
@@ -79,7 +93,9 @@ const OnboardingScreen = () => {
         onPress={handleFinish}
         accessibilityLabel={t.accessibility?.skipOnboarding || 'Skip onboarding'}
       >
-        <Text style={styles.skipText}>{t.onboarding?.skip || 'Skip'}</Text>
+        <AppText variant="bodyMedium" color={COLORS.textSecondary}>
+          {t.onboarding?.skip || 'Skip'}
+        </AppText>
       </TouchableOpacity>
 
       <FlatList
@@ -97,76 +113,75 @@ const OnboardingScreen = () => {
       />
 
       <View style={styles.dotsRow}>
-        {SLIDES.map((_, i) => (
-          <TouchableOpacity key={i} onPress={() => flatListRef.current?.scrollToIndex({ index: i })}>
+        {SLIDES.map((slide, i) => (
+          <TouchableOpacity
+            key={slide.id}
+            onPress={() => flatListRef.current?.scrollToIndex({ index: i })}
+          >
             <View style={[styles.dot, i === currentIndex && styles.dotActive]} />
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.btn}
+        <AppButton
+          title={isLast ? (t.onboarding?.getStarted || 'Get Started') : (t.onboarding?.next || 'Next')}
           onPress={isLast ? handleFinish : handleNext}
-          accessibilityLabel={isLast ? (t.accessibility?.getStarted || 'Get started') : (t.accessibility?.nextSlide || 'Next slide')}
-        >
-          <Text style={styles.btnText}>
-            {isLast ? (t.onboarding?.getStarted || 'Get Started') : `${t.onboarding?.next || 'Next'} →`}
-          </Text>
-        </TouchableOpacity>
+          size="lg"
+          variant="primary"
+        />
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  skipBtn: { alignSelf: 'flex-end', padding: 20 },
-  skipText: { color: COLORS.gray600, fontSize: 15, fontWeight: '500' },
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  skipBtn: { alignSelf: 'flex-end', padding: SPACING.xl },
   slide: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 60,
+    paddingHorizontal: SPACING.huge,
+    paddingBottom: SPACING.huge,
   },
-  emoji: { fontSize: 90, marginBottom: 32, textAlign: 'center' },
-  slideTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    marginBottom: 16,
-    width: '100%',
+  decorCircle: {
+    position: 'absolute',
+    top: 40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: COLORS.primaryLight,
+    opacity: 0.5,
   },
-  slideSubtitle: {
-    fontSize: 16,
-    color: COLORS.gray600,
-    lineHeight: 25,
-    width: '100%',
+  decorCircleSmall: {
+    position: 'absolute',
+    bottom: 80,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 28 },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xxxl,
+    ...SHADOWS.md,
+  },
+  slideIcon: { width: 44, height: 44 },
+  slideTitle: { marginBottom: SPACING.lg, width: '100%' },
+  slideSubtitle: { width: '100%', lineHeight: 26 },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: SPACING.xxl, gap: SPACING.sm },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.gray300,
-    marginHorizontal: 5,
   },
-  dotActive: { width: 24, backgroundColor: COLORS.primary },
-  footer: { paddingHorizontal: 30, paddingBottom: 20 },
-  btn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    height: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  btnText: { color: COLORS.white, fontSize: 17, fontWeight: 'bold' },
+  dotActive: { width: 28, backgroundColor: COLORS.primary },
+  footer: { paddingHorizontal: SPACING.xxxl, paddingBottom: SPACING.xl },
 });
 
 export default OnboardingScreen;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,10 +7,13 @@ import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import { useGetUserData } from '../api/services/User.Service';
 import { useGetUnreadCount } from '../api/services/Notification.Service';
+import { LangPill, AppText } from './ui';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+import { SPACING, RADIUS, SHADOWS } from '../theme';
 
 const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
+const SPECTRUM_LOGO = require('../assets/images/spectrum_logo.png');
 
 const Header = ({ showBack, onBack, title, showProfile }) => {
   const navigation = useNavigation();
@@ -49,29 +52,83 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
   }, [isAuthenticated, userData?.profileImageFileId, userData?.profileImage, user?.profileImage]);
 
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
-  const alignText = { textAlign: isRTL ? 'right' : 'left' };
+  const alignText = isRTL ? 'right' : 'left';
 
   const goToProfile = () => navigation.navigate('Profile');
   const goToNotifications = () => navigation.navigate('Notifications');
 
   const displayName = isAuthenticated
     ? (userData?.fullName || user?.fullName || user?.name || 'User')
-    : (t.welcomeToSpectrum || 'Welcome to Spectrum');
-  const displayAvatar = (isAuthenticated && profileImageUrl) ? { uri: profileImageUrl } : (isAuthenticated ? ICONS.defaultAvatar : ICONS.guestAvatar);
+    : (t.home?.guestTagline || 'Care that fits your life');
+  const guestCaption = t.home?.guestWelcomeLabel || 'Spectrum Clinics';
 
-  const onlineDotPosition = isRTL ? { left: 0 } : { right: 0 };
+  const displayAvatar = (isAuthenticated && profileImageUrl)
+    ? { uri: profileImageUrl }
+    : (isAuthenticated ? ICONS.defaultAvatar : null);
+
+  const handleProfilePress = () => {
+    goToProfile();
+  };
+  const onlineDotPosition = isRTL ? { left: 2 } : { right: 2 };
+
+  const profileBlock = isAuthenticated ? (
+    <TouchableOpacity
+      style={[rowStyle, { alignItems: 'center', flex: 1 }]}
+      onPress={handleProfilePress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={t.accessibility?.viewProfile || 'View profile'}
+    >
+      <View style={styles.avatarRing}>
+        {typeof displayAvatar === 'object' && displayAvatar?.uri && !displayAvatar.uri.startsWith('data:') ? (
+          <FastImage
+            source={{ uri: displayAvatar.uri, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
+            style={styles.avatar}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+        ) : (
+          <Image source={displayAvatar || ICONS.defaultAvatar} style={styles.avatar} />
+        )}
+        <View style={[styles.onlineDot, onlineDotPosition]} />
+      </View>
+      <View style={{ marginHorizontal: SPACING.md, flex: 1 }}>
+        <AppText variant="caption" align={alignText} color={COLORS.textSecondary}>
+          {t.welcome || 'Welcome'}
+        </AppText>
+        <AppText variant="bodyMedium" align={alignText} numberOfLines={2}>
+          {displayName}
+        </AppText>
+      </View>
+    </TouchableOpacity>
+  ) : (
+    <View style={[rowStyle, { alignItems: 'center', flex: 1 }]} accessibilityRole="header">
+      <View style={styles.avatarRing}>
+        <View style={styles.logoWrap}>
+          <Image source={SPECTRUM_LOGO} style={styles.headerLogo} resizeMode="contain" />
+        </View>
+      </View>
+      <View style={{ marginHorizontal: SPACING.md, flex: 1 }}>
+        <AppText variant="caption" align={alignText} color={COLORS.primaryDark}>
+          {guestCaption}
+        </AppText>
+        <AppText variant="bodyMedium" align={alignText} numberOfLines={2}>
+          {displayName}
+        </AppText>
+      </View>
+    </View>
+  );
 
   return (
     <View style={[
       styles.container,
       rowStyle,
-      { paddingTop: insets.top + 10 },
+      { paddingTop: insets.top + SPACING.md },
     ]}>
       <View style={[styles.leftContainer, rowStyle]}>
         {showBack ? (
           <TouchableOpacity
             onPress={onBack}
-            style={[styles.backBtn, isRTL && { transform: [{ rotate: '180deg' }] }]}
+            style={[styles.iconBtn, isRTL && { transform: [{ rotate: '180deg' }] }]}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
             accessibilityLabel={t.accessibility?.goBack || 'Go back'}
@@ -79,47 +136,22 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             <Image source={ICONS.back} style={styles.icon} />
           </TouchableOpacity>
         ) : showProfile ? (
-          <TouchableOpacity
-            style={[rowStyle, { alignItems: 'center' }]}
-            onPress={goToProfile}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t.accessibility?.viewProfile || 'View profile'}
-          >
-            {typeof displayAvatar === 'object' && displayAvatar.uri && !displayAvatar.uri.startsWith('data:') ? (
-              <FastImage
-                source={{ uri: displayAvatar.uri, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable }}
-                style={styles.avatar}
-                resizeMode={FastImage.resizeMode.cover}
-              />
-            ) : (
-              <Image source={displayAvatar} style={styles.avatar} />
-            )}
-            {isAuthenticated && (
-              <View style={[styles.onlineDot, onlineDotPosition]} />
-            )}
-            <View style={{ marginHorizontal: 12 }}>
-              {isAuthenticated && <Text style={[styles.welcome, alignText]}>{t.welcome || 'Welcome'}</Text>}
-              <Text style={[styles.name, alignText]}>{displayName}</Text>
-            </View>
-          </TouchableOpacity>
+          profileBlock
         ) : (
-          <Text style={[styles.title, alignText]}>{title}</Text>
+          <AppText variant="h3" align={alignText} style={{ flex: 1 }}>
+            {title}
+          </AppText>
         )}
       </View>
 
-      <View style={[styles.rightContainer, isRTL ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' }]}>
-        <TouchableOpacity
+      <View style={[styles.rightContainer, rowStyle]}>
+        <LangPill
+          lang={lang}
           onPress={toggleLang}
-          style={styles.langBtn}
-          hitSlop={HIT_SLOP}
-          accessibilityRole="button"
           accessibilityLabel={lang === 'en'
             ? (t.accessibility?.switchToArabic || 'Switch to Arabic')
             : (t.accessibility?.switchToEnglish || 'Switch to English')}
-        >
-          <Text style={{ fontSize: 22 }}>{lang === 'en' ? '🇸🇦' : '🇺🇸'}</Text>
-        </TouchableOpacity>
+        />
 
         {isAuthenticated && !showBack && (
           <TouchableOpacity
@@ -129,9 +161,13 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
             accessibilityRole="button"
             accessibilityLabel={t.accessibility?.notifications || 'Notifications'}
           >
-            <Image source={ICONS.bell} style={styles.icon} />
+            <Image source={ICONS.bell} style={styles.bellIcon} />
             {unreadCount > 0 && (
-              <View style={[styles.badge, isRTL ? { left: 8 } : { right: 8 }]} />
+              <View style={[styles.badge, isRTL ? { left: 6 } : { right: 6 }]}>
+                <AppText variant="caption" style={styles.badgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </AppText>
+              </View>
             )}
           </TouchableOpacity>
         )}
@@ -142,25 +178,46 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
-    shadowColor: COLORS.shadow,
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderBottomColor: COLORS.borderLight,
+    ...SHADOWS.sm,
     zIndex: 100,
   },
   leftContainer: { flex: 1, alignItems: 'center', justifyContent: 'flex-start' },
-  rightContainer: { alignItems: 'center' },
-  avatar: { width: 45, height: 45, borderRadius: 22.5, borderWidth: 2, borderColor: COLORS.white, shadowColor: COLORS.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 5 },
+  rightContainer: { alignItems: 'center', gap: SPACING.sm },
+  avatarRing: {
+    padding: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.primaryLight,
+  },
+  logoWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  headerLogo: {
+    width: 36,
+    height: 36,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
   onlineDot: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     width: 12,
     height: 12,
     backgroundColor: COLORS.success,
@@ -168,14 +225,38 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.white,
   },
-  welcome: { color: COLORS.textSecondary, fontSize: 12 },
-  name: { color: COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
-  title: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, flex: 1 },
-  icon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
-  backBtn: { padding: 8 },
-  langBtn: { padding: 8, marginHorizontal: 5 },
-  bellBtn: { padding: 8, backgroundColor: COLORS.gray100, borderRadius: 20, marginLeft: 5 },
-  badge: { position: 'absolute', top: 8, width: 8, height: 8, backgroundColor: COLORS.danger, borderRadius: 4 },
+  icon: { width: 22, height: 22, tintColor: COLORS.textPrimary },
+  iconBtn: {
+    padding: SPACING.sm,
+    backgroundColor: COLORS.surfaceMuted,
+    borderRadius: RADIUS.md,
+  },
+  bellBtn: {
+    padding: SPACING.sm,
+    backgroundColor: COLORS.surfaceMuted,
+    borderRadius: RADIUS.pill,
+    marginStart: SPACING.xs,
+  },
+  bellIcon: { width: 22, height: 22, tintColor: COLORS.textPrimary },
+  badge: {
+    position: 'absolute',
+    top: 2,
+    minWidth: 18,
+    height: 18,
+    backgroundColor: COLORS.danger,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 12,
+  },
 });
 
 export default Header;

@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, RefreshControl, ActivityIndicator, Linking, Alert, Platform, DeviceEventEmitter } from 'react-native';
-import { useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, CommonActions, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
+import { EmptyState, SegmentedTabs } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
+import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 import moment from 'moment-timezone';
 import {
   useGetUpcomingAppointments,
@@ -16,6 +18,7 @@ import socketService from '../utils/socket';
 import { filterUpcomingAppointments } from '../utils/appointmentFilters';
 import { getUserId } from '../utils/userId';
 import { canAuthenticatedUserJoinMobileVideo } from '../utils/videoAccess';
+import { usePreSessionJoin } from '../context/PreSessionJoinContext';
 import Skeleton from '../components/Skeleton';
 
 const CountdownTimer = ({ startTime, clientTz, label }) => {
@@ -50,14 +53,16 @@ const CountdownTimer = ({ startTime, clientTz, label }) => {
 
 const countdownStyles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF8E1',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 8,
+    backgroundColor: COLORS.actionBg,
+    padding: SPACING.sm,
+    borderRadius: RADIUS.sm,
+    marginTop: SPACING.sm,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.actionBorder,
   },
   text: {
-    color: '#F57C00',
+    color: COLORS.actionText,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -65,15 +70,23 @@ const countdownStyles = StyleSheet.create({
 
 const AppointmentsScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const { t, isRTL } = useLanguage();
+  const { requestJoinSession } = usePreSessionJoin();
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('upcoming');
+  const [activeTab, setActiveTab] = useState(route.params?.initialTab || 'upcoming');
   const [refreshing, setRefreshing] = useState(false);
   const [callEndedRooms, setCallEndedRooms] = useState(new Set());
   const [nowTick, setNowTick] = useState(0);
   const attachedRef = useRef(false);
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+
+  useEffect(() => {
+    if (route.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route.params?.initialTab]);
 
   // Real API calls - must be called before any conditional returns
   const {
@@ -258,11 +271,7 @@ const AppointmentsScreen = () => {
     const loggedInUserId = getUserId(user);
     if (!loggedInUserId) return;
 
-    navigation.navigate('VideoConsultation', {
-      meetingRoomId: item.roomId,
-      userID: String(loggedInUserId),
-      userName: user?.fullName || user?.fullNameArabic || item.patient?.fullName || 'Patient',
-    });
+    requestJoinSession({ appointment: item });
   };
 
   const handleAddToCalendar = async (item) => {
@@ -516,12 +525,14 @@ const AppointmentsScreen = () => {
             </View>
           </View>
           <View style={[styles.badge, {
-            backgroundColor: needsVerification ? '#FFF3CD' : (isUpcoming ? COLORS.promo1 : COLORS.promo2)
+            backgroundColor: needsVerification ? COLORS.actionBg : (isUpcoming ? COLORS.primaryLight : COLORS.surfaceMuted),
+            borderWidth: 1,
+            borderColor: needsVerification ? COLORS.actionBorder : COLORS.primaryMuted,
           }]}>
             <Text style={{
-              color: needsVerification ? '#FF9800' : (isUpcoming ? COLORS.primary : COLORS.warning),
+              color: needsVerification ? COLORS.actionText : (isUpcoming ? COLORS.primaryDark : COLORS.warning),
               fontSize: 10,
-              fontWeight: 'bold'
+              fontWeight: '700',
             }}>
               {isUpcoming
                 ? (needsVerification ? (t.appointments?.drApprovalNeeded || 'Dr Approval Needed') : (t.appointments?.confirmed || 'Confirmed'))
@@ -750,40 +761,29 @@ const AppointmentsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={t.appointments?.myAppointments || 'My Appointments'} showBack={false} />
-      <View style={{ padding: 20, flex: 1 }}>
+      <Header title={t.appointments?.myAppointments || 'My Appointments'} showProfile />
+      <View style={styles.body}>
 
-        {/* Tabs */}
-        <View style={[styles.tabContainer, rowStyle]}>
-          <TouchableOpacity
-            onPress={() => setActiveTab('upcoming')}
-            style={[styles.tabBtn, activeTab === 'upcoming' && styles.activeTabBtn]}
-          >
-            <Text style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
-              {t.appointments?.upcoming || 'Upcoming'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab('pending')}
-            style={[styles.tabBtn, activeTab === 'pending' && styles.activeTabBtn]}
-          >
-            <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-              {t.appointments?.pending || 'Pending'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <SegmentedTabs
+          isRTL={isRTL}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { key: 'upcoming', label: t.appointments?.upcoming || 'Upcoming' },
+            { key: 'pending', label: t.appointments?.pending || 'Pending' },
+          ]}
+        />
 
         {showLoading ? (
-          <View style={{ padding: 16 }}>
-            {[0, 1, 2].map(i => (
-              <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 15 }}>
+          <View style={styles.listPad}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={styles.skeletonCard}>
                 <View style={{ flexDirection: rowStyle.flexDirection, alignItems: 'center' }}>
-                  <Skeleton width={55} height={55} style={{ borderRadius: 27.5 }} />
-                  <View style={{ flex: 1, marginHorizontal: 12 }}>
-                    <Skeleton width="70%" height={14} style={{ marginBottom: 8 }} />
+                  <Skeleton width={52} height={52} style={{ borderRadius: 26 }} />
+                  <View style={{ flex: 1, marginHorizontal: SPACING.md }}>
+                    <Skeleton width="70%" height={14} style={{ marginBottom: SPACING.sm }} />
                     <Skeleton width="50%" height={12} />
-                    <Skeleton width="40%" height={12} style={{ marginTop: 6 }} />
+                    <Skeleton width="40%" height={12} style={{ marginTop: SPACING.sm }} />
                   </View>
                 </View>
               </View>
@@ -794,7 +794,7 @@ const AppointmentsScreen = () => {
             data={filteredData}
             renderItem={renderCard}
             keyExtractor={listKeyExtractor}
-            contentContainerStyle={{ paddingTop: 10 }}
+            contentContainerStyle={styles.listContent}
             removeClippedSubviews
             initialNumToRender={8}
             maxToRenderPerBatch={6}
@@ -808,13 +808,23 @@ const AppointmentsScreen = () => {
               />
             }
             ListEmptyComponent={
-              <View style={{ alignItems: 'center', marginTop: 50 }}>
-                <Text style={{ color: COLORS.gray500 }}>
-                  {activeTab === 'upcoming'
+              <EmptyState
+                icon={ICONS.calendar}
+                title={
+                  activeTab === 'upcoming'
                     ? (t.appointments?.noUpcoming || 'No upcoming appointments')
-                    : (t.appointments?.noPending || 'No pending appointments')}
-                </Text>
-              </View>
+                    : (t.appointments?.noPending || 'No pending appointments')
+                }
+                subtitle={
+                  activeTab === 'upcoming'
+                    ? (t.appointments?.noUpcomingHint || 'Book a session with a therapist to get started')
+                    : (t.appointments?.noPendingHint || 'Pending appointments awaiting payment will appear here')
+                }
+                actionLabel={activeTab === 'upcoming' ? (t.home?.quickBook || 'Find Therapist') : undefined}
+                onAction={activeTab === 'upcoming'
+                  ? () => navigation.navigate('Main', { screen: 'SearchTab' })
+                  : undefined}
+              />
             }
           />
         )}
@@ -826,24 +836,37 @@ const AppointmentsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-
-  // Tabs
-  tabContainer: { backgroundColor: COLORS.gray300, borderRadius: 12, padding: 4, marginBottom: 20, flexDirection: 'row' },
-  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
-  activeTabBtn: { backgroundColor: COLORS.primary, shadowColor: COLORS.shadow, shadowOpacity: 0.1, elevation: 2 },
-  tabText: { fontSize: 14, color: COLORS.gray700, fontWeight: '600' },
-  activeTabText: { color: 'white', fontWeight: 'bold' },
+  body: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, flex: 1 },
+  listPad: { paddingTop: SPACING.sm },
+  listContent: { paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl, flexGrow: 1 },
+  skeletonCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.sm,
+    ...cardBorder,
+  },
 
   // Card
-  card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 15, marginBottom: 15, shadowColor: COLORS.shadow, shadowOpacity: 0.05, elevation: 2 },
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.sm,
+    ...cardBorder,
+  },
   rescheduledPayBanner: {
-    backgroundColor: '#FFF3E0',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 12,
+    backgroundColor: COLORS.actionBg,
+    padding: SPACING.md,
+    borderRadius: RADIUS.sm,
+    marginTop: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.actionBorder,
   },
   rescheduledPayText: {
-    color: '#E65100',
+    color: COLORS.actionText,
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
@@ -873,9 +896,10 @@ const styles = StyleSheet.create({
   },
   pendingPayBtn: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.sm,
+    ...SHADOWS.primary,
   },
   pendingPayBtnText: {
     color: '#fff',
@@ -883,12 +907,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cardHeader: { alignItems: 'center' },
-  avatar: { width: 55, height: 55, borderRadius: 27.5 },
-  docName: { fontWeight: 'bold', fontSize: 15, color: COLORS.textPrimary },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: COLORS.primaryLight,
+  },
+  docName: { fontWeight: '700', fontSize: 15, color: COLORS.textPrimary },
   docType: { color: COLORS.textSecondary, fontSize: 12, marginVertical: 2 },
-  dateTime: { color: COLORS.primary, fontSize: 12, fontWeight: '600' },
+  dateTime: { color: COLORS.primaryDark, fontSize: 12, fontWeight: '600' },
   timezoneText: { color: COLORS.gray500, fontSize: 10, marginTop: 2, fontStyle: 'italic' },
-  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIUS.pill },
 
   // Buttons
   actionRow: {
@@ -901,14 +931,14 @@ const styles = StyleSheet.create({
 
   // Cancel Button - Outline style with danger color
   cancelBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: COLORS.danger || '#ef4444',
-    backgroundColor: 'transparent',
+    borderColor: COLORS.danger,
+    backgroundColor: COLORS.surface,
     minWidth: 80,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   cancelBtnText: {
     color: COLORS.danger || '#ef4444',
@@ -918,14 +948,14 @@ const styles = StyleSheet.create({
 
   // Reschedule Button - Outline style with secondary color
   rescheduleBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: COLORS.secondary || '#65BED6',
-    backgroundColor: 'transparent',
+    borderColor: COLORS.secondary,
+    backgroundColor: COLORS.surface,
     minWidth: 95,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   rescheduleBtnText: {
     color: COLORS.secondary || '#65BED6',
@@ -935,31 +965,26 @@ const styles = StyleSheet.create({
 
   // Add to Calendar Button - Outline style
   calendarBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: '#8B5CF6',
-    backgroundColor: 'transparent',
-    alignItems: 'center'
+    borderColor: COLORS.primaryMuted,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
   },
   calendarBtnText: {
-    color: '#8B5CF6',
+    color: COLORS.primaryDark,
     fontSize: 12,
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
-  // Join Call Button - Solid primary button (full width)
   joinBtn: {
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3
+    ...SHADOWS.primary,
   },
   joinBtnDisabled: {
     backgroundColor: COLORS.gray400,
@@ -975,15 +1000,17 @@ const styles = StyleSheet.create({
 
   // "Starts in Xh Ym" badge (before join window)
   startsInBadge: {
-    marginTop: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 8,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: RADIUS.sm,
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: COLORS.primaryMuted,
   },
   startsInText: {
-    color: '#4F46E5',
+    color: COLORS.primaryDark,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1014,17 +1041,13 @@ const styles = StyleSheet.create({
 
   // Pay Now Button - Solid primary button
   payBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     minWidth: 100,
     alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3
+    ...SHADOWS.primary,
   },
   payBtnText: {
     color: 'white',

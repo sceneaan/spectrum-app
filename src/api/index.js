@@ -6,7 +6,7 @@ import { DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { queryClient } from './queryClient';
 import i18n from '../config/i18n';
-import socketService from '../utils/socket';
+import { refreshAccessToken } from '../utils/tokenRefresh';
 
 // ==========================================
 // CONFIGURATION
@@ -15,23 +15,8 @@ import socketService from '../utils/socket';
 const defaultTimeout = 60000;
 const uploadTimeout = 120000;
 
-// Token refresh state management
-let isRefreshing = false;
-let failedQueue = [];
-
 // Offline detection state
 let isNetworkOffline = false;
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
 
 // Retry configuration
 const RETRY_CONFIG = {
@@ -144,48 +129,18 @@ axios.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axios(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        // Read refresh token directly from Zustand store
-        const { refreshToken } = useAuthStore.getState();
-
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        const response = await axios.post('/auth/refresh-token', { refreshToken });
-        const { token: newToken, refreshToken: newRefreshToken, expiresIn } = response.data.data;
-
-        // Update Zustand store directly — persist middleware writes to EncryptedStorage automatically
-        useAuthStore.getState().updateTokens(newToken, newRefreshToken, expiresIn);
-        socketService.updateToken();
-
-        processQueue(null, newToken);
-
+        const newToken = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return axios(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
         const refreshStatus = refreshError.response?.status;
         if (refreshStatus === 401 || refreshStatus === 403) {
           await handleSessionExpired();
         }
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

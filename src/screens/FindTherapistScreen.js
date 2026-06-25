@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
+import useScreenHeaderMode from '../navigation/useScreenHeaderMode';
 import Header from '../components/Header';
 import TherapistCard from '../components/search/TherapistCard';
 import TherapistCardSkeleton from '../components/search/TherapistCardSkeleton';
@@ -9,6 +10,7 @@ import FilterBottomSheet from '../components/search/FilterBottomSheet';
 import { useProviderSearch } from '../hooks/useProviderSearch';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
+import { SPACING, RADIUS, cardBorder } from '../theme';
 
 const FILTER_TYPES = [
     { key: 'issues', label: 'Issues', labelAr: 'المشاكل', icon: 'brain', color: '#8B5CF6' },
@@ -31,6 +33,7 @@ const FindTherapistScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { t, isRTL } = useLanguage();
+    const headerMode = useScreenHeaderMode();
 
     const preSelectedIssue = route.params?.preSelectedIssue;
 
@@ -157,7 +160,12 @@ const FindTherapistScreen = () => {
 
     return (
         <View style={styles.container}>
-            <Header showProfile title={t?.findTherapist?.title || t?.tabs?.doctors || 'Find a Therapist'} />
+            <Header
+                showBack={headerMode.showBack}
+                onBack={headerMode.onBack}
+                showProfile={headerMode.showProfile}
+                title={t?.findTherapist?.title || t?.tabs?.doctors || 'Find a Therapist'}
+            />
 
             {/* Search bar */}
             <View style={[styles.searchBar, rowStyle]}>
@@ -290,13 +298,15 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.background,
     },
     searchBar: {
-        backgroundColor: COLORS.gray100,
-        borderRadius: 20,
-        marginHorizontal: 20,
-        marginTop: 8,
-        paddingHorizontal: 14,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.pill,
+        marginHorizontal: SPACING.xl,
+        marginTop: SPACING.sm,
+        paddingHorizontal: SPACING.lg,
         alignItems: 'center',
-        height: 42,
+        height: 48,
+        borderWidth: 1,
+        borderColor: COLORS.borderLight,
     },
     searchIcon: {
         width: 18,

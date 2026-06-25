@@ -1,124 +1,144 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ScrollView, TouchableOpacity, Image, StyleSheet, Modal, TouchableWithoutFeedback, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Modal,
+  TouchableWithoutFeedback,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next'; // Use standard i18n hook
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeviceEventEmitter } from 'react-native';
 import Header from '../components/Header';
+import { EmptyState } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
-import { 
-    useGetNotifications, 
-    useMarkNotificationsAsRead, 
-    useMarkAllNotificationsAsRead, 
-    useDeleteAllNotifications,
-    NOTIFICATION_TYPES
+import {
+  useGetNotifications,
+  useMarkNotificationsAsRead,
+  useMarkAllNotificationsAsRead,
+  useDeleteAllNotifications,
+  NOTIFICATION_TYPES,
 } from '../api/services/Notification.Service';
 import { requestUserPermission } from '../utils/notificationService';
 import { useAuthStore } from '../store/authStore';
 import { FCM_FOREGROUND_EVENT } from '../utils/fcmEvents';
-import { DeviceEventEmitter } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '../store/LanguageContext';
+import { daysAgo } from '../utils/timeFormatter';
 import Skeleton from '../components/Skeleton';
+import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
+
+const ARABIC_RE = /[\u0600-\u06FF]/;
+
+const containsArabic = (text) => ARABIC_RE.test(text || '');
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
-  const { t, i18n } = useTranslation();
-  const isRTL = i18n.dir() === 'rtl';
+  const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  
+
   const [filter, setFilter] = useState('all');
   const [menuVisible, setMenuVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const { user, token } = useAuthStore();
 
-  // API Hooks
   const {
-      data: notificationsData,
-      isLoading,
-      refetch,
-      isRefetching,
-      error: notificationsError
-  } = useGetNotifications({ limit: 50 }); // Fetch first 50
-
+    data: notificationsData,
+    isLoading,
+    refetch,
+  } = useGetNotifications({ limit: 50 });
 
   const { mutate: markRead } = useMarkNotificationsAsRead();
   const { mutate: markAllRead, isPending: isMarkingAll } = useMarkAllNotificationsAsRead();
   const { mutate: deleteAll, isPending: isDeletingAll } = useDeleteAllNotifications();
 
-  // Request Permission on Mount & Listen for Updates
   useEffect(() => {
-      const initNotifications = async () => {
-          await requestUserPermission(user?.role || 'patient', token);
-      };
-      initNotifications();
+    const initNotifications = async () => {
+      await requestUserPermission(user?.role || 'patient', token);
+    };
+    initNotifications();
 
-      const sub = DeviceEventEmitter.addListener(FCM_FOREGROUND_EVENT, () => {
-          refetch();
-      });
+    const sub = DeviceEventEmitter.addListener(FCM_FOREGROUND_EVENT, () => {
+      refetch();
+    });
 
-      return () => sub.remove();
+    return () => sub.remove();
   }, [refetch, user?.role, token]);
 
   const notifications = notificationsData?.docs || [];
 
-  // --- RTL STYLES ---
-  const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
-  const alignText = { textAlign: isRTL ? 'right' : 'left' };
+  const rowStyle = useMemo(
+    () => ({ flexDirection: isRTL ? 'row-reverse' : 'row' }),
+    [isRTL],
+  );
 
-  const cardBorder = isRTL
+  const accentBorder = isRTL
     ? { borderRightWidth: 4, borderRightColor: COLORS.primary }
     : { borderLeftWidth: 4, borderLeftColor: COLORS.primary };
 
-  const iconMargin = isRTL ? { marginLeft: 10 } : { marginRight: 10 };
+  const filterOptions = useMemo(() => [
+    { key: 'all', label: t.notifications?.categories?.all || 'All' },
+    { key: NOTIFICATION_TYPES.APPOINTMENT, label: t.notifications?.categories?.appointments || 'Appointments' },
+    { key: NOTIFICATION_TYPES.WALLET, label: t.notifications?.categories?.wallet || 'Wallet' },
+    { key: NOTIFICATION_TYPES.PAYMENT, label: t.notifications?.categories?.payments || 'Payments' },
+    { key: NOTIFICATION_TYPES.MESSAGE, label: t.notifications?.categories?.messages || 'Messages' },
+    { key: NOTIFICATION_TYPES.PRESCRIPTION, label: t.notifications?.categories?.prescriptions || 'Prescriptions' },
+    { key: NOTIFICATION_TYPES.MEDICAL_REPORT, label: t.notifications?.categories?.reports || 'Reports' },
+    { key: NOTIFICATION_TYPES.REFILL_REQUEST, label: t.notifications?.categories?.refills || 'Refills' },
+    { key: NOTIFICATION_TYPES.SURVEY, label: t.notifications?.categories?.surveys || 'Surveys' },
+    { key: NOTIFICATION_TYPES.SYSTEM, label: t.notifications?.categories?.system || 'System' },
+  ], [t]);
 
-  // --- LOGIC ---
+  const orderedFilters = isRTL ? [...filterOptions].reverse() : filterOptions;
+
   const getFilteredData = () => {
     if (filter === 'all') return notifications;
-    // Map UI filter to API types if necessary
-    return notifications.filter(n => n.type === filter);
-  };
-
-  const getCount = (type) => {
-      if (type === 'all') return notifications.length;
-      return notifications.filter(n => n.type === type).length;
+    return notifications.filter((n) => n.type === filter);
   };
 
   const handleMarkAllRead = () => {
     markAllRead(null, {
-        onSuccess: () => {
-            setMenuVisible(false);
-            Alert.alert(t('notifications.success') || 'Success', t('notifications.allNotificationsMarkedRead') || 'All notifications marked as read');
-        }
+      onSuccess: () => {
+        setMenuVisible(false);
+        Alert.alert(
+          t.notifications?.success || 'Success',
+          t.notifications?.allNotificationsMarkedRead || 'All notifications marked as read',
+        );
+      },
     });
   };
 
   const handleDeleteAll = () => {
     Alert.alert(
-        t('notifications.deleteAll') || 'Delete All',
-        t('notifications.deleteAllConfirmation') || 'Are you sure you want to delete all notifications?',
-        [
-            { text: t('notifications.cancel') || 'Cancel', style: 'cancel' },
-            {
-                text: t('notifications.delete') || 'Delete',
-                style: 'destructive',
-                onPress: () => {
-                    deleteAll(null, {
-                        onSuccess: () => {
-                            setMenuVisible(false);
-                        }
-                    });
-                }
-            }
-        ]
+      t.notifications?.deleteAll || 'Delete All',
+      t.notifications?.deleteAllConfirmation || 'Are you sure you want to delete all notifications?',
+      [
+        { text: t.notifications?.cancel || 'Cancel', style: 'cancel' },
+        {
+          text: t.notifications?.delete || 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteAll(null, {
+              onSuccess: () => setMenuVisible(false),
+            });
+          },
+        },
+      ],
     );
   };
 
   const handleNotificationPress = (item) => {
-      if (!item.read) {
-          markRead([item._id]);
-      }
-      // Navigate based on type if needed
-      // if (item.type === NOTIFICATION_TYPES.APPOINTMENT) navigation.navigate('AppointmentsScreen');
+    if (!item.read) {
+      markRead([item._id]);
+    }
   };
 
   const onRefresh = useCallback(async () => {
@@ -127,15 +147,27 @@ const NotificationsScreen = () => {
     setRefreshing(false);
   }, [refetch]);
 
-  // --- RENDER ITEMS ---
+  const getIcon = (type) => {
+    switch (type) {
+      case NOTIFICATION_TYPES.WALLET: return ICONS.wallet;
+      case NOTIFICATION_TYPES.APPOINTMENT: return ICONS.calendar;
+      case NOTIFICATION_TYPES.PRESCRIPTION: return ICONS.prescription;
+      case NOTIFICATION_TYPES.MESSAGE: return ICONS.inbox;
+      case NOTIFICATION_TYPES.MEDICAL_REPORT: return ICONS.report;
+      case NOTIFICATION_TYPES.REFILL_REQUEST: return ICONS.refill;
+      case NOTIFICATION_TYPES.SURVEY: return ICONS.star;
+      case NOTIFICATION_TYPES.PAYMENT: return ICONS.creditCard;
+      default: return ICONS.bell;
+    }
+  };
+
   const FilterChip = ({ label, type }) => {
     const isActive = filter === type;
-    // const count = `(${getCount(type)})`; 
-
     return (
       <TouchableOpacity
         style={[styles.chip, isActive && styles.chipActive]}
         onPress={() => setFilter(type)}
+        activeOpacity={0.8}
       >
         <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
           {label}
@@ -145,144 +177,174 @@ const NotificationsScreen = () => {
   };
 
   const NotificationItem = ({ item }) => {
-    const timeAgo = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = Math.floor((now - date) / 1000 / 60); // minutes
-        if (diff < 60) return `${diff}m ago`;
-        if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-        return date.toLocaleDateString();
-    };
-
-    const getIcon = (type) => {
-        switch(type) {
-            case NOTIFICATION_TYPES.WALLET: return ICONS.wallet;
-            case NOTIFICATION_TYPES.APPOINTMENT: return ICONS.calendar;
-            case NOTIFICATION_TYPES.PRESCRIPTION: return ICONS.prescription;
-            case NOTIFICATION_TYPES.MESSAGE: return ICONS.message || ICONS.bell;
-            case NOTIFICATION_TYPES.MEDICAL_REPORT: return ICONS.medicalReport || ICONS.bell;
-            case NOTIFICATION_TYPES.REFILL_REQUEST: return ICONS.refill || ICONS.bell;
-            case NOTIFICATION_TYPES.SURVEY: return ICONS.star || ICONS.bell;
-            default: return ICONS.bell; // Fallback
-        }
-    };
+    const body = item.description || item.body || '';
+    const textRTL = isRTL || containsArabic(item.title) || containsArabic(body);
+    const align = textRTL ? 'right' : 'left';
+    const writingDirection = textRTL ? 'rtl' : 'ltr';
 
     return (
-        <TouchableOpacity onPress={() => handleNotificationPress(item)}>
-            <View style={[styles.card, !item.read && cardBorder]}>
-            <View style={[styles.cardRow, rowStyle]}>
-                {/* Icon Container */}
-                <View style={styles.iconContainer}>
-                <Image
-                    source={getIcon(item.type)} 
-                    style={styles.icon}
-                />
-                {!item.read && <View style={[styles.unreadDot, isRTL ? { left: 0 } : { right: 0 }]} />}
-                </View>
+      <TouchableOpacity onPress={() => handleNotificationPress(item)} activeOpacity={0.85}>
+        <View style={[styles.card, !item.read && accentBorder, SHADOWS.sm, cardBorder]}>
+          <View style={[styles.cardRow, rowStyle]}>
+            <View style={styles.iconContainer}>
+              <Image source={getIcon(item.type)} style={styles.icon} resizeMode="contain" />
+              {!item.read && (
+                <View style={[styles.unreadDot, isRTL ? { left: 2 } : { right: 2 }]} />
+              )}
+            </View>
 
-                {/* Content */}
-                <View style={{ flex: 1, marginHorizontal: 12 }}>
-                <View style={[rowStyle, { justifyContent: 'space-between', alignItems: 'center' }]}>
-                    <Text style={[styles.cardTitle, alignText, !item.read && { fontWeight: 'bold' }]}>{item.title}</Text>
-                    <Text style={styles.timeText}>{timeAgo(item.createdAt)}</Text>
-                </View>
-                <Text style={[styles.cardDesc, alignText]} numberOfLines={2}>
-                    {item.description || item.body} 
+            <View style={styles.cardBody}>
+              <View style={[styles.cardHeaderRow, rowStyle]}>
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { textAlign: align, writingDirection },
+                    !item.read && styles.cardTitleUnread,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {item.title}
                 </Text>
-                </View>
+                <Text style={[styles.timeText, { textAlign: textRTL ? 'left' : 'right' }]}>
+                  {daysAgo(item.createdAt)}
+                </Text>
+              </View>
+              <Text
+                style={[styles.cardDesc, { textAlign: align, writingDirection }]}
+                numberOfLines={3}
+              >
+                {body}
+              </Text>
             </View>
-            </View>
-        </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
   if (isLoading && !refreshing) {
-      return (
-          <View style={styles.container}>
-              <View style={{ padding: 16 }}>
-                  {[0, 1, 2, 3, 4].map(i => (
-                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 15, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10 }}>
-                          <Skeleton width={45} height={45} style={{ borderRadius: 22.5, marginRight: 12 }} />
-                          <View style={{ flex: 1 }}>
-                              <Skeleton width="70%" height={13} style={{ marginBottom: 8 }} />
-                              <Skeleton width="85%" height={11} />
-                          </View>
-                      </View>
-                  ))}
+    return (
+      <View style={styles.container}>
+        <Header
+          title={t.notifications?.title || 'Notifications'}
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.listPad}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <View key={i} style={[styles.skeletonCard, rowStyle]}>
+              <Skeleton width={48} height={48} style={{ borderRadius: 24 }} />
+              <View style={{ flex: 1, marginHorizontal: SPACING.md }}>
+                <Skeleton width="70%" height={13} style={{ marginBottom: SPACING.sm }} />
+                <Skeleton width="85%" height={11} />
               </View>
-          </View>
-      );
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
+
+  const listBottomPad = 100 + insets.bottom;
 
   return (
     <View style={styles.container}>
-      <Header title={t('notifications.title') || "Notifications"} showBack onBack={() => navigation.goBack()} />
+      <Header
+        title={t.notifications?.title || 'Notifications'}
+        showBack
+        onBack={() => navigation.goBack()}
+      />
 
-      {/* Filter Bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={[rowStyle, { gap: 8, paddingHorizontal: 16 }]}>
-        <FilterChip label={t('notifications.categories.all') || 'All'} type="all" />
-        <FilterChip label={t('notifications.categories.appointments') || 'Appointments'} type={NOTIFICATION_TYPES.APPOINTMENT} />
-        <FilterChip label={t('notifications.categories.wallet') || 'Wallet'} type={NOTIFICATION_TYPES.WALLET} />
-        <FilterChip label={t('notifications.categories.payments') || 'Payments'} type={NOTIFICATION_TYPES.PAYMENT} />
-        <FilterChip label={t('notifications.categories.messages') || 'Messages'} type={NOTIFICATION_TYPES.MESSAGE} />
-        <FilterChip label={t('notifications.categories.prescriptions') || 'Prescriptions'} type={NOTIFICATION_TYPES.PRESCRIPTION} />
-        <FilterChip label={t('notifications.categories.reports') || 'Reports'} type={NOTIFICATION_TYPES.MEDICAL_REPORT} />
-        <FilterChip label={t('notifications.categories.refills') || 'Refills'} type={NOTIFICATION_TYPES.REFILL_REQUEST} />
-        <FilterChip label={t('notifications.categories.surveys') || 'Surveys'} type={NOTIFICATION_TYPES.SURVEY} />
-        <FilterChip label={t('notifications.categories.system') || 'System'} type={NOTIFICATION_TYPES.SYSTEM} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={[styles.filterContent, rowStyle]}
+      >
+        {orderedFilters.map((opt) => (
+          <FilterChip key={opt.key} label={opt.label} type={opt.key} />
+        ))}
       </ScrollView>
 
-      {/* List */}
       <FlatList
         data={getFilteredData()}
         keyExtractor={(item, index) => item._id || index.toString()}
-        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPad }]}
         renderItem={({ item }) => <NotificationItem item={item} />}
-        removeClippedSubviews={true}
-        initialNumToRender={15}
-        maxToRenderPerBatch={10}
-        refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
-        }
-        ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 50 }}>
-            <Image source={ICONS.emptyBox} style={{ width: 60, height: 60, opacity: 0.3, marginBottom: 10 }} />
-            <Text style={{ color: COLORS.gray500 }}>{t('notifications.noNotifications') || "No notifications yet"}</Text>
-          </View>
-        }
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        refreshControl={(
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+          />
+        )}
+        ListEmptyComponent={(
+          <EmptyState
+            icon={ICONS.emptyBox}
+            title={t.notifications?.noNotifications || 'No notifications yet'}
+            subtitle={t.notifications?.allCaughtUp}
+          />
+        )}
       />
 
-      {/* FAB */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: 30 + insets.bottom }, isRTL ? { left: 20 } : { right: 20 }]}
+        style={[
+          styles.fab,
+          { bottom: SPACING.xl + insets.bottom },
+          isRTL ? { left: SPACING.xl } : { right: SPACING.xl },
+        ]}
         onPress={() => setMenuVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel={t.notifications?.markAllAsRead || 'Actions'}
       >
-        <Image source={ICONS.dots} style={{ width: 24, height: 24, tintColor: 'white' }} />
+        <Image source={ICONS.dots} style={styles.fabIcon} />
       </TouchableOpacity>
 
-      {/* Menu Modal */}
       <Modal transparent visible={menuVisible} animationType="fade">
         <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
           <View style={styles.modalOverlay}>
-            <View style={[
-              styles.menuContainer,
-              isRTL ? { left: 20, bottom: 90 + insets.bottom } : { right: 20, bottom: 90 + insets.bottom }
-            ]}>
-              <TouchableOpacity style={[styles.menuItem, rowStyle]} onPress={handleMarkAllRead} disabled={isMarkingAll}>
-                {isMarkingAll ? <ActivityIndicator size="small" color={COLORS.primary} /> : (
-                    <>
-                    <Image source={ICONS.checkDouble} style={[styles.menuIcon, iconMargin]} />
-                    <Text style={styles.menuText}>{t('notifications.markAllAsRead') || "Mark all as read"}</Text>
-                    </>
+            <View
+              style={[
+                styles.menuContainer,
+                isRTL
+                  ? { left: SPACING.xl, bottom: 88 + insets.bottom }
+                  : { right: SPACING.xl, bottom: 88 + insets.bottom },
+              ]}
+            >
+              <TouchableOpacity
+                style={[styles.menuItem, rowStyle]}
+                onPress={handleMarkAllRead}
+                disabled={isMarkingAll}
+              >
+                {isMarkingAll ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <>
+                    <Image source={ICONS.checkDouble} style={styles.menuIcon} />
+                    <Text style={[styles.menuText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                      {t.notifications?.markAllAsRead || 'Mark all as read'}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
               <View style={styles.divider} />
-              <TouchableOpacity style={[styles.menuItem, rowStyle]} onPress={handleDeleteAll} disabled={isDeletingAll}>
-                {isDeletingAll ? <ActivityIndicator size="small" color={COLORS.danger} /> : (
-                    <>
-                    <Image source={ICONS.trash} style={[styles.menuIcon, iconMargin, { tintColor: COLORS.danger }]} />
-                    <Text style={[styles.menuText, { color: COLORS.danger }]}>{t('notifications.deleteAll') || "Delete All"}</Text>
-                    </>
+              <TouchableOpacity
+                style={[styles.menuItem, rowStyle]}
+                onPress={handleDeleteAll}
+                disabled={isDeletingAll}
+              >
+                {isDeletingAll ? (
+                  <ActivityIndicator size="small" color={COLORS.danger} />
+                ) : (
+                  <>
+                    <Image source={ICONS.trash} style={[styles.menuIcon, { tintColor: COLORS.danger }]} />
+                    <Text style={[styles.menuText, styles.menuTextDanger, { textAlign: isRTL ? 'right' : 'left' }]}>
+                      {t.notifications?.deleteAll || 'Delete All'}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
             </View>
@@ -294,35 +356,168 @@ const NotificationsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-
-  filterContainer: { paddingHorizontal: 20, paddingVertical: 10, gap: 10 },
-  filterScroll: { marginVertical: 10, flexGrow: 0 },
-  chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.gray300, height: 36, justifyContent: 'center' },
-  chipActive: { backgroundColor: COLORS.primary },
-  chipText: { fontSize: 13, color: COLORS.gray700 },
-  chipTextActive: { color: COLORS.white, fontWeight: 'bold' },
-
-  card: { backgroundColor: COLORS.white, padding: 15, borderRadius: 16, marginBottom: 10, shadowColor: COLORS.shadow, shadowOpacity: 0.05, elevation: 2 },
-  cardRow: { alignItems: 'flex-start' },
-
-  iconContainer: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: COLORS.gray100, alignItems: 'center', justifyContent: 'center' },
-  icon: { width: 20, height: 20, tintColor: COLORS.gray700 },
-  unreadDot: { position: 'absolute', top: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.warning, borderWidth: 1.5, borderColor: COLORS.white },
-
-  cardTitle: { fontSize: 14, color: COLORS.textPrimary, flex: 1 },
-  timeText: { fontSize: 11, color: COLORS.gray500 },
-  cardDesc: { fontSize: 13, color: COLORS.gray600, marginTop: 4, lineHeight: 18 },
-
-  fab: { position: 'absolute', bottom: 30, width: 55, height: 55, borderRadius: 28, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', elevation: 5, shadowColor: COLORS.primary, shadowOpacity: 0.4 },
-
-  modalOverlay: { flex: 1, backgroundColor: COLORS.overlay },
-  menuContainer: { position: 'absolute', backgroundColor: COLORS.white, borderRadius: 12, padding: 5, width: 180, elevation: 5 },
-  menuItem: { padding: 12, alignItems: 'center' },
-  menuIcon: { width: 18, height: 18, tintColor: COLORS.gray700 },
-  menuText: { fontSize: 14, color: COLORS.textPrimary },
-  divider: { height: 1, backgroundColor: COLORS.gray200 }
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  filterScroll: {
+    marginVertical: SPACING.sm,
+    flexGrow: 0,
+    maxHeight: 48,
+  },
+  filterContent: {
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
+    alignItems: 'center',
+  },
+  chip: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceMuted,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: COLORS.white,
+  },
+  listPad: {
+    padding: SPACING.lg,
+  },
+  listContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+  },
+  skeletonCard: {
+    alignItems: 'center',
+    padding: SPACING.lg,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.md,
+    ...cardBorder,
+  },
+  card: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.md,
+  },
+  cardRow: {
+    alignItems: 'flex-start',
+    gap: SPACING.md,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  icon: {
+    width: 24,
+    height: 24,
+    tintColor: COLORS.primaryDark,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.warning,
+    borderWidth: 1.5,
+    borderColor: COLORS.white,
+  },
+  cardBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cardHeaderRow: {
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  cardTitle: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    lineHeight: 20,
+  },
+  cardTitleUnread: {
+    fontWeight: '700',
+  },
+  timeText: {
+    fontSize: 11,
+    color: COLORS.gray500,
+    flexShrink: 0,
+    marginTop: 2,
+    maxWidth: 96,
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  fab: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.md,
+  },
+  fabIcon: {
+    width: 22,
+    height: 22,
+    tintColor: COLORS.white,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+  },
+  menuContainer: {
+    position: 'absolute',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.xs,
+    minWidth: 200,
+    ...SHADOWS.md,
+  },
+  menuItem: {
+    padding: SPACING.md,
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  menuIcon: {
+    width: 18,
+    height: 18,
+    tintColor: COLORS.textSecondary,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+  },
+  menuTextDanger: {
+    color: COLORS.danger,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+  },
 });
 
 export default NotificationsScreen;

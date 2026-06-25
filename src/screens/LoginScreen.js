@@ -1,12 +1,36 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, I18nManager, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  I18nManager,
+  Linking,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { AppButton, AppCard, AppText, TrustBadge } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { useSendOtp, useResendOtp } from '../api/services/Auth.Service';
+import { SPACING, RADIUS } from '../theme';
 import haptics from '../utils/haptics';
+import {
+  normalizeSaudiPhone,
+  validateLoginEmail,
+  validateLoginPhone,
+} from '../utils/loginValidation';
+
+const LOGIN_TABS = [
+  { key: 'email', labelKey: 'auth.login.email' },
+  { key: 'phone', labelKey: 'auth.login.phone' },
+];
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -15,8 +39,11 @@ const LoginScreen = () => {
   const { targetScreen, targetParams } = route.params || {};
   const isRTL = I18nManager.isRTL || i18n.language === 'ar';
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+  const alignText = isRTL ? 'right' : 'left';
 
-  const [input, setInput] = useState('');
+  const [activeTab, setActiveTab] = useState('email');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
 
   const { mutate: sendOtp, isPending: isSending } = useSendOtp();
@@ -24,75 +51,84 @@ const LoginScreen = () => {
 
   const isLoading = isSending || isResending;
 
-  const validateInput = (value) => {
-    // Basic validation for phone or email (matching backend validation)
-    const saudiPhoneRegex = /^(\+?966)[1-9][0-9]{8}$/; // Saudi phone: +966 or 966 followed by 9 digits (first digit 1-9)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    setError('');
+    if (tab === 'email') {
+      setPhone('');
+    } else {
+      setEmail('');
+    }
+  };
 
-    if (!value.trim()) {
-      return t('auth.otp.fieldMustBeFilled') || "Input is required";
+  const buildIdentifier = () => {
+    if (activeTab === 'phone') {
+      return normalizeSaudiPhone(phone);
     }
-    // Strip spaces from phone numbers before validating
-    const cleanedValue = value.replace(/\s/g, '');
-    if (!saudiPhoneRegex.test(cleanedValue) && !emailRegex.test(value.trim())) {
-      return t('auth.otp.invalidEmailOrPhoneFormat') || "Invalid email or phone format (Saudi phone: +9665XXXXXXXX)";
+    return email.trim();
+  };
+
+  const validateActiveInput = () => {
+    if (activeTab === 'phone') {
+      return validateLoginPhone(phone, t);
     }
-    return '';
+    return validateLoginEmail(email, t);
+  };
+
+  const submitOtp = (identifier) => {
+    const payload = {
+      emailOrPhone: identifier,
+      preferredLanguage: i18n.language || 'en',
+    };
+
+    sendOtp(payload, {
+      onSuccess: () => {
+        navigation.navigate('OTPScreen', {
+          emailOrPhone: identifier,
+          targetScreen,
+          targetParams,
+        });
+      },
+      onError: (err) => {
+        const errorMessage = err.response?.data?.message || err.message || t('auth.otp.error') || 'Failed to send OTP';
+
+        if (errorMessage === 'auth.isNotVerified' || errorMessage === 'isNotVerified' || errorMessage.includes('not verified')) {
+          resendOtp({ emailOrPhone: identifier }, {
+            onSuccess: () => {
+              navigation.navigate('OTPScreen', {
+                emailOrPhone: identifier,
+                targetScreen,
+                targetParams,
+              });
+            },
+            onError: (resendErr) => {
+              const msg = resendErr.response?.data?.message || resendErr.message || t('auth.otp.error');
+              Alert.alert(t('common.error') || 'Error', msg);
+            },
+          });
+        } else {
+          setError(errorMessage);
+        }
+      },
+    });
   };
 
   const handleContinue = () => {
     haptics.light();
-    const validationError = validateInput(input);
+    const validationError = validateActiveInput();
     if (validationError) {
       haptics.error();
       setError(validationError);
       return;
     }
+
     setError('');
+    submitOtp(buildIdentifier());
+  };
 
-    // Normalize phone numbers by stripping spaces for consistent +966XXXXXXXXX format
-    const normalizedInput = input.includes('@') ? input.trim() : input.replace(/\s/g, '');
-
-    const payload = {
-        emailOrPhone: normalizedInput,
-        preferredLanguage: i18n.language || 'en'
-    };
-
-    sendOtp(payload, {
-        onSuccess: (response) => {
-          // Navigate to OTPScreen with the input credential and any target params
-          navigation.navigate('OTPScreen', {
-             emailOrPhone: normalizedInput,
-             targetScreen,
-             targetParams
-          });
-        },
-        onError: (err) => {
-          const errorMessage = err.response?.data?.message || err.message || t('auth.otp.error') || "Failed to send OTP";
-
-          // Check if error is "isNotVerified" - user exists but not verified yet
-          if (errorMessage === 'auth.isNotVerified' || errorMessage === 'isNotVerified' || errorMessage.includes('not verified')) {
-            // Use ResendOtp endpoint for unverified users
-            const resendPayload = { emailOrPhone: normalizedInput };
-            resendOtp(resendPayload, {
-              onSuccess: () => {
-                navigation.navigate('OTPScreen', {
-                  emailOrPhone: normalizedInput,
-                  targetScreen,
-                  targetParams
-                });
-              },
-              onError: (resendErr) => {
-                const resendErrorMsg = resendErr.response?.data?.message || resendErr.message || "Failed to resend OTP";
-                Alert.alert(t('alerts.error') || "Error", resendErrorMsg);
-              }
-            });
-          } else {
-            // Show error for other cases
-            Alert.alert(t('alerts.error') || "Error", errorMessage);
-          }
-        }
-    });
+  const handlePhoneChange = (text) => {
+    setPhone(text.replace(/\D/g, '').slice(0, 9));
+    if (error) setError('');
   };
 
   const handleGoBack = () => {
@@ -106,69 +142,129 @@ const LoginScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-
-        {/* Header Back Button */}
         <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}>
           <Image source={ICONS.back} style={styles.backIcon} />
         </TouchableOpacity>
 
         <View style={styles.content}>
-          {/* Logo */}
           <View style={styles.logoContainer}>
-            <Image 
-              source={require('../assets/images/spectrum_logo.png')} 
-              style={styles.logo} 
-              resizeMode="contain" 
+            <Image
+              source={require('../assets/images/spectrum_logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
             />
           </View>
 
-          {/* Texts */}
-          <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {t('auth.login.welcome') || "Welcome Back"}
-          </Text>
-          <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {t('auth.login.signInMessage') || "Sign in to continue to Spectrum"}
-          </Text>
+          <AppText variant="h1" align="center" color={COLORS.primary} style={styles.title}>
+            {t('auth.login.welcome') || 'Welcome Back'}
+          </AppText>
+          <AppText variant="bodySmall" align="center" style={styles.subtitle}>
+            {t('auth.login.signInMessage') || 'Sign in to continue to Spectrum'}
+          </AppText>
 
-          {/* Form Card */}
-          <View style={styles.card}>
-            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
-              {t('auth.login.emailOrPhoneLabel') || "Email or Phone Number*"}
-            </Text>
-
-            <View style={[styles.inputContainer, rowStyle, error ? { borderColor: 'red' } : {}]}>
-              <Image source={ICONS.profile} style={[styles.inputIcon, { marginEnd: 10 }]} />
-              <TextInput
-                style={[styles.input, { textAlign: 'left', writingDirection: 'ltr' }]}
-                placeholder={t('auth.login.phonePlaceholder') || "Enter phone +9665XXXXXXXX or email"}
-                placeholderTextColor={COLORS.gray500}
-                value={input}
-                onChangeText={(text) => {
-                    setInput(text);
-                    if(error) setError('');
-                }}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-            {error ? <Text style={{color: 'red', marginBottom: 10, fontSize: 12, textAlign: isRTL ? 'right' : 'left'}}>{error}</Text> : null}
-
-            <TouchableOpacity
-              style={[styles.btn, isLoading && { backgroundColor: COLORS.gray500 }]}
-              onPress={handleContinue}
-              disabled={isLoading}
-            >
-              <Text style={styles.btnText}>
-                  {isLoading ? (t('common.loading') || "Loading...") : (t('auth.login.continue') || "Continue")}
-              </Text>
-            </TouchableOpacity>
+          <View style={[styles.trustRow, rowStyle]}>
+            <TrustBadge icon={ICONS.shield} label={t('auth.login.trustSecure') || 'Secure'} isRTL={isRTL} />
+            <TrustBadge icon={ICONS.verified} label={t('auth.login.trustLicensed') || 'Licensed'} isRTL={isRTL} />
+            <TrustBadge icon={ICONS.lock} label={t('auth.login.trustPrivate') || 'Private'} isRTL={isRTL} />
           </View>
 
-          {/* Footer */}
-          <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <Text style={styles.footerText}>{t('auth.login.needHelp') || "Need help?"} </Text>
+          <AppCard style={styles.card}>
+            <View style={[styles.tabBar, styles.ltrField]}>
+              {LOGIN_TABS.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.tab, isActive && styles.tabActive]}
+                    onPress={() => switchTab(tab.key)}
+                    activeOpacity={0.85}
+                  >
+                    <AppText
+                      variant="bodySmall"
+                      align="center"
+                      color={isActive ? COLORS.primary : COLORS.gray500}
+                      style={isActive ? styles.tabLabelActive : styles.tabLabel}
+                    >
+                      {t(tab.labelKey)}
+                    </AppText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.inputSection}>
+              {activeTab === 'email' ? (
+                <>
+                  <AppText variant="label" align={alignText} style={styles.fieldLabel}>
+                    {t('auth.login.email')}
+                  </AppText>
+                  <View style={[styles.inputContainer, rowStyle, error ? styles.inputError : null]}>
+                    <Image source={ICONS.profile} style={[styles.inputIcon, { marginEnd: SPACING.md }]} />
+                    <TextInput
+                      style={[styles.input, styles.ltrField]}
+                      placeholder={t('auth.login.emailPlaceholder')}
+                      placeholderTextColor={COLORS.gray500}
+                      value={email}
+                      onChangeText={(text) => {
+                        setEmail(text);
+                        if (error) setError('');
+                      }}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      autoComplete="email"
+                      textContentType="emailAddress"
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <AppText variant="label" align={alignText} style={styles.fieldLabel}>
+                    {t('auth.login.phone')}
+                  </AppText>
+                  <View
+                    style={[styles.inputContainer, styles.phoneRow, styles.ltrField, error ? styles.inputError : null]}
+                  >
+                    <View style={styles.countryCodeBox}>
+                      <Text style={styles.flagEmoji}>🇸🇦</Text>
+                      <AppText variant="bodySmall" style={styles.countryCodeText}>+966</AppText>
+                    </View>
+                    <TextInput
+                      style={[styles.input, styles.phoneInput, styles.ltrField]}
+                      placeholder={t('auth.login.phonePlaceholder')}
+                      placeholderTextColor={COLORS.gray500}
+                      value={phone}
+                      onChangeText={handlePhoneChange}
+                      keyboardType="phone-pad"
+                      autoComplete="tel"
+                      textContentType="telephoneNumber"
+                      maxLength={9}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+
+            {error ? (
+              <AppText variant="caption" color={COLORS.danger} align={alignText} style={styles.errorText}>
+                {error}
+              </AppText>
+            ) : null}
+
+            <AppButton
+              title={isLoading ? (t('common.loading') || 'Loading...') : (t('auth.login.continue') || 'Continue')}
+              onPress={handleContinue}
+              disabled={isLoading}
+              loading={isLoading}
+              style={{ marginTop: SPACING.sm }}
+            />
+          </AppCard>
+
+          <View style={[styles.footer, rowStyle]}>
+            <AppText variant="bodySmall">{t('auth.login.needHelp') || 'Need help?'}</AppText>
             <TouchableOpacity onPress={() => Linking.openURL('mailto:support@spectrumclinics.care')}>
-              <Text style={styles.linkText}>{t('auth.login.contactSupport') || "Contact Support"}</Text>
+              <AppText variant="bodySmall" color={COLORS.primary} style={styles.linkText}>
+                {t('auth.login.contactSupport') || 'Contact Support'}
+              </AppText>
             </TouchableOpacity>
           </View>
         </View>
@@ -179,30 +275,107 @@ const LoginScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  backBtn: { padding: 20 },
-  backIcon: { width: 24, height: 24, tintColor: COLORS.gray700 },
-  
-  content: { flex: 1, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
-  
-  logoContainer: { marginBottom: 30 },
-  logo: { width: 150, height: 80 },
-
-  title: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 10 },
-  subtitle: { fontSize: 14, color: COLORS.gray600, marginBottom: 40 },
-
-  card: { width: '100%', backgroundColor: COLORS.white, padding: 20, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
-  label: { fontSize: 14, color: COLORS.gray700, marginBottom: 10 },
-  
-  inputContainer: { alignItems: 'center', borderWidth: 1, borderColor: COLORS.gray300, borderRadius: 8, paddingHorizontal: 15, height: 50, marginBottom: 20 },
-  inputIcon: { width: 20, height: 20, tintColor: COLORS.gray800 },
-  input: { flex: 1, color: COLORS.textPrimary },
-
-  btn: { backgroundColor: COLORS.primary, borderRadius: 8, height: 50, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
-
-  footer: { flexDirection: 'row', marginTop: 40 },
-  footerText: { color: COLORS.gray600 },
-  linkText: { color: COLORS.primary, fontWeight: '600' }
+  backBtn: { padding: SPACING.xl },
+  backIcon: { width: 22, height: 22, tintColor: COLORS.textPrimary },
+  content: {
+    flex: 1,
+    paddingHorizontal: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: SPACING.xxxl,
+  },
+  logoContainer: { marginBottom: SPACING.xxl },
+  logo: { width: 140, height: 72 },
+  title: { marginBottom: SPACING.sm },
+  subtitle: { marginBottom: SPACING.xl, paddingHorizontal: SPACING.lg },
+  trustRow: {
+    justifyContent: 'center',
+    marginBottom: SPACING.xxl,
+    gap: SPACING.xs,
+  },
+  card: { width: '100%' },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surfaceMuted,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.xs,
+    marginBottom: SPACING.lg,
+    gap: SPACING.xs,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: SPACING.sm + 2,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  tabLabel: { fontWeight: '600' },
+  tabLabelActive: { fontWeight: '700' },
+  inputSection: {
+    minHeight: 96,
+  },
+  fieldLabel: { marginBottom: SPACING.md },
+  inputContainer: {
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 14,
+    minHeight: 52,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.surfaceMuted,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    overflow: 'hidden',
+  },
+  countryCodeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    borderRightWidth: 1.5,
+    borderRightColor: COLORS.border,
+    alignSelf: 'stretch',
+    backgroundColor: COLORS.surface,
+    gap: SPACING.xs,
+  },
+  flagEmoji: { fontSize: 18 },
+  countryCodeText: { fontWeight: '600', color: COLORS.textPrimary },
+  inputError: { borderColor: COLORS.danger },
+  inputIcon: { width: 20, height: 20, tintColor: COLORS.textSecondary },
+  input: {
+    flex: 1,
+    minWidth: 0,
+    color: COLORS.textPrimary,
+    fontSize: 16,
+    padding: 0,
+    margin: 0,
+  },
+  phoneInput: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 14,
+  },
+  ltrField: {
+    textAlign: 'left',
+    writingDirection: 'ltr',
+  },
+  errorText: { marginBottom: SPACING.sm },
+  footer: {
+    marginTop: SPACING.xxxl,
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  linkText: { fontWeight: '600' },
 });
 
 export default LoginScreen;

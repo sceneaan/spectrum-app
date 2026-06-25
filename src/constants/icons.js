@@ -76,11 +76,10 @@ export default {
   defaultAvatar: require('../assets/icons/defaultAvatar.png'),
   guestAvatar: require('../assets/icons/defaultAvatar.png'),
 
-  // --- Camera ---
+  // --- Camera / video calls ---
   camera: require('../assets/icons/camera.png'),
-
-  // --- Therapist Search & Profile ---
-  video: require('../assets/icons/video.png'),
+  // video.png on disk is a send/paper-plane glyph — use camera for all video-call UI
+  video: require('../assets/icons/camera.png'),
   audio: require('../assets/icons/audio.png'),
   chat: require('../assets/icons/chat.png'),
   verified: require('../assets/icons/verified.png'),

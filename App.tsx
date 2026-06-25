@@ -5,9 +5,12 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/api/queryClient';
 import { LanguageProvider } from './src/store/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import { requestUserPermission } from './src/utils/notificationService'; // Import the utility
-import { useAuthStore } from './src/store/authStore'; // Import the auth store
+import { requestUserPermission } from './src/utils/notificationService';
+import { useAuthStore } from './src/store/authStore';
+import { useAuthSessionRefresh } from './src/hooks/useAuthSessionRefresh';
 import notifee, { AndroidImportance } from '@notifee/react-native';
+import { initPushNotificationHandlers } from './src/utils/pushNotificationHandlers';
+import { ensureAppointmentNotificationChannel } from './src/utils/pushNotifications';
 import BootSplash from "react-native-bootsplash";
 import * as Sentry from '@sentry/react-native';
 import { SessionTimeoutProvider } from './src/components/SessionTimeoutProvider'; // Session timeout for healthcare compliance
@@ -34,38 +37,13 @@ import './src/config/i18n'; // Initialize i18n configuration
 import socketService from './src/utils/socket';
 
 const App = () => {
-  const { user, token, isAuthenticated, isTokenExpiringSoon, refreshToken, updateTokens } = useAuthStore();
+  const { user, token, isAuthenticated } = useAuthStore();
+
+  useAuthSessionRefresh();
 
   useEffect(() => {
     BootSplash.hide({ fade: true });
   }, []);
-
-  // Proactively refresh token 5 minutes before it expires
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const interval = setInterval(async () => {
-      if (isTokenExpiringSoon() && refreshToken) {
-        try {
-          const response = await fetch(`${require('./src/config').environmentUrls.api_url}/auth/refresh-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken }),
-          });
-          if (response.ok) {
-            const data = await response.json();
-            const { token: newToken, refreshToken: newRefreshToken, expiresIn } = data.data;
-            updateTokens(newToken, newRefreshToken, expiresIn);
-            socketService.updateToken();
-          }
-        } catch {
-          // Proactive refresh failed — reactive refresh on next 401 will handle it
-        }
-      }
-    }, 60 * 1000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated, refreshToken, updateTokens]);
 
   // Keep socket connected for authenticated users (appointments, video, chat)
   useEffect(() => {
@@ -90,6 +68,10 @@ const App = () => {
   }, [user, token]); // Re-run if user or token changes (e.g., after login/logout)
 
   useEffect(() => {
+    initPushNotificationHandlers();
+  }, []);
+
+  useEffect(() => {
     const createNotificationChannel = async () => {
       try {
         await notifee.createChannel({
@@ -97,6 +79,7 @@ const App = () => {
           name: 'Default Channel',
           importance: AndroidImportance.HIGH,
         });
+        await ensureAppointmentNotificationChannel();
       } catch (error) {
         console.error('Error creating notification channel:', error);
       }

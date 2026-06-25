@@ -37,6 +37,7 @@ import ElmVerificationRequiredScreen from '../screens/ElmVerificationRequiredScr
 import OnboardingScreen from '../screens/OnboardingScreen';
 
 import TabNavigator from './TabNavigator';
+import { PreSessionJoinProvider } from '../context/PreSessionJoinContext';
 import SearchScreen from '../screens/SearchScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import SupportCardScreen from '../screens/SupportCardScreen';
@@ -146,7 +147,7 @@ const ElmVerifiedTabNavigator = ({ navigation }) => {
     }
   }, [isAuthenticated, user, navigation]);
 
-  return <TabNavigator />;
+  return <PreSessionJoinProvider><TabNavigator /></PreSessionJoinProvider>;
 };
 
 const linking = {
@@ -223,9 +224,9 @@ const AppNavigator = () => {
     return unsubscribe;
   }, []);
 
-  // Navigate to login after inactivity timeout
+  // Navigate to login after session timeout or token expiry
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener('auth:sessionTimeout', () => {
+    const navigateToLogin = () => {
       socketService.disconnect();
       if (navigationRef.isReady()) {
         navigationRef.reset({
@@ -233,8 +234,15 @@ const AppNavigator = () => {
           routes: [{ name: 'LoginScreen' }],
         });
       }
-    });
-    return () => sub.remove();
+    };
+
+    const timeoutSub = DeviceEventEmitter.addListener('auth:sessionTimeout', navigateToLogin);
+    const expiredSub = DeviceEventEmitter.addListener('auth:sessionExpired', navigateToLogin);
+
+    return () => {
+      timeoutSub.remove();
+      expiredSub.remove();
+    };
   }, []);
 
   // Wait until we know the initial route before mounting NavigationContainer

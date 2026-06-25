@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard, I18nManager } from 'react-native';
+import { View, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard, I18nManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { AppButton, AppCard, AppText } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
+import { SPACING, RADIUS } from '../theme';
 import { useVerifyOtp, useResendOtp } from '../api/services/Auth.Service'; // Import auth service hooks
 import { useCreateAppointment } from '../api/services/Appointment.Service';
 import { useAuthStore } from '../store/authStore'; // Import auth store
@@ -329,96 +331,106 @@ const OTPScreen = () => {
     return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
 
+  const alignText = isRTL ? 'right' : 'center';
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.content}>
-          
-          {/* Logo */}
+
           <View style={styles.logoContainer}>
-            <Image 
-              source={require('../assets/images/spectrum_logo.png')} 
-              style={styles.logo} 
-              resizeMode="contain" 
+            <Image
+              source={require('../assets/images/spectrum_logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
             />
           </View>
 
-          <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {t('auth.otp.enterCode') || "Enter Verification Code"}
-          </Text>
-          <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+          <AppText variant="h1" align={alignText} color={COLORS.primary} style={styles.title}>
+            {t('auth.otp.enterCode') || 'Enter Verification Code'}
+          </AppText>
+          <AppText variant="bodySmall" align={alignText} style={styles.subtitle}>
             {t('auth.otp.codeSentTo') || "We've sent a code to "}
-            <Text style={{color: COLORS.primary, writingDirection: 'ltr'}}>{emailOrPhone}</Text>
-          </Text>
+            <AppText variant="bodySmall" color={COLORS.primary} style={{ writingDirection: 'ltr' }}>
+              {emailOrPhone}
+            </AppText>
+          </AppText>
 
-          {/* Card */}
-          <View style={styles.card}>
-            {/* OTP Boxes - Always LTR */}
+          <AppCard style={styles.card}>
             <View style={[styles.otpContainer, { direction: 'ltr', flexDirection: 'row' }]}>
               {otp.map((digit, i) => (
                 <TextInput
                   key={i}
                   ref={(ref) => (inputRefs.current[i] = ref)}
-                  style={[styles.otpBox, otp[i] && styles.otpBoxActive, error && {borderColor: 'red'}, { writingDirection: 'ltr', textAlign: 'center' }]}
+                  style={[
+                    styles.otpBox,
+                    otp[i] && styles.otpBoxActive,
+                    error && styles.otpBoxError,
+                    { writingDirection: 'ltr', textAlign: 'center' },
+                  ]}
                   keyboardType="number-pad"
-                  maxLength={6} // Allow paste of full OTP into any box
+                  maxLength={6}
                   onChangeText={(text) => handleOtpChange(text, i)}
                   onKeyPress={(e) => handleKeyPress(e, i)}
                   value={digit}
-                  // SMS/Email Auto-fill support
-                  // iOS: textContentType="oneTimeCode" on ALL boxes
                   textContentType="oneTimeCode"
-                  // Android: autoComplete="sms-otp" on ALL boxes
                   autoComplete="sms-otp"
-                  // Enable paste context menu
                   contextMenuHidden={false}
                 />
               ))}
             </View>
 
-            {error ? <Text style={{color: 'red', marginBottom: 10, fontSize: 12, textAlign: isRTL ? 'right' : 'left'}}>{error}</Text> : null}
+            {error ? (
+              <AppText variant="caption" color={COLORS.danger} align={alignText} style={styles.errorText}>
+                {error}
+              </AppText>
+            ) : null}
 
             {timer > 0 ? (
-                <Text style={[styles.timer, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  {t('auth.otp.expiresIn') || "OTP will expire in"} {formatTime(timer)}
-                </Text>
+              <AppText variant="caption" align={alignText} color={COLORS.primaryDark} style={styles.timer}>
+                {t('auth.otp.expiresIn') || 'OTP will expire in'} {formatTime(timer)}
+              </AppText>
             ) : (
-                <Text style={[styles.timer, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  {t('auth.otp.expired') || "OTP Expired"}
-                </Text>
+              <AppText variant="caption" align={alignText} color={COLORS.warning} style={styles.timer}>
+                {t('auth.otp.expired') || 'OTP Expired'}
+              </AppText>
             )}
 
-            <TouchableOpacity
-              style={[styles.btn, (isVerifying || isCreatingAppointment) && { backgroundColor: COLORS.gray500 }]}
+            <AppButton
+              title={
+                isVerifying ? (t('common.verifying') || 'Verifying...')
+                  : isCreatingAppointment ? (t('auth.otp.creatingAppointment') || 'Creating appointment...')
+                    : (t('auth.otp.verify') || 'Verify')
+              }
               onPress={handleVerify}
               disabled={isVerifying || isCreatingAppointment || otp.join('').length !== 6}
-            >
-              <Text style={styles.btnText}>
-                  {isVerifying ? (t('common.verifying') || "Verifying...") :
-                   isCreatingAppointment ? "Creating appointment..." :
-                   (t('auth.otp.verify') || "Verify")}
-              </Text>
-            </TouchableOpacity>
-          </View>
+              loading={isVerifying || isCreatingAppointment}
+            />
+          </AppCard>
 
-          {/* Footer */}
           <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <Text style={styles.footerText}>{t('auth.otp.didNotReceive') || "Didn't receive code?"} </Text>
-            <TouchableOpacity
-                onPress={handleResend}
-                disabled={isResending || !canResend}
-            >
-              <Text style={[styles.linkText, (!canResend || isResending) && { color: COLORS.gray500 }]}>
-                  {isResending ? (t('common.resending') || "Resending...") : (t('auth.otp.resend') || "Resend")}
-              </Text>
+            <AppText variant="bodySmall">{t('auth.otp.didNotReceive') || "Didn't receive code?"}</AppText>
+            <TouchableOpacity onPress={handleResend} disabled={isResending || !canResend}>
+              <AppText
+                variant="bodySmall"
+                color={(!canResend || isResending) ? COLORS.gray500 : COLORS.primary}
+                style={styles.linkText}
+              >
+                {isResending ? (t('common.resending') || 'Resending...') : (t('auth.otp.resend') || 'Resend')}
+              </AppText>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={{ marginTop: 20 }} onPress={() => navigation.goBack()}>
-             <View style={{flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center'}}>
-                <Image source={ICONS.back} style={{width: 14, height: 14, tintColor: COLORS.gray700, marginRight: isRTL ? 0 : 5, marginLeft: isRTL ? 5 : 0}} />
-                <Text style={styles.backText}>{t('auth.otp.backToLogin') || "Back to login"}</Text>
-             </View>
+          <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
+            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }}>
+              <Image
+                source={ICONS.back}
+                style={[styles.backIcon, isRTL ? { marginStart: SPACING.sm } : { marginEnd: SPACING.sm }]}
+              />
+              <AppText variant="bodySmall" color={COLORS.textSecondary}>
+                {t('auth.otp.backToLogin') || 'Back to login'}
+              </AppText>
+            </View>
           </TouchableOpacity>
 
         </View>
@@ -429,29 +441,51 @@ const OTPScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  content: { flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' },
-  
-  logoContainer: { marginBottom: 40 },
-  logo: { width: 150, height: 80 },
-
-  title: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 10, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: COLORS.gray600, marginBottom: 40, textAlign: 'center' },
-
-  card: { width: '100%', backgroundColor: COLORS.white, padding: 25, borderRadius: 16, elevation: 1 },
-  
-  otpContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  otpBox: { width: 45, height: 50, borderWidth: 1, borderColor: COLORS.gray300, borderRadius: 8, fontSize: 18, color: COLORS.textPrimary },
-  otpBoxActive: { borderColor: COLORS.primary, color: COLORS.primary },
-
-  timer: { fontSize: 12, color: COLORS.primary, textAlign: 'center', marginBottom: 20 },
-
-  btn: { backgroundColor: COLORS.primary, borderRadius: 8, height: 50, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
-
-  footer: { flexDirection: 'row', marginTop: 40 },
-  footerText: { color: COLORS.gray600 },
-  linkText: { color: COLORS.primary, fontWeight: '600' },
-  backText: { color: COLORS.gray700, fontSize: 14 }
+  content: {
+    flex: 1,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoContainer: { marginBottom: SPACING.xxxl },
+  logo: { width: 140, height: 72 },
+  title: { marginBottom: SPACING.sm },
+  subtitle: { marginBottom: SPACING.xxxl, paddingHorizontal: SPACING.lg },
+  card: { width: '100%' },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xl,
+    gap: SPACING.sm,
+  },
+  otpBox: {
+    flex: 1,
+    maxWidth: 48,
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    fontSize: 20,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.surfaceMuted,
+  },
+  otpBoxActive: {
+    borderColor: COLORS.primary,
+    color: COLORS.primaryDark,
+    backgroundColor: COLORS.primaryLight,
+  },
+  otpBoxError: { borderColor: COLORS.danger },
+  errorText: { marginBottom: SPACING.md },
+  timer: { marginBottom: SPACING.xl, fontWeight: '500' },
+  footer: {
+    marginTop: SPACING.xxxl,
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  linkText: { fontWeight: '600' },
+  backLink: { marginTop: SPACING.xl },
+  backIcon: { width: 14, height: 14, tintColor: COLORS.textSecondary },
 });
 
 export default OTPScreen;

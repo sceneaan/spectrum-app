@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
 import RiyalText from '../RiyalText';
+import { RADIUS, SHADOWS, cardBorder } from '../../theme';
 import moment from 'moment-timezone';
 
 const TherapistCard = ({ provider, isRTL, t, onPress }) => {
@@ -187,15 +188,12 @@ const TherapistCard = ({ provider, isRTL, t, onPress }) => {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: COLORS.white,
-        borderRadius: 16,
-        elevation: 3,
-        shadowColor: COLORS.shadow,
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 8,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.lg,
         marginBottom: 14,
         overflow: 'hidden',
+        ...SHADOWS.sm,
+        ...cardBorder,
     },
     accentBar: {
         height: 4,
