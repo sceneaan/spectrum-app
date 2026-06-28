@@ -111,43 +111,6 @@ jobs:
       - name: Set iOS build number
         run: cd ios && agvtool new-version -all ${{ github.run_number }}
 
-      - name: Fix xcframework signatures
-        run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/ci.keychain"
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep "Apple Distribution" | head -1 | awk -F'"' '{print $2}')
-          echo "Keychain identity: '$IDENTITY'"
-
-          for FW in \
-            ios/ipworks3ds_sdk_8845.xcframework \
-            ios/OPPWAMobile.xcframework; do
-
-            if [ ! -d "$FW" ]; then
-              echo "SKIP (not found): $FW"
-              continue
-            fi
-
-            echo "=== $FW ==="
-            echo "Before: $(codesign -dv "$FW" 2>&1 | grep -E 'TeamIdentifier|Authority' | head -2 || echo 'no signature')"
-
-            # Strip outer xcframework signature
-            codesign --remove-signature "$FW" 2>/dev/null || true
-            rm -rf "$FW/_CodeSignature"
-
-            # Strip + re-sign each inner .framework
-            find "$FW" -name "*.framework" -type d | while read INNER; do
-              codesign --remove-signature "$INNER" 2>/dev/null || true
-              rm -rf "$INNER/_CodeSignature"
-              [ -n "$IDENTITY" ] && codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$INNER" \
-                && echo "  signed: $INNER" || echo "  FAILED: $INNER"
-            done
-
-            # Re-sign outer xcframework
-            [ -n "$IDENTITY" ] && codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$FW" \
-              && echo "outer signed" || echo "outer FAILED"
-
-            echo "After: $(codesign -dv "$FW" 2>&1 | grep -E 'TeamIdentifier|Authority' | head -2 || echo 'unsigned')"
-          done
-
       - name: Build archive
         run: |
           xcodebuild \
@@ -160,11 +123,7 @@ jobs:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROFILE_NAME }}" \
             ENABLE_SIGNATURE_AGGREGATION=NO \
-            archive 2>&1 | tee /tmp/xcodebuild.log; exit ${PIPESTATUS[0]}
-
-      - name: Show build errors
-        if: failure()
-        run: grep -E "^(error:|.+error:)" /tmp/xcodebuild.log | head -80
+            archive
 
       - name: Export IPA
         run: |
