@@ -113,11 +113,17 @@ jobs:
 
       - name: Re-sign embedded xcframeworks
         run: |
-          find ios -name "*.xcframework" -type d | while read fw; do
+          KEYCHAIN_PATH="$RUNNER_TEMP/ci.keychain"
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Apple Distribution" | head -1 | awk -F'"' '{print $2}')
+          echo "Signing identity: $IDENTITY"
+          find ios -name "*.xcframework" -maxdepth 2 -type d | while read fw; do
+            echo "Processing: $fw"
+            find "$fw" -name "_CodeSignature" -type d -exec rm -rf {} + 2>/dev/null || true
             find "$fw" -name "*.framework" -type d | while read inner; do
-              codesign --force --sign "Apple Distribution" "$inner" 2>/dev/null || true
+              echo "  Signing: $inner"
+              codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$inner" && echo "  OK" || echo "  FAILED"
             done
-            codesign --force --sign "Apple Distribution" "$fw" 2>/dev/null || true
+            codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$fw" && echo "OK: $fw" || echo "FAILED: $fw"
           done
 
       - name: Build archive
