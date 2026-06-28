@@ -58,7 +58,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   ios-prod:
     name: iOS → App Store
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 

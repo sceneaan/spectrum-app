@@ -80,6 +80,13 @@ target 'Spectrum' do
         config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
         config.build_settings['CODE_SIGN_IDENTITY'] = ''
       end
+      # fmt uses consteval patterns that break under Apple Clang 18+ (Xcode 26).
+      # C++17 makes FMT_CONSTEVAL fall back to constexpr, avoiding the error.
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
+      end
     end
   end
 end
