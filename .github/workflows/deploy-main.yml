@@ -111,19 +111,25 @@ jobs:
       - name: Set iOS build number
         run: cd ios && agvtool new-version -all ${{ github.run_number }}
 
-      - name: Re-sign embedded xcframeworks
+      - name: Fix xcframework signatures
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/ci.keychain"
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Apple Distribution" | head -1 | awk -F'"' '{print $2}')
-          echo "Signing identity: $IDENTITY"
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep "Apple Distribution" | head -1 | awk -F'"' '{print $2}')
+          echo "Identity: '$IDENTITY'"
           find ios -name "*.xcframework" -maxdepth 2 -type d | while read fw; do
-            echo "Processing: $fw"
-            find "$fw" -name "_CodeSignature" -type d -exec rm -rf {} + 2>/dev/null || true
-            find "$fw" -name "*.framework" -type d | while read inner; do
-              echo "  Signing: $inner"
-              codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$inner" && echo "  OK" || echo "  FAILED"
+            echo "=== $fw ==="
+            find "$fw" -name "_CodeSignature" -type d | while read sig; do
+              echo "  Stripping: $sig"
+              rm -rf "$sig"
             done
-            codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$fw" && echo "OK: $fw" || echo "FAILED: $fw"
+            if [ -n "$IDENTITY" ]; then
+              find "$fw" -name "*.framework" -type d | while read inner; do
+                codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$inner" && echo "  Signed: $inner" || echo "  Failed: $inner"
+              done
+              codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN_PATH" "$fw" && echo "  Signed xcfw" || echo "  Failed xcfw"
+            else
+              echo "  No identity found — leaving unsigned (Xcode will sign during archive)"
+            fi
           done
 
       - name: Build archive
