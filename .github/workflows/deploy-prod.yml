@@ -31,6 +31,9 @@ jobs:
       - name: Decode release keystore
         run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/spectrum-release.keystore
 
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
       # versionCode and versionName come from build.gradle — bump them manually before pushing to prod
       - name: Build release AAB
         run: |
@@ -75,7 +78,10 @@ jobs:
           restore-keys: ${{ runner.os }}-pods-
 
       - name: Install CocoaPods dependencies
-        run: cd ios && pod install --repo-update
+        run: |
+          cd ios
+          pod update Sentry/HybridSDK --no-repo-update
+          pod install --repo-update
 
       # Import the Apple Distribution certificate into a temporary keychain
       - name: Import distribution certificate
