@@ -23,6 +23,7 @@ export default {
   // Status
   success: '#4CAF50',
   danger: '#FF5252',
+  error: '#FF5252',
   warning: '#FFA500',
 
   // Grays

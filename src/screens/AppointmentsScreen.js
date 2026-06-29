@@ -19,7 +19,11 @@ import { filterUpcomingAppointments } from '../utils/appointmentFilters';
 import { getUserId } from '../utils/userId';
 import { canAuthenticatedUserJoinMobileVideo } from '../utils/videoAccess';
 import { usePreSessionJoin } from '../context/PreSessionJoinContext';
-import Skeleton from '../components/Skeleton';
+import { interpolate } from '../utils/localeHelpers';
+import {
+  openAppleCalendarWithEvent,
+  openGoogleCalendarWithEvent,
+} from '../utils/calendarEvent';
 
 const CountdownTimer = ({ startTime, clientTz, label }) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -45,7 +49,7 @@ const CountdownTimer = ({ startTime, clientTz, label }) => {
   return (
     <View style={countdownStyles.container}>
       <Text style={countdownStyles.text}>
-        ⏱ {label || 'Call starts in'} {timeLeft.minutes}m {timeLeft.seconds}s
+        ⏱ {label || ''} {timeLeft.minutes}m {timeLeft.seconds}s
       </Text>
     </View>
   );
@@ -92,13 +96,15 @@ const AppointmentsScreen = () => {
   const {
     data: upcomingAppointmentsRaw,
     isLoading: upcomingLoading,
-    refetch: refetchUpcoming
+    isError: upcomingError,
+    refetch: refetchUpcoming,
   } = useGetUpcomingAppointments();
 
   const {
     data: pendingAppointments,
     isLoading: pendingLoading,
-    refetch: refetchPending
+    isError: pendingError,
+    refetch: refetchPending,
   } = useGetPendingAppointmentsGroupedByDoctor();
 
   // State for filtered appointments (to avoid re-filtering on every render)
@@ -216,6 +222,15 @@ const AppointmentsScreen = () => {
     : (pendingAppointments || []);
 
   const isLoading = activeTab === 'upcoming' ? upcomingLoading : pendingLoading;
+  const hasLoadError = activeTab === 'upcoming' ? upcomingError : pendingError;
+
+  const handleRetryLoad = () => {
+    if (activeTab === 'upcoming') {
+      refetchUpcoming();
+    } else {
+      refetchPending();
+    }
+  };
 
   const navigateToCheckout = (appointment) => {
     const appointmentId = appointment.appointmentId || appointment._id || appointment.id;
@@ -261,8 +276,8 @@ const AppointmentsScreen = () => {
 
     if (!canAuthenticatedUserJoinMobileVideo(user)) {
       Alert.alert(
-        t('auth.otp.accessDenied') || 'Access Denied',
-        t('videoConsultation.providersUseWeb')
+        t.auth?.otp?.accessDenied || 'Access Denied',
+        t.videoConsultation?.providersUseWeb
           || 'Providers must join video sessions from the Spectrum website at the clinic, not the mobile app.',
       );
       return;
@@ -294,23 +309,46 @@ const AppointmentsScreen = () => {
       const endDate = endTime.utc().format('YYYYMMDDTHHmmss') + 'Z';
 
       if (Platform.OS === 'ios') {
-        // iOS: Use calshow URL scheme or Google Calendar
         Alert.alert(
           t.appointments?.addToCalendar || 'Add to Calendar',
           t.appointments?.chooseCalendarApp || 'Choose calendar app',
           [
             {
               text: t.appointments?.appleCalendar || 'Apple Calendar',
-              onPress: () => {
-                // Open Apple Calendar app
-                Linking.openURL('calshow:');
+              onPress: async () => {
+                try {
+                  await openAppleCalendarWithEvent({
+                    title,
+                    startTime,
+                    endTime,
+                    notes,
+                    location,
+                  });
+                } catch {
+                  Alert.alert(
+                    t.common?.error || 'Error',
+                    t.appointments?.calendarAddFailed || 'Could not add to calendar',
+                  );
+                }
               },
             },
             {
               text: t.appointments?.googleCalendar || 'Google Calendar',
-              onPress: () => {
-                const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startDate}/${endDate}&details=${encodeURIComponent(notes)}&location=${encodeURIComponent(location)}`;
-                Linking.openURL(googleUrl);
+              onPress: async () => {
+                try {
+                  await openGoogleCalendarWithEvent({
+                    title,
+                    startTime,
+                    endTime,
+                    notes,
+                    location,
+                  });
+                } catch {
+                  Alert.alert(
+                    t.common?.error || 'Error',
+                    t.appointments?.calendarAddFailed || 'Could not add to calendar',
+                  );
+                }
               },
             },
             {
@@ -551,9 +589,9 @@ const AppointmentsScreen = () => {
             })}
           >
             <Text style={styles.rescheduledPayText}>
-              {isRTL
-                ? `يرجى إتمام الدفع قبل ${moment(item.expiresAt).format('h:mm A')} للحفاظ على موعدك`
-                : `Complete payment by ${moment(item.expiresAt).format('h:mm A')} to keep your slot`}
+              {interpolate(t.appointments?.paymentDeadlineBanner || t.home?.paymentDeadlineBanner, {
+                time: moment(item.expiresAt).format('h:mm A'),
+              })}
             </Text>
           </TouchableOpacity>
         )}
@@ -574,6 +612,8 @@ const AppointmentsScreen = () => {
               style={styles.joinBtn}
               onPress={() => handleJoinCall(item)}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t.appointments?.joinVideoCall || t.appointments?.joinCall || 'Join Call'}
             >
               <Text style={styles.joinBtnText}>
                 {isBeforeStartGlobal
@@ -808,23 +848,33 @@ const AppointmentsScreen = () => {
               />
             }
             ListEmptyComponent={
-              <EmptyState
-                icon={ICONS.calendar}
-                title={
-                  activeTab === 'upcoming'
-                    ? (t.appointments?.noUpcoming || 'No upcoming appointments')
-                    : (t.appointments?.noPending || 'No pending appointments')
-                }
-                subtitle={
-                  activeTab === 'upcoming'
-                    ? (t.appointments?.noUpcomingHint || 'Book a session with a therapist to get started')
-                    : (t.appointments?.noPendingHint || 'Pending appointments awaiting payment will appear here')
-                }
-                actionLabel={activeTab === 'upcoming' ? (t.home?.quickBook || 'Find Therapist') : undefined}
-                onAction={activeTab === 'upcoming'
-                  ? () => navigation.navigate('Main', { screen: 'SearchTab' })
-                  : undefined}
-              />
+              hasLoadError ? (
+                <EmptyState
+                  icon={ICONS.calendar}
+                  title={t.appointments?.loadError || 'Could not load appointments'}
+                  subtitle={t.appointments?.loadErrorHint || 'Check your connection and try again'}
+                  actionLabel={t.common?.retry || 'Retry'}
+                  onAction={handleRetryLoad}
+                />
+              ) : (
+                <EmptyState
+                  icon={ICONS.calendar}
+                  title={
+                    activeTab === 'upcoming'
+                      ? (t.appointments?.noUpcoming || 'No upcoming appointments')
+                      : (t.appointments?.noPending || 'No pending appointments')
+                  }
+                  subtitle={
+                    activeTab === 'upcoming'
+                      ? (t.appointments?.noUpcomingHint || 'Book a session with a therapist to get started')
+                      : (t.appointments?.noPendingHint || 'Pending appointments awaiting payment will appear here')
+                  }
+                  actionLabel={activeTab === 'upcoming' ? (t.home?.quickBook || 'Find Therapist') : undefined}
+                  onAction={activeTab === 'upcoming'
+                    ? () => navigation.navigate('Main', { screen: 'SearchTab' })
+                    : undefined}
+                />
+              )
             }
           />
         )}

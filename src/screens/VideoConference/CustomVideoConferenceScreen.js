@@ -30,6 +30,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import 'react-native-get-random-values';
 import { Client as ConversationsClient } from '@twilio/conversations';
 import socketService from '../../utils/socket';
+import logger from '../../utils/logger';
 import { pauseSessionTimeout, resumeSessionTimeout } from '../../utils/sessionPause';
 import COLORS from '../../constants/colors';
 import { useCheckRoomId, useSendInvitation } from '../../api/services/Appointment.Service';
@@ -231,8 +232,8 @@ const CustomVideoConferenceScreen = () => {
       roomRef.current = roomData; // Keep ref in sync for event handlers
 
       // Pre-populate display names from room data
-      console.log('[Video] Room provider:', JSON.stringify(roomData?.provider));
-      console.log('[Video] Room patient:', JSON.stringify(roomData?.patient));
+      logger.debug('[Video] Room provider:', JSON.stringify(roomData?.provider));
+      logger.debug('[Video] Room patient:', JSON.stringify(roomData?.patient));
 
       // Handle both populated objects and plain IDs
       // Backend may return .id or ._id depending on populate
@@ -247,7 +248,7 @@ const CustomVideoConferenceScreen = () => {
       if (patientId && typeof patientId === 'string' && patientName) {
         displayNamesRef.current[patientId] = patientName;
       }
-      console.log('[Video] Display names populated:', JSON.stringify(displayNamesRef.current));
+      logger.debug('[Video] Display names populated:', JSON.stringify(displayNamesRef.current));
 
       const currentTime = new Date();
       const endTime = new Date(roomIdCheck?.room?.endTime);
@@ -382,7 +383,7 @@ const CustomVideoConferenceScreen = () => {
         sessionUserIdRef.current = identity;
       }
 
-      console.log('[Video] Connecting to Twilio room:', tokenData.roomName);
+      logger.debug('[Video] Connecting to Twilio room:', tokenData.roomName);
       tokenRef.current = tokenData.token;
 
       if (tokenData.identity && tokenData.displayName) {
@@ -398,7 +399,7 @@ const CustomVideoConferenceScreen = () => {
         dominantSpeakerEnabled: true,
       });
     } catch (error) {
-      console.error('[Video] Twilio connect failed:', error);
+      logger.error('[Video] Twilio connect failed:', error);
       setIsConnecting(false);
       isConnectingRef.current = false;
       Alert.alert(
@@ -423,7 +424,7 @@ const CustomVideoConferenceScreen = () => {
           timestamp: Date.now(),
         });
       } catch (e) {
-        console.warn('[Video] Error sending leave on unmount:', e);
+        logger.warn('[Video] Error sending leave on unmount:', e);
       }
 
       twilioRef.current?.disconnect();
@@ -468,7 +469,7 @@ const CustomVideoConferenceScreen = () => {
       });
       socketService.leaveRoom(meetingRoomId);
     } catch (error) {
-      console.warn('[Video] Error sending leave signal:', error);
+      logger.warn('[Video] Error sending leave signal:', error);
     }
   }, [meetingRoomId, activeUserId]);
 
@@ -479,13 +480,13 @@ const CustomVideoConferenceScreen = () => {
         appStateRef.current.match(/active/) &&
         nextAppState === 'background'
       ) {
-        console.log('[Video] App going to background, pausing heartbeat');
+        logger.debug('[Video] App going to background, pausing heartbeat');
         stopHeartbeat();
       } else if (
         appStateRef.current.match(/background/) &&
         nextAppState === 'active'
       ) {
-        console.log('[Video] App returning to foreground');
+        logger.debug('[Video] App returning to foreground');
         if (isJoined) {
           startHeartbeat();
         }
@@ -512,24 +513,24 @@ const CustomVideoConferenceScreen = () => {
 
   // Initialize Twilio Conversations for chat when joined
   useEffect(() => {
-    console.log('[Video] Chat effect triggered — isJoined:', isJoined, 'hasToken:', !!tokenRef.current);
+    logger.debug('[Video] Chat effect triggered — isJoined:', isJoined, 'hasToken:', !!tokenRef.current);
     if (!isJoined || !tokenRef.current) return;
     let cancelled = false;
 
     const initChat = async () => {
       try {
-        console.log('[Video] Initializing Twilio Conversations client...');
+        logger.debug('[Video] Initializing Twilio Conversations client...');
         const client = new ConversationsClient(tokenRef.current);
         chatClientRef.current = client;
 
         client.on('stateChanged', async (state) => {
-          console.log('[Video] Conversations client state:', state);
+          logger.debug('[Video] Conversations client state:', state);
           if (cancelled || state !== 'initialized') return;
 
           const sid = roomSidRef.current;
-          console.log('[Video] Looking for conversation with SID:', sid);
+          logger.debug('[Video] Looking for conversation with SID:', sid);
           if (!sid) {
-            console.warn('[Video] No room SID available for chat');
+            logger.warn('[Video] No room SID available for chat');
             return;
           }
 
@@ -541,7 +542,7 @@ const CustomVideoConferenceScreen = () => {
               conversation = await client.getConversationByUniqueName(sid);
               break;
             } catch (e) {
-              console.log(`[Video] Chat conversation not found, retrying (${i + 1}/5)...`);
+              logger.debug(`[Video] Chat conversation not found, retrying (${i + 1}/5)...`);
               await new Promise(r => setTimeout(r, 2000));
             }
           }
@@ -580,10 +581,10 @@ const CustomVideoConferenceScreen = () => {
             if (!isChatOpen) setUnreadMessages(prev => prev + 1);
           });
 
-          console.log('[Video] Chat connected to Twilio Conversations');
+          logger.debug('[Video] Chat connected to Twilio Conversations');
         });
       } catch (err) {
-        console.warn('[Video] Chat initialization failed (non-fatal):', err?.message);
+        logger.warn('[Video] Chat initialization failed (non-fatal):', err?.message);
       }
     };
 
@@ -597,7 +598,7 @@ const CustomVideoConferenceScreen = () => {
   // ========== Twilio Event Handlers ==========
 
   const _onRoomDidConnect = ({ roomName, roomSid, participants: roomParticipants }) => {
-    console.log('[Video] ✅ Successfully joined room:', roomName, 'SID:', roomSid, 'existing participants:', roomParticipants?.length);
+    logger.debug('[Video] ✅ Successfully joined room:', roomName, 'SID:', roomSid, 'existing participants:', roomParticipants?.length);
     roomSidRef.current = roomSid;
     isConnectingRef.current = false;
     setWasDropped(false);
@@ -651,7 +652,7 @@ const CustomVideoConferenceScreen = () => {
   };
 
   const _onRoomDidFailToConnect = (error) => {
-    console.error('[Video] Room connect failed:', error);
+    logger.error('[Video] Room connect failed:', error);
     setIsConnecting(false);
     isConnectingRef.current = false;
     setConnectionQuality('Failed');
@@ -664,7 +665,7 @@ const CustomVideoConferenceScreen = () => {
   const isDisconnectingRef = useRef(false);
 
   const _onRoomDidDisconnect = ({ error }) => {
-    console.log('[Video] Disconnected from room', error);
+    logger.debug('[Video] Disconnected from room', error);
     if (isDisconnectingRef.current) return;
 
     stopHeartbeat();
@@ -689,7 +690,7 @@ const CustomVideoConferenceScreen = () => {
 
     const remoteUserID = String(participant.identity);
     const resolvedName = resolveDisplayName(remoteUserID);
-    console.log('[Video] Participant connected — identity:', remoteUserID, 'resolved name:', resolvedName, 'providerId:', providerId, 'patientId:', patientId);
+    logger.debug('[Video] Participant connected — identity:', remoteUserID, 'resolved name:', resolvedName, 'providerId:', providerId, 'patientId:', patientId);
     let role = 'guest';
 
     if (providerId && remoteUserID === providerId) {
@@ -925,7 +926,7 @@ const CustomVideoConferenceScreen = () => {
     try {
       await twilioRef.current.setLocalVideoEnabled(newVideoState);
     } catch (e) {
-      console.warn('[Video] setLocalVideoEnabled error (non-fatal):', e);
+      logger.warn('[Video] setLocalVideoEnabled error (non-fatal):', e);
     }
     setIsVideoOn(newVideoState);
 
@@ -954,7 +955,7 @@ const CustomVideoConferenceScreen = () => {
       try {
         await conversationRef.current.sendMessage(messageText.trim());
       } catch (err) {
-        console.warn('[Video] Failed to send chat message:', err?.message);
+        logger.warn('[Video] Failed to send chat message:', err?.message);
         // Fallback: add locally
         setChatMessages((prev) => [...prev, {
           id: Date.now(),

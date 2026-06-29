@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,6 +15,7 @@ import { AppText, AppButton } from '../components/ui';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS, SHADOWS } from '../theme';
+import { createScrollToIndexFailedHandler } from '../utils/scrollToIndex';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +24,10 @@ const OnboardingScreen = () => {
   const { t, isRTL } = useLanguage();
   const flatListRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const handleScrollToIndexFailed = useCallback(
+    createScrollToIndexFailedHandler(flatListRef, width),
+    [],
+  );
 
   const SLIDES = [
     {
@@ -110,6 +115,8 @@ const OnboardingScreen = () => {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
         inverted={isRTL}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
       />
 
       <View style={styles.dotsRow}>

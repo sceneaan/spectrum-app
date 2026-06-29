@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { useAppTranslation } from '../hooks/useAppTranslation';
 import LottieView from 'lottie-react-native';
 import InAppReview from 'react-native-in-app-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,7 +29,7 @@ const PaymentSuccessScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const { appointment, paymentType, transactionId } = route.params || {};
   const lottieRef = useRef(null);
 

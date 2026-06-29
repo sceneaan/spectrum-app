@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   AppState,
   Modal,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ReactNativeBiometrics from 'react-native-biometrics';
 import { useAuthStore } from '../store/authStore';
 import { useLanguage } from '../store/LanguageContext';
+import socketService from '../utils/socket';
 import COLORS from '../constants/colors';
 
 const rnBiometrics = new ReactNativeBiometrics();
@@ -77,6 +79,13 @@ const BiometricLockModal = () => {
     }
   }, [getBiometryLabel, t.biometric]);
 
+  const handleLogoutInstead = useCallback(async () => {
+    setLocked(false);
+    await logout();
+    socketService.disconnect();
+    DeviceEventEmitter.emit('auth:sessionExpired');
+  }, [logout]);
+
   useEffect(() => {
     if (locked && biometryType) {
       const timer = setTimeout(handleAuth, 400);
@@ -105,7 +114,7 @@ const BiometricLockModal = () => {
             <Text style={styles.primaryBtnText}>{biometricLabel}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={logout} accessibilityRole="button">
+          <TouchableOpacity style={styles.secondaryBtn} onPress={handleLogoutInstead} accessibilityRole="button">
             <Text style={styles.secondaryBtnText}>{t.biometric?.logoutInstead || 'Logout Instead'}</Text>
           </TouchableOpacity>
         </View>

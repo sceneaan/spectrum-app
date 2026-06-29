@@ -3,6 +3,8 @@ import { Platform, NativeModules } from 'react-native';
 import { en } from '../assets/locale/en';
 import { ar } from '../assets/locale/ar';
 import i18n from '../config/i18n';
+import moment from 'moment-timezone';
+import 'moment/locale/ar';
 
 const TRANSLATIONS = { en, ar };
 
@@ -49,6 +51,7 @@ export const LanguageProvider = ({ children }) => {
   // Sync initial language with i18next and set RTL
   useEffect(() => {
     i18n.changeLanguage(lang);
+    moment.locale(lang === 'ar' ? 'ar' : 'en');
 
     // Force RTL layout for Arabic — requires app restart to take full native effect
     const I18nManager = NativeModules.I18nManager;
@@ -68,6 +71,9 @@ export const LanguageProvider = ({ children }) => {
 };
 
 export const useLanguage = () => useContext(LanguageContext);
+
+// Re-export for screens using LanguageContext `t` object
+export { interpolate } from '../utils/localeHelpers';
 
 // Alias for backwards compatibility
 export const useLanguageStore = useLanguage;

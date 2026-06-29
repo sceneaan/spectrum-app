@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
@@ -14,6 +14,7 @@ import { useGetUnreadCount } from '../api/services/Notification.Service';
 import TabBarButton from '../components/TabBarButton';
 import TabShortcutSheet from '../components/TabShortcutSheet';
 import TabRadialShortcuts from '../components/TabRadialShortcuts';
+import AppIcon, { SHELL_ICONS } from '../components/ui/AppIcon';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS, SHADOWS } from '../theme';
@@ -30,19 +31,20 @@ const ProtectedInboxScreen = makeProtected(InboxScreen, {
   targetParams: {},
 });
 
-const TAB_ICONS = {
-  HomeTab: ICONS.home,
-  SearchTab: ICONS.docs,
-  AppointmentsTab: ICONS.calendar,
-  InboxTab: ICONS.inbox,
+const TAB_SHELL_ICONS = {
+  HomeTab: SHELL_ICONS.home,
+  SearchTab: SHELL_ICONS.doctors,
+  AppointmentsTab: SHELL_ICONS.calendar,
+  InboxTab: SHELL_ICONS.inbox,
 };
 
 const TabIcon = ({ tabName, color, focused }) => (
   <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-    <Image
-      source={TAB_ICONS[tabName]}
-      style={[styles.icon, focused && styles.iconFocused, { tintColor: focused ? COLORS.primaryDark : color }]}
-      resizeMode="contain"
+    <AppIcon
+      pair={TAB_SHELL_ICONS[tabName]}
+      focused={focused}
+      size={focused ? 28 : 26}
+      color={focused ? COLORS.primaryDark : color}
     />
   </View>
 );
@@ -211,6 +213,7 @@ const TabNavigator = () => {
                     <TabBarButton
                       {...props}
                       onLongPress={tab.longPress}
+                      accessibilityHint={t.tabs?.shortcuts?.holdHint || 'Quick shortcuts'}
                     />
                   )
                 : undefined,

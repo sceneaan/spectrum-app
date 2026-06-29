@@ -16,6 +16,7 @@ import BookingReasonModal from '../components/profile/BookingReasonModal';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import RiyalText from '../components/RiyalText';
+import haptics from '../utils/haptics';
 import moment from 'moment-timezone';
 
 const SlotItem = React.memo(({ slot, isSelected, isRTL, onPress }) => (
@@ -145,6 +146,7 @@ const TherapistProfileScreen = () => {
             setShowReasonModal(false);
 
             if (newAppointment && (newAppointment.id || newAppointment._id)) {
+                haptics.success();
                 navigation.navigate('Checkout', {
                     id: newAppointment.id || newAppointment._id,
                 });

@@ -7,6 +7,7 @@ import { buildVideoSessionParams } from '../utils/sessionPrep';
 import PreSessionPrepSheet from '../components/PreSessionPrepSheet';
 import { PRE_SESSION_JOIN_EVENT } from '../utils/pushNotificationHandlers';
 import { getUserId } from '../utils/userId';
+import haptics from '../utils/haptics';
 import i18n from '../config/i18n';
 
 const PreSessionJoinContext = createContext(null);
@@ -67,6 +68,7 @@ export const PreSessionJoinProvider = ({ children }) => {
       userID: String(loggedInUserId),
       userName: pendingSession.userName || user?.fullName || user?.fullNameArabic || 'Patient',
     });
+    haptics.success();
     closePrep();
   }, [closePrep, navigation, pendingSession, user]);
 

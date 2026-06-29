@@ -12,9 +12,14 @@ const EmptyState = ({
   actionLabel,
   onAction,
   actionVariant = 'primary',
+  accessibilityLabel,
 }) => (
-  <View style={styles.container}>
-    {icon ? <Image source={icon} style={styles.icon} /> : null}
+  <View
+    style={styles.container}
+    accessibilityRole="text"
+    accessibilityLabel={accessibilityLabel || [title, subtitle].filter(Boolean).join('. ')}
+  >
+    {icon ? <Image source={icon} style={styles.icon} accessibilityIgnoresInvertColors /> : null}
     <AppText variant="h3" align="center" style={styles.title}>
       {title}
     </AppText>
@@ -31,6 +36,7 @@ const EmptyState = ({
         size="sm"
         fullWidth={false}
         style={styles.action}
+        accessibilityLabel={actionLabel}
       />
     ) : null}
   </View>

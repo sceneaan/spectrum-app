@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard, I18nManager } from 'react-native';
+import { View, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform, Alert, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
+import { useAppTranslation } from '../hooks/useAppTranslation';
 import { AppButton, AppCard, AppText } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
@@ -17,9 +17,8 @@ import ReactNativeBiometrics from 'react-native-biometrics';
 const OTPScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { t, i18n } = useTranslation();
+  const { t, isRTL } = useAppTranslation();
   const { emailOrPhone, targetScreen, targetParams } = route.params || {};
-  const isRTL = I18nManager.isRTL || i18n.language === 'ar';
 
   const { setAuth, biometricsEnabled, setBiometricsEnabled } = useAuthStore();
 

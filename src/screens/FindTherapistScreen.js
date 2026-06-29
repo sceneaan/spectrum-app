@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
@@ -50,6 +50,12 @@ const FindTherapistScreen = () => {
         hasActiveFilters,
         activeFilterCount,
     } = useProviderSearch(preSelectedIssue ? { issues: [preSelectedIssue] } : {});
+
+    useEffect(() => {
+        if (preSelectedIssue) {
+            updateFilters({ issues: [preSelectedIssue] });
+        }
+    }, [preSelectedIssue, updateFilters]);
 
     const [activeFilterSheet, setActiveFilterSheet] = useState(null);
     const [showSortMenu, setShowSortMenu] = useState(false);

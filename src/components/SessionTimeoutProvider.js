@@ -58,6 +58,7 @@ export function SessionTimeoutProvider({ children, navigation }) {
             onPress: () => {
               authLogout();
               socketService.disconnect();
+              DeviceEventEmitter.emit('auth:sessionExpired');
             },
           },
         ],

@@ -11,6 +11,7 @@ const TabBarButton = ({
   onPressOut,
   accessibilityState,
   accessibilityLabel,
+  accessibilityHint,
   children,
   style,
   testID,
@@ -55,7 +56,7 @@ const TabBarButton = ({
       accessibilityRole="button"
       accessibilityState={accessibilityState}
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={onLongPress ? 'Press and hold for shortcuts' : undefined}
+      accessibilityHint={accessibilityHint}
       style={[style, styles.fill]}
       testID={testID}
     >

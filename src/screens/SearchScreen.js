@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy category/service wizard — use FindTherapistScreen (SearchTab) instead.
+ * Kept for reference; no longer registered in AppNavigator.
+ */
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Modal, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';

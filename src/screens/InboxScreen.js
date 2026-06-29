@@ -201,6 +201,9 @@ const InboxScreen = () => {
 
         {userThreadsLoader ? (
           <View style={styles.listPad}>
+            <View style={[styles.searchSkeleton, rowStyle]}>
+              <Skeleton width="100%" height={48} style={{ borderRadius: RADIUS.pill }} />
+            </View>
             {[0, 1, 2, 3].map((i) => (
               <View key={i} style={[styles.skeletonCard, rowStyle]}>
                 <Skeleton width={48} height={48} style={{ borderRadius: 24, marginEnd: SPACING.md }} />
@@ -275,6 +278,7 @@ const styles = StyleSheet.create({
   searchIcon: { width: 18, height: 18, tintColor: COLORS.gray500, marginEnd: SPACING.sm },
   input: { flex: 1, height: '100%', color: COLORS.textPrimary, fontSize: 15 },
   listPad: { paddingTop: SPACING.sm },
+  searchSkeleton: { marginBottom: SPACING.lg },
   listContent: { paddingTop: SPACING.sm, paddingBottom: 100 },
   skeletonCard: {
     alignItems: 'center',

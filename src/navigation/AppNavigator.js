@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Linking, DeviceEventEmitter } from 'react-native';
-import { NavigationContainer, useNavigation, createNavigationContainerRef } from '@react-navigation/native';
+import { View, Linking, DeviceEventEmitter, ActivityIndicator } from 'react-native';
+import BootSplash from 'react-native-bootsplash';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
@@ -9,25 +10,10 @@ import socketService from '../utils/socket';
 import InAppToast from '../components/InAppToast';
 import OfflineBanner from '../components/OfflineBanner';
 import BiometricLockModal from '../components/BiometricLockModal';
+import { makeProtected } from './authGuards';
 
 // Shared ref for imperative navigation outside React context (toasts, deep links, etc.)
 export const navigationRef = createNavigationContainerRef();
-// Immediately redirects to LoginScreen if the user is not authenticated.
-const RequireAuth = ({ Screen }) => {
-  const { isAuthenticated } = useAuthStore();
-  const navigation = useNavigation();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigation.replace('LoginScreen');
-    }
-  }, [isAuthenticated, navigation]);
-
-  if (!isAuthenticated) return null;
-  return <Screen />;
-};
-
-const makeProtected = (Screen) => (props) => <RequireAuth Screen={Screen} {...props} />;
 // --- Auth Screens ---
 import LoginScreen from '../screens/LoginScreen';
 import OTPScreen from '../screens/OTPScreen';
@@ -38,7 +24,6 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 
 import TabNavigator from './TabNavigator';
 import { PreSessionJoinProvider } from '../context/PreSessionJoinContext';
-import SearchScreen from '../screens/SearchScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import SupportCardScreen from '../screens/SupportCardScreen';
 import SupportCardSuccessScreen from '../screens/SupportCardSuccessScreen';
@@ -68,6 +53,7 @@ import CancelAppointmentScreen from '../screens/CancelAppointmentScreen';
 import PaymentFormScreen from '../screens/PaymentFormScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
 import TherapistProfileScreen from '../screens/TherapistProfileScreen';
+import COLORS from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -86,6 +72,8 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'Profile',
   'FindTherapist',
   'SearchResults',
+  'WalletScreen',
+  'BillingScreen',
 ]);
 
 // Require login before navigating to these targets
@@ -213,6 +201,12 @@ const AppNavigator = () => {
     });
   }, []);
 
+  useEffect(() => {
+    if (initialRoute) {
+      BootSplash.hide({ fade: true });
+    }
+  }, [initialRoute]);
+
   // Deep links from push notifications
   useEffect(() => {
     const unsubscribe = messaging().onNotificationOpenedApp(navigateFromNotification);
@@ -245,8 +239,13 @@ const AppNavigator = () => {
     };
   }, []);
 
-  // Wait until we know the initial route before mounting NavigationContainer
-  if (!initialRoute) return null;
+  if (!initialRoute) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -260,7 +259,6 @@ const AppNavigator = () => {
           <Stack.Screen name="Consent" component={ConsentScreen} />
           <Stack.Screen name="PatientInfoScreen" component={PatientInfoScreen} />
           <Stack.Screen name="Profile" component={makeProtected(ProfileScreen)} />
-          <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="SupportCard" component={SupportCardScreen} />
           <Stack.Screen name="SupportCardSuccessScreen" component={SupportCardSuccessScreen} options={{ gestureEnabled: false }} />
           <Stack.Screen name="NewMessage" component={makeProtected(NewMessageScreen)} />

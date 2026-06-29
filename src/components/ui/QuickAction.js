@@ -1,24 +1,33 @@
 import React from 'react';
-import { TouchableOpacity, View, Image, StyleSheet } from 'react-native';
+import { Pressable, View, Image, StyleSheet } from 'react-native';
 import AppText from './AppText';
+import AppIcon, { QUICK_ACTION_ICONS } from './AppIcon';
 import COLORS from '../../constants/colors';
 import { RADIUS, SPACING } from '../../theme';
 
-const QuickAction = ({ icon, label, onPress, tintColor = COLORS.primary }) => (
-  <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.75}>
+const QuickAction = ({ icon, vectorIcon, label, onPress, tintColor = COLORS.primary }) => (
+  <Pressable style={styles.item} onPress={onPress} android_ripple={{ color: `${tintColor}22` }}>
     <View style={[styles.iconWrap, { borderColor: `${tintColor}33` }]}>
       <View style={[styles.iconTintBg, { backgroundColor: `${tintColor}14` }]}>
-        <Image
-          source={icon}
-          style={[styles.icon, { tintColor }]}
-          resizeMode="contain"
-        />
+        {vectorIcon ? (
+          <AppIcon
+            name={QUICK_ACTION_ICONS[vectorIcon] || vectorIcon}
+            size={30}
+            color={tintColor}
+          />
+        ) : (
+          <Image
+            source={icon}
+            style={[styles.icon, { tintColor }]}
+            resizeMode="contain"
+          />
+        )}
       </View>
     </View>
     <AppText variant="caption" align="center" style={styles.label} numberOfLines={2}>
       {label}
     </AppText>
-  </TouchableOpacity>
+  </Pressable>
 );
 
 const styles = StyleSheet.create({

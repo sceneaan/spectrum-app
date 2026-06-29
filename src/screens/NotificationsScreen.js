@@ -231,6 +231,11 @@ const NotificationsScreen = () => {
           onBack={() => navigation.goBack()}
         />
         <View style={styles.listPad}>
+          <View style={[styles.filterSkeletonRow, rowStyle]}>
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} width={88} height={32} style={{ borderRadius: RADIUS.pill, marginEnd: SPACING.sm }} />
+            ))}
+          </View>
           {[0, 1, 2, 3, 4].map((i) => (
             <View key={i} style={[styles.skeletonCard, rowStyle]}>
               <Skeleton width={48} height={48} style={{ borderRadius: 24 }} />
@@ -391,6 +396,10 @@ const styles = StyleSheet.create({
   },
   listPad: {
     padding: SPACING.lg,
+  },
+  filterSkeletonRow: {
+    flexDirection: 'row',
+    marginBottom: SPACING.lg,
   },
   listContent: {
     paddingHorizontal: SPACING.lg,

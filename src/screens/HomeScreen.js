@@ -1,6 +1,6 @@
 
-import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Dimensions, Alert } from 'react-native';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Dimensions, Alert, Pressable } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
@@ -19,6 +19,9 @@ import { getAppointmentTiming } from '../utils/sessionTiming';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
+import { interpolate } from '../utils/localeHelpers';
+import { createScrollToIndexFailedHandler } from '../utils/scrollToIndex';
+import haptics from '../utils/haptics';
 import moment from 'moment-timezone';
 import { getNearestUpcomingAppointment } from '../utils/appointmentFilters';
 
@@ -42,14 +45,7 @@ const FEATURED_ISSUES = [
   { code: 'relationship-issues', iconKey: 'relationships', en: 'Relationships', ar: 'العلاقات' },
 ];
 
-const shuffleArray = (array) => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
+const PROMO_ITEM_LENGTH = PROMO_CARD_WIDTH + 15;
 
 const HomeScreen = () => {
    const navigation = useNavigation();
@@ -62,6 +58,10 @@ const HomeScreen = () => {
    const [nowTick, setNowTick] = useState(0);
    const promoFlatListRef = useRef(null);
    const autoScrollTimer = useRef(null);
+   const handlePromoScrollToIndexFailed = useCallback(
+      createScrollToIndexFailedHandler(promoFlatListRef, PROMO_ITEM_LENGTH),
+      [],
+   );
 
    // Check if user is logged in
    const { user, isAuthenticated } = useAuthStore();
@@ -133,14 +133,69 @@ const HomeScreen = () => {
       }
    };
 
-   // Prepare providers for display - filter active only, then randomly select 5
+   // Top providers — stable sort by rating (no shuffle)
    const displayProviders = React.useMemo(() => {
       if (!providersData || providersData.length === 0) return [];
-      // Backend returns active+published providers sorted by rating
-      // Shuffle top 10 and pick 5 for variety
-      const shuffled = shuffleArray([...providersData].slice(0, 10));
-      return shuffled.slice(0, 5);
+      const ratingValue = (provider) => {
+         if (typeof provider.rating === 'object') return provider.rating?.average || 0;
+         return Number(provider.rating) || 0;
+      };
+      return [...providersData]
+         .sort((a, b) => ratingValue(b) - ratingValue(a))
+         .slice(0, 5);
    }, [providersData]);
+
+   const handleQuickVideo = useCallback(() => {
+      haptics.light();
+      if (!nearestAppointment?.roomId) {
+         navigation.navigate('Main', { screen: 'AppointmentsTab' });
+         return;
+      }
+
+      const timing = getAppointmentTiming(nearestAppointment, nowTick);
+
+      if (timing.isRescheduledUnpaid || nearestAppointment.paymentStatus !== 'Completed') {
+         Alert.alert(
+            t.home?.completePayment || 'Complete payment',
+            t.home?.quickVideoPaymentRequired || 'Complete payment before joining your session',
+            [
+               { text: t.common?.cancel || 'Cancel', style: 'cancel' },
+               {
+                  text: t.home?.completePayment || 'Complete payment',
+                  onPress: () => navigation.navigate('Checkout', {
+                     id: nearestAppointment._id || nearestAppointment.id || nearestAppointment.appointmentId,
+                  }),
+               },
+            ],
+         );
+         return;
+      }
+
+      if (timing.needsApproval) {
+         Alert.alert(
+            t.home?.awaitingApproval || 'Awaiting Approval',
+            t.home?.quickVideoAwaitingApproval || 'This appointment is awaiting provider approval',
+         );
+         return;
+      }
+
+      if (!timing.showVideoButton) {
+         Alert.alert(
+            t.home?.quickVideo || 'Video',
+            t.home?.quickVideoNotReady || 'Your session will be available to join closer to the appointment time',
+            [
+               { text: t.common?.ok || 'OK', style: 'cancel' },
+               {
+                  text: t.home?.quickAppointments || 'Appointments',
+                  onPress: () => navigation.navigate('Main', { screen: 'AppointmentsTab' }),
+               },
+            ],
+         );
+         return;
+      }
+
+      requestJoinSession({ appointment: nearestAppointment });
+   }, [nearestAppointment, navigation, nowTick, requestJoinSession, t]);
 
    const promoCards = useMemo(
       () => promotionsData ? promotionsData.filter(p => p.status === 'active') : [],
@@ -242,30 +297,24 @@ const HomeScreen = () => {
             {isLoggedIn && isPatient && (
                <View style={[styles.quickActions, rowStyle]}>
                   <QuickAction
-                     icon={ICONS.search}
+                     vectorIcon="search"
                      label={t.home?.quickBook || 'Find Therapist'}
                      onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
                   />
                   <QuickAction
-                     icon={ICONS.calendar}
+                     vectorIcon="calendar"
                      label={t.home?.quickAppointments || 'Appointments'}
                      onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
                   />
                   <QuickAction
-                     icon={ICONS.inbox}
+                     vectorIcon="inbox"
                      label={t.home?.quickInbox || 'Messages'}
                      onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
                   />
                   <QuickAction
-                     icon={ICONS.video}
+                     vectorIcon="video"
                      label={t.home?.quickVideo || 'Video'}
-                     onPress={() => {
-                        if (nearestAppointment?.roomId) {
-                           requestJoinSession({ appointment: nearestAppointment });
-                        } else {
-                           navigation.navigate('Main', { screen: 'AppointmentsTab' });
-                        }
-                     }}
+                     onPress={handleQuickVideo}
                   />
                </View>
             )}
@@ -353,9 +402,9 @@ const HomeScreen = () => {
                const getTimeBadgeText = () => {
                   if (isOngoing) return t.home?.ongoing || 'Ongoing';
                   if (diffMinutes <= 0) return t.home?.now || 'Now';
-                  if (diffMinutes < 60) return t('home.inMinutes', { count: diffMinutes }) || `In ${diffMinutes} min`;
-                  if (diffHours < 24) return t('home.inHours', { count: diffHours }) || `In ${diffHours} hours`;
-                  return t('home.inDays', { count: diffDays }) || `In ${diffDays} days`;
+                  if (diffMinutes < 60) return interpolate(t.home?.inMinutes, { count: diffMinutes }) || `In ${diffMinutes} min`;
+                  if (diffHours < 24) return interpolate(t.home?.inHours, { count: diffHours }) || `In ${diffHours} hours`;
+                  return interpolate(t.home?.inDays, { count: diffDays }) || `In ${diffDays} days`;
                };
 
                // Check if appointment needs doctor approval
@@ -448,9 +497,9 @@ const HomeScreen = () => {
                               })}
                            >
                               <Text style={styles.rescheduledPayText}>
-                                 {isRTL
-                                    ? `يرجى إتمام الدفع قبل ${moment(nearestAppointment.expiresAt).format('h:mm A')} للحفاظ على موعدك`
-                                    : `Complete payment by ${moment(nearestAppointment.expiresAt).format('h:mm A')} to keep your slot`}
+                                 {interpolate(t.home?.paymentDeadlineBanner, {
+                                    time: moment(nearestAppointment.expiresAt).format('h:mm A'),
+                                 })}
                               </Text>
                            </TouchableOpacity>
                         )}
@@ -521,36 +570,44 @@ const HomeScreen = () => {
                            ? (provider.specialty?.nameArabic || 'غير محدد')
                            : (provider.specialty?.nameEnglish || 'Not specified');
 
+                        const providerId = provider.id || provider._id;
+                        const openProfile = () => navigation.navigate('TherapistProfile', { providerId });
+
                         return (
-                           <TouchableOpacity
-                              key={provider.id}
-                              style={styles.docCard}
-                              activeOpacity={0.8}
-                              onPress={() => navigation.navigate('TherapistProfile', { providerId: provider.id || provider._id })}
-                           >
-                              <ProviderThumb
-                                 uri={provider.profileImage}
-                                 style={styles.docImg}
-                              />
-                              <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-                                 <Text style={styles.docName} numberOfLines={1}>
-                                    {(isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)) || (t.home?.unknownProvider || 'Unknown')}
-                                 </Text>
-                                 <Text style={styles.docSpecialty} numberOfLines={1}>
-                                    {specialtyName}
-                                 </Text>
-                                 <View style={[styles.ratingRow, rowStyle]}>
-                                    <Image source={ICONS.star} style={{ width: 12, height: 12, tintColor: COLORS.warning }} />
-                                    <Text style={styles.ratingText}>{typeof provider.rating === 'object' ? (provider.rating?.average || '5.0') : (provider.rating || '5.0')}</Text>
+                           <View key={provider.id} style={styles.docCard}>
+                              <Pressable
+                                 style={{ flex: 1 }}
+                                 onPress={openProfile}
+                                 android_ripple={{ color: `${COLORS.primary}22` }}
+                              >
+                                 <ProviderThumb
+                                    uri={provider.profileImage}
+                                    style={styles.docImg}
+                                 />
+                                 <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+                                    <Text style={styles.docName} numberOfLines={1}>
+                                       {(isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)) || (t.home?.unknownProvider || 'Unknown')}
+                                    </Text>
+                                    <Text style={styles.docSpecialty} numberOfLines={1}>
+                                       {specialtyName}
+                                    </Text>
+                                    <View style={[styles.ratingRow, rowStyle]}>
+                                       <Image source={ICONS.star} style={{ width: 12, height: 12, tintColor: COLORS.warning }} />
+                                       <Text style={styles.ratingText}>{typeof provider.rating === 'object' ? (provider.rating?.average || '5.0') : (provider.rating || '5.0')}</Text>
+                                    </View>
                                  </View>
-                              </View>
-                              <TouchableOpacity
+                              </Pressable>
+                              <Pressable
                                  style={styles.bookNowBtn}
-                                 onPress={() => navigation.navigate('TherapistProfile', { providerId: provider.id || provider._id })}
+                                 onPress={() => {
+                                    haptics.light();
+                                    openProfile();
+                                 }}
+                                 android_ripple={{ color: `${COLORS.primary}33` }}
                               >
                                  <Text style={styles.bookNowText}>{t.home?.bookNow || 'Book Now'}</Text>
-                              </TouchableOpacity>
-                           </TouchableOpacity>
+                              </Pressable>
+                           </View>
                         );
                      })
                   )}
@@ -633,10 +690,11 @@ const HomeScreen = () => {
                      windowSize={3}
                      removeClippedSubviews
                      getItemLayout={(data, index) => ({
-                        length: PROMO_CARD_WIDTH + 15,
-                        offset: (PROMO_CARD_WIDTH + 15) * index,
+                        length: PROMO_ITEM_LENGTH,
+                        offset: PROMO_ITEM_LENGTH * index,
                         index,
                      })}
+                     onScrollToIndexFailed={handlePromoScrollToIndexFailed}
                   />
                   {promoCards.length > 1 && (
                      <View style={styles.paginationContainer}>

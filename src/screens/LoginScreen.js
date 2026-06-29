@@ -9,12 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  I18nManager,
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
+import { useAppTranslation } from '../hooks/useAppTranslation';
 import { AppButton, AppCard, AppText, TrustBadge } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
@@ -35,9 +34,8 @@ const LOGIN_TABS = [
 const LoginScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { t, i18n } = useTranslation();
+  const { t, lang, isRTL } = useAppTranslation();
   const { targetScreen, targetParams } = route.params || {};
-  const isRTL = I18nManager.isRTL || i18n.language === 'ar';
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
   const alignText = isRTL ? 'right' : 'left';
 
@@ -78,7 +76,7 @@ const LoginScreen = () => {
   const submitOtp = (identifier) => {
     const payload = {
       emailOrPhone: identifier,
-      preferredLanguage: i18n.language || 'en',
+      preferredLanguage: lang || 'en',
     };
 
     sendOtp(payload, {
@@ -142,7 +140,12 @@ const LoginScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={handleGoBack}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.goBack') || 'Go back'}
+        >
           <Image source={ICONS.back} style={styles.backIcon} />
         </TouchableOpacity>
 
@@ -178,6 +181,9 @@ const LoginScreen = () => {
                     style={[styles.tab, isActive && styles.tabActive]}
                     onPress={() => switchTab(tab.key)}
                     activeOpacity={0.85}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={t(tab.labelKey)}
                   >
                     <AppText
                       variant="bodySmall"
@@ -213,6 +219,7 @@ const LoginScreen = () => {
                       keyboardType="email-address"
                       autoComplete="email"
                       textContentType="emailAddress"
+                      accessibilityLabel={t('auth.login.email')}
                     />
                   </View>
                 </>
@@ -238,6 +245,7 @@ const LoginScreen = () => {
                       autoComplete="tel"
                       textContentType="telephoneNumber"
                       maxLength={9}
+                      accessibilityLabel={t('auth.login.phone')}
                     />
                   </View>
                 </>
@@ -343,8 +351,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    borderRightWidth: 1.5,
-    borderRightColor: COLORS.border,
+    borderEndWidth: 1.5,
+    borderEndColor: COLORS.border,
     alignSelf: 'stretch',
     backgroundColor: COLORS.surface,
     gap: SPACING.xs,
