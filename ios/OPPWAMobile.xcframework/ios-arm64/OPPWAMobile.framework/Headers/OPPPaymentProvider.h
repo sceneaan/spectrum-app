@@ -1,13 +1,4 @@
-//
-// Copyright (c) $$year$$ by ACI Worldwide, Inc.
-// All rights reserved.
-//
-// This software is the confidential and proprietary information
-// of ACI Worldwide Inc ("Confidential Information"). You shall
-// not disclose such Confidential Information and shall use it
-// only in accordance with the terms of the license agreement
-// you entered with ACI Worldwide Inc.
-//
+//  © Copyright ACI Worldwide, Inc. 2018, 2026
 
 @import Foundation;
 @import PassKit;
@@ -17,6 +8,12 @@
 @class OPPThreeDSConfig;
 @class OPPBinInfo;
 @class Warning;
+@class OPPCheckoutData;
+@class OPPBrandInfo;
+@class OPPInstallmentPlanParams;
+@class OPPInstallmentPlanResponse;
+@class OPPPollingParams;
+@class OPPPollingStatus;
 
 /// An enumeration for the various provider modes.
 typedef NS_ENUM(NSInteger, OPPProviderMode) {
@@ -139,12 +136,14 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  Requests a list of iDeal banks.
  
+ This method is deprecated.
+ 
  @param checkoutID The checkout ID of a transaction.
  @param completionHandler The completion block which will be invoked once the response is received. On success, you will receive a list of banks in array, and on failure an error is received.
  */
 - (void)requestIdealBanksWithCheckoutID:(nonnull NSString *)checkoutID
                       completionHandler:(void (^)(NSArray <NSDictionary *> * _Nullable banks,
-                                                  NSError * _Nullable error))completionHandler;
+                                                  NSError * _Nullable error))completionHandler __attribute__ ((deprecated));
 
 /// @name 3D Secure
 /**
@@ -189,5 +188,52 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (BOOL)isDeviceAuthenticationAvailable;
 
+/**
+ * Returns the list of FPX banks as a dictionary.
+ * Key from the dictionary will be banks display name and bank name will be value for that key.
+ * @return A dictionary of FPX payment bank names where key will be banks display name and its value will be bank name.
+ */
++ (NSDictionary<NSString *, NSString *> * _Nonnull)getFPXBanks;
+
+/**
+ Requests a Apple's  recurring payments tokenId.
+ 
+ @param checkoutID The checkout ID of a transaction.
+ @param completionHandler The completion block which will be invoked once the response is received. On success, you will receive a tokenId, and on failure an error is received.
+ */
+- (void)requestApplesTokenIdWithCheckoutID:(nonnull NSString *)checkoutID
+                         completionHandler:(void (^)(NSString * _Nullable tokenId,
+                                                     NSError * _Nullable error))completionHandler;
+
+/**
+ Requests a Checkout payment data
+ 
+ @param checkoutID The checkout ID of a transaction.
+ @param completionHandler The completion block which will be invoked once the response is received. On success, you will receive an OPPCheckoutData ojbect with payment data, and on failure an error is received.
+ */
+- (void)requestCheckoutDataWithCheckoutID:(nonnull NSString *)checkoutID
+                        completionHandler:(void (^)(OPPCheckoutData * _Nullable checkoutData, NSError * _Nullable error))completionHandler;
+
+/// :nodoc:
+- (void)requestValidationsForPaymentBrands:(nonnull NSArray<NSString*> *)paymentBrands
+                                checkoutID:(nonnull NSString *)checkoutID
+                         completionHandler:(void (^)(NSArray<OPPBrandInfo *> * _Nullable brandRules,
+                                                     NSError * _Nullable error))completionHandler;
+
+/// :nodoc:
+- (void)sendThreeDS2AuthParams:(nonnull NSString *)authParams
+                   transaction:(nonnull OPPTransaction *)transaction
+             completionHandler:(void (^)(OPPTransaction * _Nonnull transaction,
+                                         NSError * _Nullable error))completionHandler;
+
+- (void)getVisaInstallmentPlans:(nonnull OPPInstallmentPlanParams *)planParams
+              completionHandler:(void (^)(OPPInstallmentPlanResponse * _Nullable response,
+                                          NSError * _Nullable error))completionHandler;
+
+/// :nodoc:
+- (void)getPollingData:(nonnull OPPPollingParams *)params
+     completionHandler:(void (^)(OPPPollingStatus * _Nullable response,
+                                 NSError * _Nullable error))completionHandler;
 @end
 NS_ASSUME_NONNULL_END
+

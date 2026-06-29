@@ -98,7 +98,7 @@ jobs:
       - name: Strip xcframework signatures
         run: |
           for FW in \
-            ios/ipworks3ds_sdk_8845.xcframework \
+            ios/ipworks3ds_sdk_9625.xcframework \
             ios/OPPWAMobile.xcframework; do
             [ -d "$FW" ] || continue
             find "$FW" -name "*.framework" -type d | while read INNER; do
