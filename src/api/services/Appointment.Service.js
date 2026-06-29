@@ -214,13 +214,13 @@ export function useGetPendingAppointmentsByDoctorId(id) {
     });
 }
 
-export function useGetUpcomingAppointments() {
+export function useGetUpcomingAppointments(query = {}) {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery({
-        queryKey: ['upcomingAppointments'],
+        queryKey: ['upcomingAppointments', query],
         queryFn: async () => {
             try {
-                const result = await getRequest(`${MODEL_NAME}/upcoming`);
+                const result = await getRequest(`${MODEL_NAME}/upcoming`, query);
                 if (result.status === HttpStatusCode.Ok) {
                     return result.data.data;
                 } else {
@@ -231,6 +231,60 @@ export function useGetUpcomingAppointments() {
             }
         },
         enabled: isAuthenticated,
+    });
+}
+
+export function useGetProviderAppointments() {
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = user?.role?.toLowerCase() === 'provider';
+
+    return useQuery({
+        queryKey: ['providerAppointments'],
+        queryFn: async () => {
+            try {
+                const result = await getRequest(`${MODEL_NAME}/provider-appointments`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                }
+                throw new Error(ErrorMessages.generalMessage);
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+        enabled: isAuthenticated && isProvider,
+    });
+}
+
+export function useApproveAppointment() {
+    return useMutation({
+        mutationFn: async (id) => {
+            try {
+                const result = await putRequest(`${MODEL_NAME}/approve/${id}`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                }
+                throw new Error(ErrorMessages.generalMessage);
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
+    });
+}
+
+export function useRejectAppointment() {
+    return useMutation({
+        mutationFn: async (id) => {
+            try {
+                const result = await putRequest(`${MODEL_NAME}/reject/${id}`);
+                if (result.status === HttpStatusCode.Ok) {
+                    return result.data.data;
+                }
+                throw new Error(ErrorMessages.generalMessage);
+            } catch (err) {
+                return throwServerError(err);
+            }
+        },
     });
 }
 
@@ -255,6 +309,7 @@ export function useSendInvitation() {
 // Hook to get completed appointments for medical reports
 export function useGetCompletedAppointments() {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isPatient = useAuthStore((state) => state.user?.role?.toLowerCase() === 'patient');
     return useQuery({
         queryKey: ['completedAppointments'],
         queryFn: async () => {
@@ -269,6 +324,6 @@ export function useGetCompletedAppointments() {
                 return throwServerError(err);
             }
         },
-        enabled: isAuthenticated,
+        enabled: isAuthenticated && isPatient,
     });
 }

@@ -66,11 +66,14 @@ export function usePatientGetThreads() {
 
 // Hook for a provider to get their threads
 export function useProviderGetThreads() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = useAuthStore((state) => state.user?.role?.toLowerCase() === 'provider');
+
     return useQuery({
         queryKey: ['providerThreads'],
         queryFn: async () => {
             try {
-                const result = await getRequest(`${MODEL_NAME}/provider/list`);
+                const result = await getRequest(`${MODEL_NAME}/provider/list`, { limit: 50 });
                 if (result.status === HttpStatusCode.Ok) {
                     return result.data.data;
                 } else {
@@ -80,6 +83,7 @@ export function useProviderGetThreads() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated && isProvider,
     });
 }
 

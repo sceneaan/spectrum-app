@@ -8,6 +8,8 @@ import ICONS from '../constants/icons';
 import { useGetThreadMessages, useSendThreadReply } from '@api/services/Thread.Service';
 import { useGetCurrentUser } from '@api/services/User.Service';
 import { useGetCompletedAppointments } from '@api/services/Appointment.Service';
+import { isProviderRole } from '@utils/videoAccess';
+import { useAuthStore } from '../store/authStore';
 import socketService from '@utils/socket';
 import { formatFileSize, getFileSize } from '@utils/fileUtils';
 import DocumentPicker from 'react-native-document-picker';
@@ -27,10 +29,13 @@ const ChatDetailsScreen = () => {
    const insets = useSafeAreaInsets();
    const { t, isRTL } = useLanguage();
 
+   const { user } = useAuthStore();
    const { thread } = route.params || {};
-   const hasValidThread = Boolean(thread?.provider);
-   const provider = thread?.provider;
-   const providerId = provider?._id || provider?.id;
+   const { data: loggedInUser } = useGetCurrentUser();
+   const isProviderViewer = isProviderRole(user) || isProviderRole(loggedInUser);
+   const counterparty = isProviderViewer ? thread?.patient : thread?.provider;
+   const hasValidThread = Boolean(counterparty);
+   const providerId = thread?.provider?._id || thread?.provider?.id;
 
    const [messages, setMessages] = useState([]);
    const [inputText, setInputText] = useState('');
@@ -38,7 +43,6 @@ const ChatDetailsScreen = () => {
    const invalidThreadHandled = useRef(false);
 
    const { data: appointments } = useGetCompletedAppointments();
-   const { data: loggedInUser } = useGetCurrentUser();
    const {
      data: threadMessages,
      error: threadMessagesError,
@@ -62,6 +66,7 @@ const ChatDetailsScreen = () => {
    }, [hasValidThread, isRTL, navigation]);
 
    const hasRecentAppointment = () => {
+      if (isProviderViewer) return true;
       if (!appointments || appointments.length === 0 || !providerId) {
          return true;
       }
@@ -458,12 +463,16 @@ const ChatDetailsScreen = () => {
             <Image source={ICONS.back} style={[styles.icon, isRTL && { transform: [{ rotate: '180deg' }] }]} />
          </TouchableOpacity>
          <Image
-           source={provider?.profileImage ? { uri: provider.profileImage } : ICONS.defaultAvatar}
+           source={counterparty?.profileImage ? { uri: counterparty.profileImage } : ICONS.defaultAvatar}
            style={styles.headerAvatar}
            defaultSource={ICONS.defaultAvatar}
          />
          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-            <Text style={styles.headerName}>{isRTL ? (provider.fullNameArabic || provider.fullName) : (provider.fullNameEnglish || provider.fullName)}</Text>
+            <Text style={styles.headerName}>
+              {isRTL
+                ? (counterparty?.fullNameArabic || counterparty?.fullName)
+                : (counterparty?.fullNameEnglish || counterparty?.fullName)}
+            </Text>
             {/* Online status could be dynamic if we had socket presence events */}
          </View>
       </View>

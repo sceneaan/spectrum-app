@@ -22,7 +22,7 @@ import PatientInfoScreen from '../screens/PatientInfoScreen';
 import ElmVerificationRequiredScreen from '../screens/ElmVerificationRequiredScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 
-import TabNavigator from './TabNavigator';
+import RoleTabNavigator from './RoleTabNavigator';
 import { PreSessionJoinProvider } from '../context/PreSessionJoinContext';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import SupportCardScreen from '../screens/SupportCardScreen';
@@ -53,6 +53,7 @@ import CancelAppointmentScreen from '../screens/CancelAppointmentScreen';
 import PaymentFormScreen from '../screens/PaymentFormScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
 import TherapistProfileScreen from '../screens/TherapistProfileScreen';
+import ProviderRefillsScreen from '../screens/provider/ProviderRefillsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -73,6 +74,7 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'SearchResults',
   'WalletScreen',
   'BillingScreen',
+  'ProviderRefills',
 ]);
 
 // Require login before navigating to these targets
@@ -86,6 +88,7 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'Profile',
   'WalletScreen',
   'BillingScreen',
+  'ProviderRefills',
 ]);
 
 const parseNotificationParams = (raw) => {
@@ -134,7 +137,7 @@ const ElmVerifiedTabNavigator = ({ navigation }) => {
     }
   }, [isAuthenticated, user, navigation]);
 
-  return <PreSessionJoinProvider><TabNavigator /></PreSessionJoinProvider>;
+  return <PreSessionJoinProvider><RoleTabNavigator /></PreSessionJoinProvider>;
 };
 
 const linking = {
@@ -285,6 +288,7 @@ const AppNavigator = () => {
           <Stack.Screen name="CancelAppointment" component={makeProtected(CancelAppointmentScreen)} />
           <Stack.Screen name="FindTherapist" component={FindTherapistScreen} />
           <Stack.Screen name="TherapistProfile" component={TherapistProfileScreen} />
+          <Stack.Screen name="ProviderRefills" component={makeProtected(ProviderRefillsScreen)} />
         </Stack.Navigator>
       </NavigationContainer>
 
