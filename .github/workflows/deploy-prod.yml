@@ -6,52 +6,43 @@ on:
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # Android → Google Play Production
+  # Android → Google Play Production (disabled until Play Store service account is fixed)
   # ─────────────────────────────────────────────────────────────
-  android-prod:
-    name: Android → Play Store Production
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Install JS dependencies
-        run: npm ci
-
-      # Decode the keystore stored as a base64 GitHub secret
-      - name: Decode release keystore
-        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/spectrum-release.keystore
-
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      # versionCode and versionName come from build.gradle — bump them manually before pushing to prod
-      - name: Build release AAB
-        run: |
-          cd android
-          ./gradlew bundleRelease \
-            -PRELEASE_STORE_FILE=spectrum-release.keystore \
-            -PRELEASE_STORE_PASSWORD="${{ secrets.RELEASE_STORE_PASSWORD }}" \
-            -PRELEASE_KEY_ALIAS="${{ secrets.RELEASE_KEY_ALIAS }}" \
-            -PRELEASE_KEY_PASSWORD="${{ secrets.RELEASE_KEY_PASSWORD }}"
-
-      - name: Upload to Play Store Production
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: care.spectrumclinics.app
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: production
-          status: completed
+  # android-prod:
+  #   name: Android → Play Store Production
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #     - uses: actions/setup-java@v4
+  #       with:
+  #         java-version: '17'
+  #         distribution: 'temurin'
+  #     - name: Install JS dependencies
+  #       run: npm ci
+  #     - name: Decode release keystore
+  #       run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/spectrum-release.keystore
+  #     - name: Make gradlew executable
+  #       run: chmod +x android/gradlew
+  #     - name: Build release AAB
+  #       run: |
+  #         cd android
+  #         ./gradlew bundleRelease \
+  #           -PRELEASE_STORE_FILE=spectrum-release.keystore \
+  #           -PRELEASE_STORE_PASSWORD="${{ secrets.RELEASE_STORE_PASSWORD }}" \
+  #           -PRELEASE_KEY_ALIAS="${{ secrets.RELEASE_KEY_ALIAS }}" \
+  #           -PRELEASE_KEY_PASSWORD="${{ secrets.RELEASE_KEY_PASSWORD }}"
+  #     - name: Upload to Play Store Production
+  #       uses: r0adkll/upload-google-play@v1
+  #       with:
+  #         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+  #         packageName: care.spectrumclinics.app
+  #         releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+  #         track: production
+  #         status: completed
 
   # ─────────────────────────────────────────────────────────────
   # iOS → App Store
