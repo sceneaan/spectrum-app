@@ -75,15 +75,18 @@ jobs:
         id: pods-cache
         uses: actions/cache@v4
         with:
-          path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile') }}
+          path: ~/.cocoapods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile') }}
 
       - name: Install CocoaPods dependencies
-        if: steps.pods-cache.outputs.cache-hit != 'true'
         run: |
           cd ios
           rm -f Podfile.lock
-          pod install --repo-update
+          if [ "${{ steps.pods-cache.outputs.cache-hit }}" = "true" ]; then
+            pod install
+          else
+            pod install --repo-update
+          fi
 
       # Import the Apple Distribution certificate into a temporary keychain
       - name: Import distribution certificate
