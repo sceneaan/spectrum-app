@@ -14,19 +14,19 @@ import Header from '../../components/Header';
 import RiyalText from '../../components/RiyalText';
 import Skeleton from '../../components/Skeleton';
 import { AppText, AppCard, SectionHeader, QuickAction } from '../../components/ui';
-import { useLanguage } from '../store/LanguageContext';
-import { useAuthStore } from '../store/authStore';
-import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
-import { useGetProviderEarningStats } from '../api/services/Stats.Service';
-import { usePatientToProviderRequests } from '../api/services/Refill.Service';
-import { useProviderGetThreads } from '../api/services/Thread.Service';
+import { useLanguage } from '../../store/LanguageContext';
+import { useAuthStore } from '../../store/authStore';
+import { useGetUpcomingAppointments } from '../../api/services/Appointment.Service';
+import { useGetProviderEarningStats } from '../../api/services/Stats.Service';
+import { usePatientToProviderRequests } from '../../api/services/Refill.Service';
+import { useProviderGetThreads } from '../../api/services/Thread.Service';
 import {
   getPatientDisplayName,
   partitionProviderSchedule,
-} from '../utils/providerAppointments';
-import COLORS from '../constants/colors';
-import ICONS from '../constants/icons';
-import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
+} from '../../utils/providerAppointments';
+import COLORS from '../../constants/colors';
+import ICONS from '../../constants/icons';
+import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
 
 const ProviderHomeScreen = () => {
   const navigation = useNavigation();
