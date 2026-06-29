@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +23,17 @@ import COLORS from '../../constants/colors';
 import Skeleton from '../../components/Skeleton';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
 
+const MESSAGE_TYPE_FILTERS = [
+  { key: 'all', labelKey: 'all' },
+  { key: 'General', labelKey: 'general' },
+  { key: 'Urgent', labelKey: 'urgent' },
+  { key: 'Prescription Related', labelKey: 'prescriptionRelated' },
+];
+
 const formatThreadType = (type, t) => {
-  if (!type) return t.messaging?.general || 'General';
-  if (type === 'General') return t.messaging?.general || 'General';
+  if (!type || type === 'General') return t.messaging?.general || 'General';
+  if (type === 'Urgent') return t.messaging?.urgent || 'Urgent';
+  if (type === 'Prescription Related') return t.messaging?.prescriptionRelated || 'Prescription related';
   return type;
 };
 
@@ -37,6 +46,7 @@ const ProviderInboxScreen = () => {
 
   const [search, setSearch] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(Boolean(route.params?.filterUnread));
+  const [typeFilter, setTypeFilter] = useState('all');
 
   const rtl = isRTL();
   const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
@@ -45,7 +55,9 @@ const ProviderInboxScreen = () => {
   const {
     data: userThreads,
     isLoading,
+    isError,
     refetch,
+    isRefetching,
   } = useProviderGetThreads();
 
   const isFocused = useIsFocused();
@@ -69,6 +81,9 @@ const ProviderInboxScreen = () => {
     if (unreadOnly) {
       base = threads.filter(threadHasUnread);
     }
+    if (typeFilter !== 'all') {
+      base = base.filter((item) => item.type === typeFilter);
+    }
     if (!search.trim()) return base;
 
     const searchLower = search.toLowerCase();
@@ -76,7 +91,7 @@ const ProviderInboxScreen = () => {
       const name = getPatientDisplayName(item.patient, rtl) || item.patientName || '';
       return name.toLowerCase().includes(searchLower);
     });
-  }, [search, threads, unreadOnly, rtl]);
+  }, [search, threads, unreadOnly, typeFilter, rtl]);
 
   const openThread = (item) => {
     navigation.navigate('ChatDetails', { thread: item });
@@ -137,7 +152,7 @@ const ProviderInboxScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={pd.inboxTitle || 'Messages'} showProfile />
+      <Header title={pd.inboxTitle || 'Inbox'} showProfile />
       <View style={styles.content}>
         {unreadOnly ? (
           <TouchableOpacity
@@ -162,6 +177,25 @@ const ProviderInboxScreen = () => {
           />
         </View>
 
+        <View style={[styles.filterRow, rowStyle]}>
+          {MESSAGE_TYPE_FILTERS.map((filter) => (
+            <TouchableOpacity
+              key={filter.key}
+              style={[styles.filterChip, typeFilter === filter.key && styles.filterChipActive]}
+              onPress={() => setTypeFilter(filter.key)}
+            >
+              <AppText
+                variant="caption"
+                color={typeFilter === filter.key ? COLORS.primaryDark : COLORS.textSecondary}
+              >
+                {filter.key === 'all'
+                  ? (t.messaging?.all || 'All')
+                  : formatThreadType(filter.key, t)}
+              </AppText>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {isLoading ? (
           <View style={styles.listPad}>
             {[1, 2, 3].map((k) => (
@@ -174,6 +208,12 @@ const ProviderInboxScreen = () => {
               </View>
             ))}
           </View>
+        ) : isError ? (
+          <EmptyState
+            title={t.messaging?.threadsLoadError || 'Could not load your inbox.'}
+            actionLabel={t.messaging?.retry || 'Retry'}
+            onAction={() => refetch()}
+          />
         ) : (
           <FlatList
             data={filteredThreads}
@@ -181,6 +221,9 @@ const ProviderInboxScreen = () => {
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={(
+              <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={COLORS.primary} />
+            )}
             ListEmptyComponent={(
               <EmptyState
                 icon={ICONS.inbox}
@@ -230,6 +273,14 @@ const styles = StyleSheet.create({
   },
   searchIcon: { width: 18, height: 18, tintColor: COLORS.gray500, marginEnd: SPACING.sm },
   input: { flex: 1, height: '100%', color: COLORS.textPrimary, fontSize: 15 },
+  filterRow: { flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
+  filterChip: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceMuted,
+  },
+  filterChipActive: { backgroundColor: COLORS.primaryLight },
   listPad: { paddingTop: SPACING.sm },
   listContent: { paddingTop: SPACING.sm, paddingBottom: 100 },
   skeletonCard: {

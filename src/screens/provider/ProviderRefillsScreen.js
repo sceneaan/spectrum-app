@@ -12,32 +12,43 @@ import Header from '../../components/Header';
 import AppIcon from '../../components/ui/AppIcon';
 import ProviderRefillModal from '../../components/provider/ProviderRefillModal';
 import ProviderStatusBadge from '../../components/provider/ProviderStatusBadge';
-import { AppText, AppCard, EmptyState } from '../../components/ui';
+import { AppText, AppCard, EmptyState, SegmentedTabs } from '../../components/ui';
 import { useLanguage } from '../../store/LanguageContext';
 import { usePatientToProviderRequests } from '../../api/services/Refill.Service';
 import { getPatientDisplayName } from '../../utils/providerAppointments';
+import { isRTL } from '../../utils/rtlUtils';
 import COLORS from '../../constants/colors';
+import ICONS from '../../constants/icons';
 import { SPACING, RADIUS } from '../../theme';
 
 const ProviderRefillsScreen = () => {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL: rtlFromContext } = useLanguage();
   const pd = t.providerDashboard || {};
+  const rtl = isRTL();
   const [selectedRefill, setSelectedRefill] = useState(null);
+  const [activeTab, setActiveTab] = useState('pending');
 
-  const { data, isLoading, refetch, isRefetching } = usePatientToProviderRequests();
+  const { data, isLoading, isError, refetch, isRefetching } = usePatientToProviderRequests();
+
+  const allRequests = useMemo(() => data?.docs || data || [], [data]);
 
   const requests = useMemo(() => {
-    const docs = data?.docs || data || [];
-    return docs.filter((r) => r.status === 'Pending');
-  }, [data]);
+    if (activeTab === 'all') return allRequests;
+    return allRequests.filter((r) => String(r.status || '').toLowerCase() === 'pending');
+  }, [allRequests, activeTab]);
+
+  const tabs = [
+    { key: 'pending', label: pd.refillsPending || 'Pending' },
+    { key: 'all', label: pd.refillsAll || 'All' },
+  ];
 
   const renderItem = ({ item }) => {
     const patient = item.patient || item.patientDetails;
-    const patientName = getPatientDisplayName(patient, isRTL) || pd.patient || 'Patient';
+    const patientName = getPatientDisplayName(patient, rtlFromContext) || pd.patient || 'Patient';
     const medCount = item.medications?.length || 0;
     const firstMed = item.medications?.[0]?.drugName;
     const requestedAt = item.createdAt ? moment(item.createdAt).format('MMM D, YYYY') : '';
-    const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+    const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
 
     return (
       <TouchableOpacity activeOpacity={0.85} onPress={() => setSelectedRefill(item)}>
@@ -60,12 +71,14 @@ const ProviderRefillsScreen = () => {
                 {firstMed || pd.medication}
                 {medCount > 1 ? ` +${medCount - 1}` : ''}
               </AppText>
-              <AppText variant="caption" color={COLORS.primary} style={styles.tapHint}>
-                {pd.tapToReview || 'Tap to review medications'}
-              </AppText>
+              {String(item.status || '').toLowerCase() === 'pending' ? (
+                <AppText variant="caption" color={COLORS.primary} style={styles.tapHint}>
+                  {pd.tapToReview || 'Tap to review medications'}
+                </AppText>
+              ) : null}
             </View>
             <AppIcon
-              name={isRTL ? 'chevron-left' : 'chevron-right'}
+              name={rtl ? 'chevron-left' : 'chevron-right'}
               size={18}
               color={COLORS.gray500}
             />
@@ -77,11 +90,20 @@ const ProviderRefillsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header showBack title={pd.refillsTitle || 'Refill requests'} />
+      <Header showBack title={pd.refillsTitle || 'Pending Refill Requests'} />
+      <View style={styles.tabsWrap}>
+        <SegmentedTabs isRTL={rtl} activeKey={activeTab} onChange={setActiveTab} options={tabs} />
+      </View>
       {isLoading ? (
         <View style={styles.loader}>
           <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <EmptyState
+          title={pd.loadError || 'Could not load refill requests'}
+          actionLabel={t.common?.retry || 'Retry'}
+          onAction={() => refetch()}
+        />
       ) : (
         <FlatList
           data={requests}
@@ -93,8 +115,11 @@ const ProviderRefillsScreen = () => {
           )}
           ListEmptyComponent={(
             <EmptyState
-              title={pd.noRefills || 'No pending refill requests'}
-              subtitle={pd.noRefillsHint || 'New patient refill requests will show here'}
+              icon={ICONS.refill}
+              title={activeTab === 'pending'
+                ? (pd.noRefills || 'No pending refill requests')
+                : (pd.noRefillsHistory || 'No refill requests yet')}
+              subtitle={pd.noRefillsHint || 'Your refill requests will appear here once submitted'}
             />
           )}
         />
@@ -112,6 +137,7 @@ const ProviderRefillsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  tabsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
   list: { padding: SPACING.lg, paddingBottom: 40 },
   card: { marginBottom: SPACING.md },
   topRow: {

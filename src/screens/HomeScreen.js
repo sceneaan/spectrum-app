@@ -8,10 +8,13 @@ import { getDynamicData } from '../utils/dataHelper';
 import { useGetAllPromotions } from '../api/services/Public.Service';
 import { useGetSearchFilters, useSearchProviders } from '../api/services/Search.Service';
 import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
+import { useGetMyWallet } from '../api/services/Wallet.Service';
+import { useGetUserData } from '../api/services/User.Service';
+import { calculatePatientProfileCompletion } from '../utils/profileCompletion';
+import { formatSarAmount } from '../utils/formatMoney';
+import RiyalText from '../components/RiyalText';
+import { SectionHeader, QuickAction, AppButton, AppText, AppCard } from '../components/ui';
 import { useAuthStore } from '../store/authStore';
-import Header from '../components/Header';
-import Skeleton from '../components/Skeleton';
-import { SectionHeader, QuickAction, AppButton, AppText } from '../components/ui';
 import SessionCountdownHero from '../components/SessionCountdownHero';
 import ProviderThumb from '../components/ProviderThumb';
 import { usePreSessionJoin } from '../context/PreSessionJoinContext';
@@ -71,6 +74,13 @@ const HomeScreen = () => {
 
    // Fetch upcoming appointments (only for logged in users)
    const { data: upcomingAppointments } = useGetUpcomingAppointments();
+   const { data: walletData } = useGetMyWallet();
+   const { data: userData } = useGetUserData();
+
+   const profileCompletion = useMemo(
+      () => calculatePatientProfileCompletion(userData || user),
+      [userData, user],
+   );
 
    const nearestAppointment = useMemo(
       () => getNearestUpcomingAppointment(upcomingAppointments),
@@ -262,8 +272,16 @@ const HomeScreen = () => {
    // Render promo card
    const renderPromoCard = ({ item, index }) => {
       const { bg, icon } = PROMO_THEMES[index % PROMO_THEMES.length];
-      const title = item.title || t.home?.defaultPromoTitle || 'Your Health, Our Priority';
-      const subtitle = item.subtitle || t.home?.defaultPromoSubtitle || 'Book your session today';
+      const title = isRTL
+        ? (item.titleArabic || item.titleEnglish || item.title || t.home?.defaultPromoTitle || 'Your Health, Our Priority')
+        : (item.titleEnglish || item.titleArabic || item.title || t.home?.defaultPromoTitle || 'Your Health, Our Priority');
+      const subtitle = isRTL
+        ? (item.descriptionArabic || item.descriptionEnglish || item.subtitle || t.home?.defaultPromoSubtitle || 'Book your session today')
+        : (item.descriptionEnglish || item.descriptionArabic || item.subtitle || t.home?.defaultPromoSubtitle || 'Book your session today');
+
+      const openPromo = () => {
+         navigation.navigate('PromoDetail', { promo: item });
+      };
 
       return (
          <View style={[styles.promoCard, { backgroundColor: bg, height: isLoggedIn ? 165 : 130, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -272,7 +290,7 @@ const HomeScreen = () => {
                <Text style={[styles.promoSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{subtitle}</Text>
                <TouchableOpacity
                   style={styles.promoBtn}
-                  onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+                  onPress={openPromo}
                >
                   <Text style={styles.promoBtnText}>{t.home?.readMore || 'Read More'}</Text>
                </TouchableOpacity>
@@ -316,8 +334,59 @@ const HomeScreen = () => {
                      label={t.home?.quickVideo || 'Video'}
                      onPress={handleQuickVideo}
                   />
+                  <QuickAction
+                     vectorIcon="practice"
+                     label={t.home?.quickRecords || 'Records'}
+                     onPress={() => navigation.navigate('MedicalRecordScreen')}
+                  />
+                  <QuickAction
+                     vectorIcon="wallet"
+                     label={t.home?.quickBilling || 'Billing'}
+                     onPress={() => navigation.navigate('BillingScreen')}
+                  />
                </View>
             )}
+
+            {isLoggedIn && isPatient && profileCompletion < 100 ? (
+               <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => navigation.navigate('Profile')}
+               >
+                  <AppCard style={styles.dashboardCard} padding={SPACING.lg}>
+                     <AppText variant="bodyMedium">{t.home?.profileCompletionTitle || 'Complete your profile'}</AppText>
+                     <AppText variant="caption" color={COLORS.textSecondary}>
+                        {(t.home?.profileCompletionSubtitle || '{{percent}}% complete — add details for better care')
+                           .replace('{{percent}}', String(profileCompletion))}
+                     </AppText>
+                     <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${profileCompletion}%` }]} />
+                     </View>
+                     <AppText variant="caption" color={COLORS.primaryDark} style={styles.linkText}>
+                        {t.home?.completeProfile || 'Complete profile'}
+                     </AppText>
+                  </AppCard>
+               </TouchableOpacity>
+            ) : null}
+
+            {isLoggedIn && isPatient ? (
+               <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => navigation.navigate('WalletScreen')}
+               >
+                  <AppCard style={styles.dashboardCard} padding={SPACING.lg}>
+                     <AppText variant="caption" color={COLORS.textSecondary}>
+                        {t.home?.walletCardTitle || 'Wallet balance'}
+                     </AppText>
+                     <RiyalText
+                        text={formatSarAmount(walletData?.availableBalance ?? walletData?.balance ?? 0)}
+                        textStyle={styles.walletAmount}
+                     />
+                     <AppText variant="caption" color={COLORS.primaryDark} style={styles.linkText}>
+                        {t.home?.viewWallet || 'View wallet'}
+                     </AppText>
+                  </AppCard>
+               </TouchableOpacity>
+            ) : null}
 
             {showSessionHero && (
                <SessionCountdownHero
@@ -755,8 +824,34 @@ const styles = StyleSheet.create({
       paddingTop: SPACING.md,
       paddingBottom: SPACING.sm,
       justifyContent: 'space-between',
+      flexWrap: 'wrap',
       gap: SPACING.sm,
    },
+   dashboardCard: {
+      marginHorizontal: SPACING.xl,
+      marginBottom: SPACING.md,
+      ...cardBorder,
+      ...SHADOWS.sm,
+   },
+   progressTrack: {
+      height: 8,
+      borderRadius: RADIUS.pill,
+      backgroundColor: COLORS.surfaceMuted,
+      marginTop: SPACING.md,
+      overflow: 'hidden',
+   },
+   progressFill: {
+      height: '100%',
+      backgroundColor: COLORS.primary,
+      borderRadius: RADIUS.pill,
+   },
+   walletAmount: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: COLORS.textPrimary,
+      marginTop: SPACING.xs,
+   },
+   linkText: { marginTop: SPACING.sm, fontWeight: '600' },
    guestHero: {
       marginHorizontal: SPACING.xl,
       marginTop: SPACING.lg,

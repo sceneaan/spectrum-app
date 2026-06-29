@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
@@ -32,22 +32,18 @@ const ProfileScreen = () => {
       socketService.disconnect();
       await Logout();
       await logout();
-      // Clear all React Query cached data so stale user data never leaks post-logout
       queryClient.clear();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [
-            {
-              name: 'Main',
-              state: {
-                routes: [{ name: 'HomeTab' }],
-              },
-            },
-          ],
-        })
+          routes: [{ name: 'Main' }],
+        }),
       );
     } catch (error) {
+      Alert.alert(
+        t.common?.error || 'Error',
+        t.profile?.logoutFailed || 'Could not log out. Please try again.',
+      );
     }
   };
 

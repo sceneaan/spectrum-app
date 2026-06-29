@@ -14,6 +14,7 @@ import {
   useGetUpcomingAppointments,
   useGetPendingAppointmentsGroupedByDoctor,
 } from '../api/services/Appointment.Service';
+import { showToast } from '../components/InAppToast';
 import socketService from '../utils/socket';
 import { filterUpcomingAppointments } from '../utils/appointmentFilters';
 import { getUserId } from '../utils/userId';
@@ -149,28 +150,63 @@ const AppointmentsScreen = () => {
 
       // Handle appointment rejection in real-time
       const handleAppointmentRejected = (data) => {
-        // Refetch both upcoming and pending appointments to update UI
         refetchUpcoming();
         refetchPending();
-        // Invalidate queries to ensure fresh data
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
         queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        showToast({
+          variant: 'info',
+          title: t.appointments?.rejectedTitle || 'Appointment update',
+          body: data?.message || t.appointments?.rejectedBody || 'An appointment was rejected.',
+        });
       };
 
-      // Handle appointment cancellation in real-time
       const handleAppointmentCancelled = (data) => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
         queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        showToast({
+          variant: 'info',
+          title: t.appointments?.cancelledTitle || 'Appointment cancelled',
+          body: data?.message || t.appointments?.cancelledBody || 'An appointment was cancelled.',
+        });
       };
 
-      // Handle appointment status change in real-time
       const handleAppointmentStatusChanged = (data) => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
         queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        showToast({
+          variant: 'success',
+          title: t.appointments?.statusChangedTitle || 'Appointment updated',
+          body: data?.message || t.appointments?.statusChangedBody || 'Your appointment status changed.',
+        });
+      };
+
+      const handleAppointmentApproved = (data) => {
+        refetchUpcoming();
+        refetchPending();
+        queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        showToast({
+          variant: 'success',
+          title: t.appointments?.approvedTitle || 'Appointment approved',
+          body: data?.message || t.appointments?.approvedBody || 'Your provider approved your appointment.',
+        });
+      };
+
+      const handleAppointmentCreated = (data) => {
+        refetchUpcoming();
+        refetchPending();
+        queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        showToast({
+          variant: 'success',
+          title: t.appointments?.createdTitle || 'Appointment booked',
+          body: data?.message || t.appointments?.createdBody || 'Your appointment was created.',
+        });
       };
 
     const attachListeners = () => {
@@ -180,6 +216,8 @@ const AppointmentsScreen = () => {
       socketService.on('appointmentRejected', handleAppointmentRejected);
       socketService.on('appointmentCancelled', handleAppointmentCancelled);
       socketService.on('appointmentStatusChanged', handleAppointmentStatusChanged);
+      socketService.on('appointmentApproved', handleAppointmentApproved);
+      socketService.on('appointmentCreated', handleAppointmentCreated);
     };
 
     attachListeners();
@@ -192,6 +230,8 @@ const AppointmentsScreen = () => {
       socketService.off('appointmentRejected', handleAppointmentRejected);
       socketService.off('appointmentCancelled', handleAppointmentCancelled);
       socketService.off('appointmentStatusChanged', handleAppointmentStatusChanged);
+      socketService.off('appointmentApproved', handleAppointmentApproved);
+      socketService.off('appointmentCreated', handleAppointmentCreated);
     };
   }, [authUserId, isAuthenticated, refetchUpcoming, refetchPending, queryClient]);
 

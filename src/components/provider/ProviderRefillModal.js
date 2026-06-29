@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { showToast } from '../InAppToast';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { AppText, AppButton, AppCard } from '../ui';
 import ProviderStatusBadge from './ProviderStatusBadge';
@@ -75,12 +76,13 @@ const ProviderRefillModal = ({
       {
         onSuccess: () => {
           onUpdated?.();
-          Alert.alert(
-            t.common?.success || 'Success',
-            action === 'approve'
+          showToast({
+            type: 'success',
+            title: t.common?.success || 'Success',
+            message: action === 'approve'
               ? (pd.refillApproved || 'Refill approved')
               : (pd.refillRejected || 'Refill declined'),
-          );
+          });
           if (processedCount + selectedIds.length >= medications.length) {
             onClose?.();
           } else {
@@ -88,7 +90,11 @@ const ProviderRefillModal = ({
           }
         },
         onError: () => {
-          Alert.alert(t.common?.error || 'Error', pd.refillFailed || 'Could not update refill request');
+          showToast({
+            type: 'error',
+            title: t.common?.error || 'Error',
+            message: pd.refillFailed || 'Could not update refill request',
+          });
         },
       },
     );
@@ -101,7 +107,7 @@ const ProviderRefillModal = ({
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <AppText variant="h3" style={styles.title}>{pd.refillReview || 'Review refill request'}</AppText>
+          <AppText variant="h3" style={styles.title}>{pd.refillReview || 'Medication Refill Request'}</AppText>
           <AppText variant="bodySmall" color={COLORS.textSecondary}>{patientName}</AppText>
           {refill?.createdAt ? (
             <AppText variant="caption" color={COLORS.textSecondary} style={styles.date}>

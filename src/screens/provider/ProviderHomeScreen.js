@@ -23,6 +23,7 @@ import {
   normalizeThreadList,
   threadHasUnread,
 } from '../../utils/threads';
+import { useGetPendingDiscountInvitations } from '../../api/services/Discount.Service';
 import {
   useGetProviderMessageUnreadCount,
   useProviderGetThreads,
@@ -85,13 +86,14 @@ const ProviderHomeScreen = () => {
     data: todayAppointments,
     isLoading: todayLoading,
     refetch: refetchToday,
-    isRefetching,
+    isRefetching: todayRefreshing,
   } = useGetUpcomingAppointments({ isToday: 'true' });
 
-  const { data: earnings, isLoading: earningsLoading, refetch: refetchEarnings } = useGetProviderEarningStats();
-  const { data: refillData, refetch: refetchRefills } = usePatientToProviderRequests();
-  const { data: threadData, refetch: refetchThreads } = useProviderGetThreads();
-  const { data: messageUnreadCount = 0, refetch: refetchMessageUnread } = useGetProviderMessageUnreadCount();
+  const { data: earnings, isLoading: earningsLoading, refetch: refetchEarnings, isRefetching: earningsRefreshing } = useGetProviderEarningStats();
+  const { data: refillData, refetch: refetchRefills, isRefetching: refillsRefreshing } = usePatientToProviderRequests();
+  const { data: threadData, refetch: refetchThreads, isRefetching: threadsRefreshing } = useProviderGetThreads();
+  const { data: messageUnreadCount = 0, refetch: refetchMessageUnread, isRefetching: unreadRefreshing } = useGetProviderMessageUnreadCount();
+  const { data: discountData, refetch: refetchDiscounts, isRefetching: discountsRefreshing } = useGetPendingDiscountInvitations();
 
   const { pendingApprovals, confirmed } = useMemo(
     () => partitionProviderSchedule(todayAppointments || []),
@@ -109,7 +111,15 @@ const ProviderHomeScreen = () => {
     return Math.max(fromList, messageUnreadCount);
   }, [threadData, messageUnreadCount]);
 
-  const pendingCount = pendingApprovals.length + pendingRefills.length + unreadThreads;
+  const pendingDiscounts = useMemo(() => {
+    const docs = discountData?.docs || discountData || [];
+    return Array.isArray(docs) ? docs.filter((d) => String(d.status || '').toLowerCase() === 'pending') : [];
+  }, [discountData]);
+
+  const pendingCount = pendingApprovals.length + pendingRefills.length + unreadThreads + pendingDiscounts.length;
+
+  const isRefreshing = todayRefreshing || earningsRefreshing || refillsRefreshing
+    || threadsRefreshing || unreadRefreshing || discountsRefreshing;
 
   const onRefresh = () => {
     refetchToday();
@@ -117,6 +127,7 @@ const ProviderHomeScreen = () => {
     refetchRefills();
     refetchThreads();
     refetchMessageUnread();
+    refetchDiscounts();
   };
 
   const showVideoNote = () => {
@@ -176,9 +187,21 @@ const ProviderHomeScreen = () => {
     {
       key: 'refills',
       vectorIcon: 'refills',
-      label: pd.refills || 'Refills',
+      label: pd.refills || 'Refill Requests',
       badge: pendingRefills.length,
       onPress: () => navigation.navigate('ProviderRefills'),
+    },
+    {
+      key: 'patients',
+      vectorIcon: 'search',
+      label: pd.patientsTitle || 'Patients',
+      onPress: () => navigation.navigate('ProviderPatients'),
+    },
+    {
+      key: 'discounts',
+      vectorIcon: 'wallet',
+      label: pd.discountsTitle || 'Discounts',
+      onPress: () => navigation.navigate('ProviderDiscounts'),
     },
   ];
 
@@ -189,7 +212,7 @@ const ProviderHomeScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={(
-          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={COLORS.primary} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         )}
       >
         <AppCard style={styles.heroCard} padding={SPACING.xl}>
@@ -210,7 +233,7 @@ const ProviderHomeScreen = () => {
               ) : null}
               {pendingRefills.length > 0 ? (
                 <StatusChip
-                  label={(pd.refillChip || '{{count}} refills').replace('{{count}}', String(pendingRefills.length))}
+                  label={(pd.refillChip || '{{count}} Refill Requests').replace('{{count}}', String(pendingRefills.length))}
                   onPress={() => navigation.navigate('ProviderRefills')}
                 />
               ) : null}
@@ -218,6 +241,13 @@ const ProviderHomeScreen = () => {
                 <StatusChip
                   label={(pd.messageChip || '{{count}} unread').replace('{{count}}', String(unreadThreads))}
                   onPress={() => navigation.navigate('ProviderInboxTab', { filterUnread: true })}
+                />
+              ) : null}
+              {pendingDiscounts.length > 0 ? (
+                <StatusChip
+                  tone="warning"
+                  label={(pd.discountChip || '{{count}} discount invitations').replace('{{count}}', String(pendingDiscounts.length))}
+                  onPress={() => navigation.navigate('ProviderDiscounts')}
                 />
               ) : null}
             </View>

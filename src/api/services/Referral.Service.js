@@ -48,6 +48,27 @@ export function useGetReferralDetails(id) {
   });
 }
 
+export function useGetOutgoingReferrals(query = { page: 1, limit: 20 }) {
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  return useQuery({
+    queryKey: ['outgoingReferrals', query],
+    queryFn: async () => {
+      try {
+        const result = await getRequest(`${MODEL_NAME}/list/outgoing`, query);
+        if (result.status === HttpStatusCode.Ok) {
+          return result.data.data;
+        }
+        throw new Error(ErrorMessages.generalMessage);
+      } catch (err) {
+        return throwServerError(err);
+      }
+    },
+    enabled: isAuthenticated && isProviderRole(user),
+  });
+}
+
 export function useChangeReferralStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -64,6 +85,7 @@ export function useChangeReferralStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incomingReferrals'] });
+      queryClient.invalidateQueries({ queryKey: ['outgoingReferrals'] });
       queryClient.invalidateQueries({ queryKey: ['referralDetails'] });
     },
   });

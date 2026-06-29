@@ -10,6 +10,7 @@ import { useGetUnreadCount } from '../api/services/Notification.Service';
 import { LangPill, AppText } from './ui';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+import { isProviderRole, isAdminRole, isPatientRole } from '../utils/videoAccess';
 import { SPACING, RADIUS, SHADOWS } from '../theme';
 
 const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
@@ -54,11 +55,45 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
   const alignText = isRTL ? 'right' : 'left';
 
-  const goToProfile = () => navigation.navigate('Profile');
+  const goToProfile = () => {
+    if (isAdminRole(user)) {
+      navigation.navigate('AdminProfile');
+    } else if (isProviderRole(user)) {
+      navigation.navigate('ProviderProfile');
+    } else {
+      navigation.navigate('Profile');
+    }
+  };
   const goToNotifications = () => navigation.navigate('Notifications');
 
+  const profile = userData || user;
+  const getFirstName = () => {
+    const name = isRTL
+      ? (profile?.fullNameArabic || profile?.fullName || profile?.name || '')
+      : (profile?.fullNameEnglish || profile?.fullName || profile?.name || '');
+    return name.split(' ')[0] || profile?.fullName || profile?.name || 'User';
+  };
+
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    const h = t.home || {};
+    if (hour < 12) return h.greetingMorning || h.welcome || 'Good morning';
+    if (hour < 17) return h.greetingAfternoon || h.welcome || 'Good afternoon';
+    return h.greetingEvening || h.welcome || 'Good evening';
+  };
+
+  const getWelcomeCaption = () => {
+    if (isAdminRole(user)) {
+      return t.adminDashboard?.greeting || 'Operations dashboard';
+    }
+    if (isProviderRole(user)) {
+      return t.providerDashboard?.greeting || t.home?.welcome || 'Welcome back';
+    }
+    return getTimeGreeting();
+  };
+
   const displayName = isAuthenticated
-    ? (userData?.fullName || user?.fullName || user?.name || 'User')
+    ? (isPatientRole(user) ? getFirstName() : (profile?.fullName || profile?.name || 'User'))
     : (t.home?.guestTagline || 'Care that fits your life');
   const guestCaption = t.home?.guestWelcomeLabel || 'Spectrum Clinics';
 
@@ -100,7 +135,7 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
       </View>
       <View style={{ marginHorizontal: SPACING.md, flex: 1 }}>
         <AppText variant="caption" align={alignText} color={COLORS.textSecondary}>
-          {t.welcome || 'Welcome'}
+          {getWelcomeCaption()}
         </AppText>
         <AppText variant="bodyMedium" align={alignText} numberOfLines={2}>
           {displayName}

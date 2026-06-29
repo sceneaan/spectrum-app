@@ -10,6 +10,7 @@ const ProviderBarChart = ({
   color = COLORS.primary,
   height = 140,
   formatValue,
+  emptyLabel = 'No data for this period',
 }) => {
   const max = useMemo(() => Math.max(...data, 1), [data]);
 
@@ -17,7 +18,7 @@ const ProviderBarChart = ({
     return (
       <View style={[styles.empty, { height }]}>
         <AppText variant="caption" color={COLORS.textSecondary} align="center">
-          No data for this period
+          {emptyLabel}
         </AppText>
       </View>
     );

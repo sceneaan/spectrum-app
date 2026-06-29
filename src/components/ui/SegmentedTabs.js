@@ -4,8 +4,8 @@ import AppText from './AppText';
 import COLORS from '../../constants/colors';
 import { RADIUS, SPACING, SHADOWS } from '../../theme';
 
-const SegmentedTabs = ({ options, activeKey, onChange, isRTL }) => (
-  <View style={[styles.container, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+const SegmentedTabs = ({ options, activeKey, onChange, isRTL, style }) => (
+  <View style={[styles.container, style, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
     {options.map((option) => {
       const isActive = option.key === activeKey;
       return (
@@ -18,8 +18,8 @@ const SegmentedTabs = ({ options, activeKey, onChange, isRTL }) => (
           <AppText
             variant="bodySmall"
             align="center"
-            color={isActive ? COLORS.white : COLORS.textSecondary}
-            style={isActive ? styles.activeLabel : styles.label}
+            color={isActive ? COLORS.white : COLORS.textPrimary}
+            style={isActive ? styles.activeLabel : styles.inactiveLabel}
           >
             {option.label}
           </AppText>
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     ...SHADOWS.sm,
   },
-  label: { fontWeight: '600' },
+  inactiveLabel: { fontWeight: '600', color: COLORS.textPrimary },
   activeLabel: { fontWeight: '700' },
 });
 

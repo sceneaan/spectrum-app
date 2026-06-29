@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import Header from '../../components/Header';
 import ProviderBarChart from '../../components/provider/ProviderBarChart';
-import { AppText, AppCard, SegmentedTabs } from '../../components/ui';
+import { AppText, AppCard, SegmentedTabs, EmptyState } from '../../components/ui';
 import { useLanguage } from '../../store/LanguageContext';
 import { useGetProviderPerformanceMetrics, EMPTY_PROVIDER_METRICS } from '../../api/services/Stats.Service';
 import COLORS from '../../constants/colors';
@@ -34,6 +34,7 @@ const ProviderPerformanceScreen = () => {
   const {
     data,
     isLoading,
+    isError,
     refetch,
     isRefetching,
   } = useGetProviderPerformanceMetrics(period);
@@ -101,6 +102,12 @@ const ProviderPerformanceScreen = () => {
         <View style={styles.loader}>
           <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError && !data ? (
+        <EmptyState
+          title={pd.loadError || 'Could not load performance data'}
+          actionLabel={t.messaging?.retry || t.common?.retry || 'Retry'}
+          onAction={refetch}
+        />
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
@@ -123,6 +130,7 @@ const ProviderPerformanceScreen = () => {
                 labels={categories}
                 color={section.color}
                 height={120}
+                emptyLabel={pd.chartNoData || 'No data for this period'}
                 formatValue={(v) => (
                   section.isMoney
                     ? (v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)))
@@ -142,7 +150,7 @@ const ProviderPerformanceScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  tabsWrap: { paddingHorizontal: SPACING.lg },
+  tabsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.sm },
   content: { padding: SPACING.lg, paddingBottom: 40 },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   sectionCard: { marginBottom: SPACING.lg, padding: SPACING.lg },

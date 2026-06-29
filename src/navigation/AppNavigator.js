@@ -58,6 +58,18 @@ import ProviderRevenueScreen from '../screens/provider/ProviderRevenueScreen';
 import ProviderPerformanceScreen from '../screens/provider/ProviderPerformanceScreen';
 import ProviderReferralDetailScreen from '../screens/provider/ProviderReferralDetailScreen';
 import ProviderNewMessageScreen from '../screens/provider/ProviderNewMessageScreen';
+import ProviderReportDetailScreen from '../screens/provider/ProviderReportDetailScreen';
+import ProviderEncounterDetailScreen from '../screens/provider/ProviderEncounterDetailScreen';
+import ProviderProfileScreen from '../screens/provider/ProviderProfileScreen';
+import ProviderPatientsScreen from '../screens/provider/ProviderPatientsScreen';
+import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
+import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
+import AdminDiscountsScreen from '../screens/admin/AdminDiscountsScreen';
+import AdminAppointmentsScreen from '../screens/admin/AdminAppointmentsScreen';
+import AdminClinicBookingsScreen from '../screens/admin/AdminClinicBookingsScreen';
+import AdminRefundsScreen from '../screens/admin/AdminRefundsScreen';
+import AdminWalletLookupScreen from '../screens/admin/AdminWalletLookupScreen';
+import PromoDetailScreen from '../screens/PromoDetailScreen';
 import COLORS from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
@@ -84,6 +96,19 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'ProviderPerformance',
   'ProviderReferralDetail',
   'ProviderNewMessage',
+  'ProviderReportDetail',
+  'ProviderEncounterDetail',
+  'ProviderProfile',
+  'ProviderPatients',
+  'ProviderDiscounts',
+  'AdminProfile',
+  'AdminNotifications',
+  'AdminDiscounts',
+  'AdminAppointments',
+  'AdminClinicBookings',
+  'AdminRefunds',
+  'AdminWalletLookup',
+  'PromoDetail',
 ]);
 
 // Require login before navigating to these targets
@@ -102,6 +127,19 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'ProviderPerformance',
   'ProviderReferralDetail',
   'ProviderNewMessage',
+  'ProviderReportDetail',
+  'ProviderEncounterDetail',
+  'ProviderProfile',
+  'ProviderPatients',
+  'ProviderDiscounts',
+  'AdminProfile',
+  'AdminNotifications',
+  'AdminDiscounts',
+  'AdminAppointments',
+  'AdminClinicBookings',
+  'AdminRefunds',
+  'AdminWalletLookup',
+  'PromoDetail',
 ]);
 
 const parseNotificationParams = (raw) => {
@@ -309,6 +347,19 @@ const AppNavigator = () => {
           <Stack.Screen name="ProviderPerformance" component={makeProtected(ProviderPerformanceScreen)} />
           <Stack.Screen name="ProviderReferralDetail" component={makeProtected(ProviderReferralDetailScreen)} />
           <Stack.Screen name="ProviderNewMessage" component={makeProtected(ProviderNewMessageScreen)} />
+          <Stack.Screen name="ProviderReportDetail" component={makeProtected(ProviderReportDetailScreen)} />
+          <Stack.Screen name="ProviderEncounterDetail" component={makeProtected(ProviderEncounterDetailScreen)} />
+          <Stack.Screen name="ProviderProfile" component={makeProtected(ProviderProfileScreen)} />
+          <Stack.Screen name="ProviderPatients" component={makeProtected(ProviderPatientsScreen)} />
+          <Stack.Screen name="ProviderDiscounts" component={makeProtected(ProviderDiscountsScreen)} />
+          <Stack.Screen name="AdminProfile" component={makeProtected(AdminProfileScreen)} />
+          <Stack.Screen name="AdminNotifications" component={makeProtected(AdminNotificationsScreen)} />
+          <Stack.Screen name="AdminDiscounts" component={makeProtected(AdminDiscountsScreen)} />
+          <Stack.Screen name="AdminAppointments" component={makeProtected(AdminAppointmentsScreen)} />
+          <Stack.Screen name="AdminClinicBookings" component={makeProtected(AdminClinicBookingsScreen)} />
+          <Stack.Screen name="AdminRefunds" component={makeProtected(AdminRefundsScreen)} />
+          <Stack.Screen name="AdminWalletLookup" component={makeProtected(AdminWalletLookupScreen)} />
+          <Stack.Screen name="PromoDetail" component={PromoDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 

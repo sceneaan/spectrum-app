@@ -7,12 +7,15 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
+import { showToast } from '../../components/InAppToast';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 import { useQueryClient } from '@tanstack/react-query';
 import Header from '../../components/Header';
 import ProviderStatusBadge from '../../components/provider/ProviderStatusBadge';
+import ProviderAppointmentDetailModal from '../../components/provider/ProviderAppointmentDetailModal';
 import { AppText, AppCard, SegmentedTabs, EmptyState, AppButton } from '../../components/ui';
 import { useLanguage } from '../../store/LanguageContext';
 import {
@@ -49,10 +52,12 @@ const ProviderAppointmentsScreen = () => {
 
   const initialTab = normalizeTab(route.params?.initialTab);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   const {
     data: todayData,
     isLoading: todayLoading,
+    isError: todayError,
     refetch: refetchToday,
     isRefetching: todayRefreshing,
   } = useGetUpcomingAppointments({ isToday: 'true' });
@@ -60,6 +65,7 @@ const ProviderAppointmentsScreen = () => {
   const {
     data: allData,
     isLoading: allLoading,
+    isError: allError,
     refetch: refetchAll,
     isRefetching: allRefreshing,
   } = useGetProviderAppointments();
@@ -92,6 +98,7 @@ const ProviderAppointmentsScreen = () => {
   }, [activeTab, confirmed, pendingApprovals, upcomingAll]);
 
   const isLoading = activeTab === 'all' ? allLoading : todayLoading;
+  const isError = activeTab === 'all' ? allError : todayError;
   const isRefreshing = activeTab === 'all' ? allRefreshing : todayRefreshing;
 
   const invalidate = () => {
@@ -110,10 +117,18 @@ const ProviderAppointmentsScreen = () => {
     approve(id, {
       onSuccess: () => {
         invalidate();
-        Alert.alert(t.common?.success || 'Success', pd.approvedSuccess || 'Appointment approved');
+        showToast({
+          type: 'success',
+          title: t.common?.success || 'Success',
+          message: pd.approvedSuccess || 'Appointment approved',
+        });
       },
       onError: () => {
-        Alert.alert(t.common?.error || 'Error', pd.approveFailed || 'Could not approve appointment');
+        showToast({
+          type: 'error',
+          title: t.common?.error || 'Error',
+          message: pd.approveFailed || 'Could not approve appointment',
+        });
       },
     });
   };
@@ -133,10 +148,18 @@ const ProviderAppointmentsScreen = () => {
             reject(id, {
               onSuccess: () => {
                 invalidate();
-                Alert.alert(t.common?.success || 'Success', pd.rejectedSuccess || 'Appointment rejected');
+                showToast({
+                  type: 'success',
+                  title: t.common?.success || 'Success',
+                  message: pd.rejectedSuccess || 'Appointment rejected',
+                });
               },
               onError: () => {
-                Alert.alert(t.common?.error || 'Error', pd.rejectFailed || 'Could not reject appointment');
+                showToast({
+                  type: 'error',
+                  title: t.common?.error || 'Error',
+                  message: pd.rejectFailed || 'Could not reject appointment',
+                });
               },
             });
           },
@@ -165,6 +188,7 @@ const ProviderAppointmentsScreen = () => {
       : (item.status || pd.confirmedSession || 'Confirmed');
 
     return (
+      <TouchableOpacity activeOpacity={0.88} onPress={() => setSelectedAppointment(item)}>
       <AppCard style={styles.card} padding={SPACING.lg}>
         <View style={[styles.cardRow, rowStyle]}>
           <View style={[styles.timePill, rtl ? styles.timePillRtl : styles.timePillLtr]}>
@@ -216,6 +240,7 @@ const ProviderAppointmentsScreen = () => {
           </View>
         ) : null}
       </AppCard>
+      </TouchableOpacity>
     );
   };
 
@@ -240,6 +265,13 @@ const ProviderAppointmentsScreen = () => {
         <View style={styles.loader}>
           <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <EmptyState
+          icon={ICONS.calendar}
+          title={pd.loadError || 'Could not load appointments'}
+          actionLabel={t.messaging?.retry || t.common?.retry || 'Retry'}
+          onAction={onRefresh}
+        />
       ) : (
         <FlatList
           data={listData}
@@ -258,13 +290,30 @@ const ProviderAppointmentsScreen = () => {
           )}
         />
       )}
+      <ProviderAppointmentDetailModal
+        visible={Boolean(selectedAppointment)}
+        appointment={selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        onApprove={(apt) => {
+          handleApprove(apt);
+          setSelectedAppointment(null);
+        }}
+        onReject={(apt) => {
+          handleReject(apt);
+          setSelectedAppointment(null);
+        }}
+        isRTL={rtl}
+        t={t}
+        pd={pd}
+        busy={approving || rejecting}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  tabsWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
+  tabsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.sm },
   list: { padding: SPACING.lg, paddingBottom: 100 },
   card: {
     marginBottom: SPACING.md,

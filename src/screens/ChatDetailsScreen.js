@@ -192,7 +192,7 @@ const ChatDetailsScreen = () => {
               setInputText(optimisticBody);
               Alert.alert(
                 t.common?.error || 'Error',
-                err.message || 'Failed to send message'
+                err.message || t.messaging?.sendMessageFailed || 'Failed to send message'
               );
           }
       });
@@ -203,7 +203,11 @@ const ChatDetailsScreen = () => {
        if (Platform.OS === 'ios') {
            ActionSheetIOS.showActionSheetWithOptions(
                {
-                   options: [isRTL ? 'إلغاء' : 'Cancel', isRTL ? 'صورة' : 'Image', isRTL ? 'ملف' : 'File'],
+                   options: [
+                     t.messaging?.cancel || 'Cancel',
+                     t.messaging?.image || 'Image',
+                     t.messaging?.file || t.messaging?.pdfFile || 'File',
+                   ],
                    cancelButtonIndex: 0,
                },
                (buttonIndex) => {
@@ -236,7 +240,7 @@ const ChatDetailsScreen = () => {
            }
 
            if (result.errorCode) {
-               Alert.alert(t.common?.error || 'Error', result.errorMessage || 'Failed to pick image');
+               Alert.alert(t.common?.error || 'Error', result.errorMessage || t.messaging?.pickImageFailed || 'Failed to pick image');
                return;
            }
 
@@ -252,7 +256,7 @@ const ChatDetailsScreen = () => {
                await uploadAndSendAttachment(file);
            }
        } catch (err) {
-           Alert.alert(t.common?.error || 'Error', 'Failed to pick image');
+           Alert.alert(t.common?.error || 'Error', t.messaging?.pickImageFailed || 'Failed to pick image');
        }
    };
 
@@ -268,7 +272,7 @@ const ChatDetailsScreen = () => {
            await uploadAndSendAttachment(file);
        } catch (err) {
            if (!DocumentPicker.isCancel(err)) {
-               Alert.alert(t.common?.error || 'Error', 'Failed to pick file');
+               Alert.alert(t.common?.error || 'Error', t.messaging?.pickFileFailed || 'Failed to pick file');
            }
        }
    };
@@ -315,11 +319,11 @@ const ChatDetailsScreen = () => {
                    scrollToBottom();
                },
                onError: (err) => {
-                   Alert.alert(t.common?.error || 'Error', 'Failed to send attachment');
+                   Alert.alert(t.common?.error || 'Error', t.messaging?.sendAttachmentFailed || 'Failed to send attachment');
                }
            });
        } catch (uploadErr) {
-           Alert.alert(t.common?.error || 'Error', uploadErr.message || 'Failed to upload file');
+           Alert.alert(t.common?.error || 'Error', uploadErr.message || t.messaging?.uploadFileFailed || t.messaging?.fileUploadFailed || 'Failed to upload file');
        } finally {
            setIsUploadingAttachment(false);
        }
@@ -338,7 +342,7 @@ const ChatDetailsScreen = () => {
            const fileName = item.attachment?.name || 'Attachment';
 
            if (!fileId && !legacyUrl) {
-               Alert.alert(t.common?.error || 'Error', 'No attachment available');
+               Alert.alert(t.common?.error || 'Error', t.messaging?.noAttachment || 'No attachment available');
                return;
            }
 
@@ -352,7 +356,7 @@ const ChatDetailsScreen = () => {
                    } catch (fetchErr) {
                        // Fall back to legacy URL if available
                        if (!legacyUrl) {
-                           Alert.alert(t.common?.error || 'Error', 'Failed to load attachment');
+                           Alert.alert(t.common?.error || 'Error', t.messaging?.loadAttachmentFailed || 'Failed to load attachment');
                            return;
                        }
                    }
@@ -365,7 +369,7 @@ const ChatDetailsScreen = () => {
                        if (supported) {
                            await Linking.openURL(documentUrl);
                        } else {
-                           Alert.alert(t.common?.error || 'Error', 'Cannot open this file');
+                           Alert.alert(t.common?.error || 'Error', t.messaging?.cannotOpenFile || 'Cannot open this file');
                        }
                    } else {
                        // It's a base64 URL - display in DocumentViewer
@@ -419,7 +423,7 @@ const ChatDetailsScreen = () => {
                    }
                }
            } catch (error) {
-               Alert.alert(t.common?.error || 'Error', 'Failed to open attachment');
+               Alert.alert(t.common?.error || 'Error', t.messaging?.openAttachmentFailed || 'Failed to open attachment');
            }
        };
 
@@ -569,7 +573,7 @@ const ChatDetailsScreen = () => {
                      )}
                   </TouchableOpacity>
                   <TextInput
-                     placeholder={t.typeMessage || "Type a message..."}
+                     placeholder={t.messaging?.typingMessage || t.videoConsultation?.typeMessage || 'Type a message...'}
                      placeholderTextColor={COLORS.gray500}
                      style={[styles.chatInput, { textAlign: isRTL ? 'right' : 'left' }]}
                      value={inputText}

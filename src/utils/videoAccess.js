@@ -12,6 +12,10 @@ export function isProviderRole(user) {
   return user?.role?.toLowerCase() === 'provider';
 }
 
+export function isAdminRole(user) {
+  return user?.role?.toLowerCase() === 'admin';
+}
+
 export function isStaffRole(user) {
   return STAFF_ROLES.has(user?.role?.toLowerCase());
 }

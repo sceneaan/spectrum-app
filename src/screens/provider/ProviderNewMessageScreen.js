@@ -7,16 +7,16 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showToast } from '../../components/InAppToast';
 import { useNavigation } from '@react-navigation/native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useLanguage } from '../../store/LanguageContext';
 import Header from '../../components/Header';
-import { AppText, AppButton, AppCard } from '../../components/ui';
+import { AppText, AppButton, AppCard, EmptyState } from '../../components/ui';
 import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
 import { useGetAssociatedPatients } from '../../api/services/Appointment.Service';
@@ -74,7 +74,7 @@ const ProviderNewMessageScreen = () => {
       const file = results[0];
       const validation = validateFile(file, 'attachment');
       if (!validation.isValid) {
-        Alert.alert(t.common?.error || 'Error', validation.error);
+        showToast({ type: 'error', title: t.common?.error || 'Error', message: validation.error });
         return;
       }
 
@@ -87,28 +87,36 @@ const ProviderNewMessageScreen = () => {
           url: uploadResponse?.url || '',
         });
       } catch (uploadErr) {
-        Alert.alert(t.common?.error || 'Error', uploadErr.message || cm.fileUploadFailed || 'File upload failed');
+        showToast({
+          type: 'error',
+          title: t.common?.error || 'Error',
+          message: uploadErr.message || cm.fileUploadFailed || 'File upload failed',
+        });
       } finally {
         setIsUploading(false);
       }
     } catch (err) {
       if (!DocumentPicker.isCancel(err)) {
-        Alert.alert(t.common?.error || 'Error', cm.fileUploadFailed || 'File upload failed');
+        showToast({
+          type: 'error',
+          title: t.common?.error || 'Error',
+          message: cm.fileUploadFailed || 'File upload failed',
+        });
       }
     }
   };
 
   const handleSubmit = () => {
     if (!patientValue) {
-      Alert.alert(t.common?.error || 'Error', pd.selectPatientError || 'Please select a patient');
+      showToast({ type: 'error', title: t.common?.error || 'Error', message: pd.selectPatientError || 'Please select a patient' });
       return;
     }
     if (!subject.trim()) {
-      Alert.alert(t.common?.error || 'Error', cm.subjectEmpty || 'Please enter a subject');
+      showToast({ type: 'error', title: t.common?.error || 'Error', message: cm.subjectEmpty || 'Please enter a subject' });
       return;
     }
     if (!message.trim()) {
-      Alert.alert(t.common?.error || 'Error', cm.emptyMessage || 'Please enter a message');
+      showToast({ type: 'error', title: t.common?.error || 'Error', message: cm.emptyMessage || 'Please enter a message' });
       return;
     }
 
@@ -140,7 +148,11 @@ const ProviderNewMessageScreen = () => {
         navigation.replace('ChatDetails', { thread: threadForChat });
       },
       onError: () => {
-        Alert.alert(t.common?.error || 'Error', cm.messageFailed || 'Failed to send message');
+        showToast({
+          type: 'error',
+          title: t.common?.error || 'Error',
+          message: cm.messageFailed || 'Failed to send message',
+        });
       },
     });
   };
@@ -157,6 +169,15 @@ const ProviderNewMessageScreen = () => {
         {patientsLoading ? (
           <View style={styles.loader}>
             <ActivityIndicator color={COLORS.primary} />
+          </View>
+        ) : !patientItems.length ? (
+          <View style={styles.content}>
+            <EmptyState
+              title={pd.noPatientsCompose || 'No patients available yet'}
+              subtitle={pd.noPatients || 'Patients appear after you have appointments together.'}
+              actionLabel={t.common?.back || 'Back'}
+              onAction={() => navigation.goBack()}
+            />
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

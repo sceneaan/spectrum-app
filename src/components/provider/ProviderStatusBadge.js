@@ -18,10 +18,17 @@ const STATUS_COLORS = {
   'in-progress': { bg: '#EEF2FF', text: '#4338CA' },
 };
 
+const formatStatusText = (text) => {
+  if (!text) return '—';
+  return String(text)
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const ProviderStatusBadge = ({ status, label }) => {
   const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
   const palette = STATUS_COLORS[key] || { bg: COLORS.surfaceMuted, text: COLORS.textSecondary };
-  const text = label || status || '—';
+  const text = formatStatusText(label || status);
 
   return (
     <View style={[styles.badge, { backgroundColor: palette.bg }]}>

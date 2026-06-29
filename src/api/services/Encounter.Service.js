@@ -130,6 +130,18 @@ export async function ListProviderEncounters(query) {
     }
 }
 
+export function useGetEncounterDetails(encounterId) {
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = user?.role?.toLowerCase() === 'provider';
+
+    return useQuery({
+        queryKey: ['encounterDetails', encounterId],
+        queryFn: async () => GetEncounterDetails(encounterId),
+        enabled: isAuthenticated && isProvider && Boolean(encounterId),
+    });
+}
+
 export function useGetProviderEncountersAll(query = { page: 1, limit: 20 }) {
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);

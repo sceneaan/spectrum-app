@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { showToast } from '../../components/InAppToast';
 import { useRoute } from '@react-navigation/native';
 import moment from 'moment';
 import Header from '../../components/Header';
@@ -60,10 +61,18 @@ const ProviderReferralDetailScreen = () => {
               { referralId, status },
               {
                 onSuccess: () => {
-                  Alert.alert(t.common?.success || 'Success', pd.referralUpdated || 'Referral updated');
+                  showToast({
+                    type: 'success',
+                    title: t.common?.success || 'Success',
+                    message: pd.referralUpdated || 'Referral updated',
+                  });
                 },
                 onError: () => {
-                  Alert.alert(t.common?.error || 'Error', pd.referralUpdateFailed || 'Could not update referral');
+                  showToast({
+                    type: 'error',
+                    title: t.common?.error || 'Error',
+                    message: pd.referralUpdateFailed || 'Could not update referral',
+                  });
                 },
               },
             );

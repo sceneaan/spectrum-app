@@ -6,7 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
@@ -15,7 +15,7 @@ import AppIcon from '../../components/ui/AppIcon';
 import { AppText, AppCard, SegmentedTabs, EmptyState } from '../../components/ui';
 import ProviderStatusBadge from '../../components/provider/ProviderStatusBadge';
 import { useLanguage } from '../../store/LanguageContext';
-import { useGetIncomingReferrals } from '../../api/services/Referral.Service';
+import { useGetIncomingReferrals, useGetOutgoingReferrals } from '../../api/services/Referral.Service';
 import { useGetProviderReports } from '../../api/services/MedicalReports.Service';
 import { useGetProviderEncountersAll } from '../../api/services/Encounter.Service';
 import { getPatientDisplayName } from '../../utils/providerAppointments';
@@ -23,9 +23,14 @@ import { formatPersonName } from '../../utils/displayName';
 import { isRTL } from '../../utils/rtlUtils';
 import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
-import { SPACING, SHADOWS, cardBorder } from '../../theme';
+import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
 
 const TAB_KEYS = ['referrals', 'reports', 'encounters'];
+
+const isUrgent = (value) => {
+  const key = String(value || '').toLowerCase();
+  return key === 'urgent' || key === 'high' || key === 'emergency';
+};
 
 const ProviderPracticeScreen = () => {
   const navigation = useNavigation();
@@ -34,6 +39,7 @@ const ProviderPracticeScreen = () => {
   const rtl = isRTL();
   const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
   const [activeTab, setActiveTab] = useState('referrals');
+  const [referralDirection, setReferralDirection] = useState('incoming');
 
   const {
     data: referralData,
@@ -56,71 +62,139 @@ const ProviderPracticeScreen = () => {
     isRefetching: encountersRefreshing,
   } = useGetProviderEncountersAll({ page: 1, limit: 30 });
 
+  const {
+    data: outgoingData,
+    isLoading: outgoingLoading,
+    refetch: refetchOutgoing,
+    isRefetching: outgoingRefreshing,
+  } = useGetOutgoingReferrals({ page: 1, limit: 30 });
+
   const referrals = referralData?.docs || [];
+  const outgoingReferrals = outgoingData?.docs || [];
   const reports = reportsData?.docs || [];
   const encounters = encountersData?.encounters || [];
 
+  const pendingReferrals = useMemo(
+    () => referrals.filter((item) => String(item.status || '').toLowerCase() === 'pending').length,
+    [referrals],
+  );
+
   const tabs = [
-    { key: 'referrals', label: pd.referrals || 'Referrals' },
-    { key: 'reports', label: pd.reports || 'Reports' },
-    { key: 'encounters', label: pd.encounters || 'Encounters' },
+    { key: 'referrals', label: pd.referrals || 'Referrals', count: referrals.length },
+    { key: 'reports', label: pd.reports || 'Reports', count: reports.length },
+    { key: 'encounters', label: pd.encounters || 'Encounters', count: encounters.length },
   ];
 
   const isLoading = activeTab === 'referrals'
-    ? referralsLoading
+    ? (referralDirection === 'incoming' ? referralsLoading : outgoingLoading)
     : activeTab === 'reports'
       ? reportsLoading
       : encountersLoading;
 
   const isRefreshing = activeTab === 'referrals'
-    ? referralsRefreshing
+    ? (referralDirection === 'incoming' ? referralsRefreshing : outgoingRefreshing)
     : activeTab === 'reports'
       ? reportsRefreshing
       : encountersRefreshing;
 
   const onRefresh = () => {
     refetchReferrals();
+    refetchOutgoing();
     refetchReports();
     refetchEncounters();
   };
 
+  const activeReferrals = referralDirection === 'incoming' ? referrals : outgoingReferrals;
+
   const listData = useMemo(() => {
-    if (activeTab === 'referrals') return referrals;
+    if (activeTab === 'referrals') return activeReferrals;
     if (activeTab === 'reports') return reports;
     return encounters;
-  }, [activeTab, referrals, reports, encounters]);
+  }, [activeTab, activeReferrals, reports, encounters]);
 
-  const showEncounterDetail = (item) => {
-    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
-    Alert.alert(
-      patientName,
-      [
-        item.type ? `${pd.encounterType || 'Type'}: ${item.type}` : null,
-        item.status ? `${pd.status || 'Status'}: ${item.status}` : null,
-        item.date ? `${pd.date || 'Date'}: ${moment(item.date).format('MMM D, YYYY')}` : null,
-        item.chiefComplaint ? `${pd.chiefComplaint || 'Chief complaint'}: ${item.chiefComplaint}` : null,
-        pd.encounterWebHint || 'Full encounter editing is available on the clinic website.',
-      ].filter(Boolean).join('\n\n'),
-    );
-  };
+  const sectionSubtitle = useMemo(() => {
+    if (activeTab === 'referrals') {
+      if (!referrals.length) return pd.referralsEmptyHint || 'Incoming patient referrals appear here';
+      if (pendingReferrals > 0) {
+        return (pd.referralsPendingSummary || '{{count}} total · {{pending}} need review')
+          .replace('{{count}}', String(referrals.length))
+          .replace('{{pending}}', String(pendingReferrals));
+      }
+      return (pd.referralsSummary || '{{count}} referrals').replace('{{count}}', String(referrals.length));
+    }
+    if (activeTab === 'reports') {
+      return reports.length
+        ? (pd.reportsSummary || '{{count}} reports').replace('{{count}}', String(reports.length))
+        : (pd.reportsEmptyHint || 'Medical reports from your patients');
+    }
+    return encounters.length
+      ? (pd.encountersSummary || '{{count}} encounters').replace('{{count}}', String(encounters.length))
+      : (pd.encountersEmptyHint || 'Open clinical encounters');
+  }, [activeTab, referrals.length, reports.length, encounters.length, pendingReferrals, pd]);
 
   const showReportDetail = (item) => {
-    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
-    Alert.alert(
-      item.type || pd.report || 'Report',
-      [
-        `${pd.patient || 'Patient'}: ${patientName}`,
-        `${pd.status || 'Status'}: ${item.status || '—'}`,
-        item.createdAt ? moment(item.createdAt).format('MMM D, YYYY') : null,
-        item.report ? item.report.slice(0, 280) : null,
-      ].filter(Boolean).join('\n\n'),
+    navigation.navigate('ProviderReportDetail', {
+      reportId: item._id || item.id,
+      report: item,
+    });
+  };
+
+  const showEncounterDetail = (item) => {
+    navigation.navigate('ProviderEncounterDetail', {
+      encounterId: item._id || item.id,
+      encounter: item,
+    });
+  };
+
+  const PatientAvatar = ({ patient }) => {
+    const source = patient?.profileImage
+      ? { uri: patient.profileImage }
+      : ICONS.defaultAvatar;
+    return (
+      <View style={[styles.avatarRing, rtl ? styles.avatarRtl : styles.avatarLtr]}>
+        <Image source={source} style={styles.avatar} />
+      </View>
     );
   };
 
-  const PracticeCard = ({ onPress, children }) => (
+  const MetaLine = ({ icon, text }) => {
+    if (!text) return null;
+    return (
+      <View style={[styles.metaLine, rowStyle]}>
+        <AppIcon name={icon} size={14} color={COLORS.textSecondary} />
+        <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1} style={styles.metaText}>
+          {text}
+        </AppText>
+      </View>
+    );
+  };
+
+  const UrgencyChip = ({ urgency }) => {
+    if (!urgency) return null;
+    const urgent = isUrgent(urgency);
+    return (
+      <View style={[styles.urgencyChip, urgent && styles.urgencyChipHot, rowStyle]}>
+        <AppIcon
+          name={urgent ? 'alert-circle-outline' : 'clock-outline'}
+          size={12}
+          color={urgent ? COLORS.danger : COLORS.textSecondary}
+        />
+        <AppText
+          variant="caption"
+          color={urgent ? COLORS.danger : COLORS.textSecondary}
+          style={styles.urgencyText}
+        >
+          {formatPersonName(urgency) || urgency}
+        </AppText>
+      </View>
+    );
+  };
+
+  const PracticeCard = ({ onPress, avatarPatient, children }) => (
     <TouchableOpacity activeOpacity={0.88} onPress={onPress}>
       <AppCard style={styles.card} padding={SPACING.lg}>
         <View style={[styles.cardInner, rowStyle]}>
+          {avatarPatient ? <PatientAvatar patient={avatarPatient} /> : null}
           <View style={styles.cardContent}>{children}</View>
           <AppIcon
             name={rtl ? 'chevron-left' : 'chevron-right'}
@@ -133,74 +207,75 @@ const ProviderPracticeScreen = () => {
   );
 
   const renderReferral = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
-    const fromDoctor = formatPersonName(item.referredBy?.fullName) || pd.referringDoctor || 'Referring doctor';
+    const patient = item.patient || item.patientDetails;
+    const patientName = getPatientDisplayName(patient, rtl) || pd.patient;
+    const fromDoctor = referralDirection === 'incoming'
+      ? (formatPersonName(item.referredBy?.fullName) || pd.referringDoctor || 'Referring doctor')
+      : (formatPersonName(item.referredTo?.fullName) || pd.referredTo || 'Referred to');
+    const metaLabel = referralDirection === 'incoming'
+      ? (pd.referredBy || 'Referred by')
+      : (pd.referredTo || 'Referred to');
+    const dateLabel = item.createdAt ? moment(item.createdAt).format('MMM D, YYYY') : '';
+
     return (
-      <PracticeCard onPress={() => navigation.navigate('ProviderReferralDetail', { referralId: item._id || item.id })}>
+      <PracticeCard
+        avatarPatient={patient}
+        onPress={() => navigation.navigate('ProviderReferralDetail', { referralId: item._id || item.id })}
+      >
         <View style={[styles.cardTop, rowStyle]}>
           <AppText variant="bodyMedium" numberOfLines={1} style={styles.title}>
             {patientName}
           </AppText>
           <ProviderStatusBadge status={item.status} />
         </View>
-        <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1}>
-          {pd.referredBy || 'Referred by'}: {fromDoctor}
-        </AppText>
-        {item.urgency ? (
-          <AppText variant="caption" color={COLORS.textSecondary}>
-            {pd.urgency || 'Urgency'}: {item.urgency}
-          </AppText>
-        ) : null}
-        {item.createdAt ? (
-          <AppText variant="caption" color={COLORS.textSecondary}>
-            {moment(item.createdAt).format('MMM D, YYYY')}
-          </AppText>
-        ) : null}
+        <MetaLine
+          icon="account-arrow-right-outline"
+          text={`${metaLabel} ${fromDoctor}`}
+        />
+        <View style={[styles.metaFooter, rowStyle]}>
+          {dateLabel ? <MetaLine icon="calendar-outline" text={dateLabel} /> : null}
+          <UrgencyChip urgency={item.urgency} />
+        </View>
       </PracticeCard>
     );
   };
 
   const renderReport = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
+    const patient = item.patient || item.patientDetails;
+    const patientName = getPatientDisplayName(patient, rtl) || pd.patient;
+    const dateLabel = item.createdAt ? moment(item.createdAt).format('MMM D, YYYY') : '';
+
     return (
-      <PracticeCard onPress={() => showReportDetail(item)}>
+      <PracticeCard avatarPatient={patient} onPress={() => showReportDetail(item)}>
         <View style={[styles.cardTop, rowStyle]}>
           <AppText variant="bodyMedium" numberOfLines={1} style={styles.title}>
             {item.type || pd.report}
           </AppText>
           <ProviderStatusBadge status={item.status} />
         </View>
-        <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1}>
-          {patientName}
-        </AppText>
-        {item.createdAt ? (
-          <AppText variant="caption" color={COLORS.textSecondary}>
-            {moment(item.createdAt).format('MMM D, YYYY')}
-          </AppText>
-        ) : null}
+        <MetaLine icon="account-outline" text={patientName} />
+        {dateLabel ? <MetaLine icon="calendar-outline" text={dateLabel} /> : null}
       </PracticeCard>
     );
   };
 
   const renderEncounter = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
+    const patient = item.patient || item.patientDetails;
+    const patientName = getPatientDisplayName(patient, rtl) || pd.patient;
     const when = item.date
       ? moment(item.date).format('MMM D, YYYY')
       : (item.time || '');
+
     return (
-      <PracticeCard onPress={() => showEncounterDetail(item)}>
+      <PracticeCard avatarPatient={patient} onPress={() => showEncounterDetail(item)}>
         <View style={[styles.cardTop, rowStyle]}>
           <AppText variant="bodyMedium" numberOfLines={1} style={styles.title}>
             {patientName}
           </AppText>
           <ProviderStatusBadge status={item.status || 'open'} />
         </View>
-        <AppText variant="caption" color={COLORS.textSecondary}>
-          {item.type || pd.encounter}
-        </AppText>
-        {when ? (
-          <AppText variant="caption" color={COLORS.textSecondary}>{when}</AppText>
-        ) : null}
+        <MetaLine icon="stethoscope" text={item.type || pd.encounter} />
+        {when ? <MetaLine icon="calendar-outline" text={when} /> : null}
       </PracticeCard>
     );
   };
@@ -217,6 +292,45 @@ const ProviderPracticeScreen = () => {
       ? (pd.noReports || 'No medical reports')
       : (pd.noEncounters || 'No open encounters');
 
+  const activeTabLabel = tabs.find((tab) => tab.key === activeTab)?.label || '';
+
+  const ListHeader = () => (
+    <View style={styles.sectionHeader}>
+      <View style={[styles.sectionTitleRow, rowStyle]}>
+        <AppText variant="h3">{activeTabLabel}</AppText>
+        {listData.length > 0 ? (
+          <View style={styles.countPill}>
+            <AppText variant="caption" color={COLORS.primaryDark} style={styles.countText}>
+              {listData.length}
+            </AppText>
+          </View>
+        ) : null}
+      </View>
+      <AppText variant="bodySmall" color={COLORS.textSecondary}>
+        {sectionSubtitle}
+      </AppText>
+      {activeTab === 'referrals' ? (
+        <View style={[styles.directionRow, rowStyle]}>
+          {['incoming', 'outgoing'].map((dir) => (
+            <TouchableOpacity
+              key={dir}
+              style={[styles.directionChip, referralDirection === dir && styles.directionChipActive]}
+              onPress={() => setReferralDirection(dir)}
+            >
+              <AppText
+                variant="caption"
+                color={referralDirection === dir ? COLORS.primaryDark : COLORS.textSecondary}
+                style={styles.directionText}
+              >
+                {dir === 'incoming' ? (pd.referralIncoming || 'Incoming') : (pd.referralOutgoing || 'Outgoing')}
+              </AppText>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <Header title={pd.practiceTitle || 'Practice'} showProfile />
@@ -226,6 +340,7 @@ const ProviderPracticeScreen = () => {
           activeKey={activeTab}
           onChange={setActiveTab}
           options={tabs}
+          style={styles.tabs}
         />
       </View>
       {isLoading && !listData.length ? (
@@ -237,7 +352,11 @@ const ProviderPracticeScreen = () => {
           data={listData}
           keyExtractor={(item) => String(item._id || item.id)}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[
+            styles.list,
+            listData.length === 0 && styles.listEmpty,
+          ]}
+          ListHeaderComponent={ListHeader}
           refreshControl={(
             <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
           )}
@@ -256,8 +375,27 @@ const ProviderPracticeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  tabsWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
+  tabsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.sm },
+  tabs: { marginBottom: SPACING.md },
+  sectionHeader: {
+    marginBottom: SPACING.lg,
+  },
+  sectionTitleRow: {
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  countPill: {
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: RADIUS.pill,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  countText: { fontWeight: '700' },
   list: { padding: SPACING.lg, paddingBottom: 100 },
+  listEmpty: { flexGrow: 1 },
   card: {
     marginBottom: SPACING.md,
     ...SHADOWS.sm,
@@ -269,9 +407,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: SPACING.sm,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   title: { flex: 1 },
+  avatarRing: {
+    padding: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.primaryLight,
+  },
+  avatarLtr: { marginRight: SPACING.md },
+  avatarRtl: { marginLeft: SPACING.md },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.gray200,
+  },
+  metaLine: {
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  metaText: { flex: 1 },
+  metaFooter: {
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.xs,
+  },
+  urgencyChip: {
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceMuted,
+  },
+  urgencyChipHot: {
+    backgroundColor: '#FEE2E2',
+  },
+  urgencyText: { fontWeight: '600', textTransform: 'capitalize' },
+  directionRow: { gap: SPACING.sm, marginTop: SPACING.md, flexWrap: 'wrap' },
+  directionChip: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceMuted,
+  },
+  directionChipActive: { backgroundColor: COLORS.primaryLight },
+  directionText: { fontWeight: '600' },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
 
