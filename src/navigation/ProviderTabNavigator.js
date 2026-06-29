@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
 import ProviderAppointmentsScreen from '../screens/provider/ProviderAppointmentsScreen';
+import ProviderInboxScreen from '../screens/provider/ProviderInboxScreen';
 import ProviderPracticeScreen from '../screens/provider/ProviderPracticeScreen';
 import { useLanguage } from '../store/LanguageContext';
 import { makeProtected } from './authGuards';
