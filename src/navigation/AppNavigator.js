@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Linking, DeviceEventEmitter, ActivityIndicator } from 'react-native';
+import { View, Linking, DeviceEventEmitter } from 'react-native';
 import BootSplash from 'react-native-bootsplash';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -53,7 +53,6 @@ import CancelAppointmentScreen from '../screens/CancelAppointmentScreen';
 import PaymentFormScreen from '../screens/PaymentFormScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
 import TherapistProfileScreen from '../screens/TherapistProfileScreen';
-import COLORS from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -194,6 +193,7 @@ const linking = {
 
 const AppNavigator = () => {
   const [initialRoute, setInitialRoute] = useState(null);
+  const [navigationReady, setNavigationReady] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem('@spectrum_onboarding_done').then((done) => {
@@ -202,10 +202,10 @@ const AppNavigator = () => {
   }, []);
 
   useEffect(() => {
-    if (initialRoute) {
+    if (navigationReady) {
       BootSplash.hide({ fade: true });
     }
-  }, [initialRoute]);
+  }, [navigationReady]);
 
   // Deep links from push notifications
   useEffect(() => {
@@ -240,16 +240,17 @@ const AppNavigator = () => {
   }, []);
 
   if (!initialRoute) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
+    // Native BootSplash stays visible while onboarding flag loads
+    return null;
   }
 
   return (
     <View style={{ flex: 1 }}>
-      <NavigationContainer ref={navigationRef} linking={linking}>
+      <NavigationContainer
+        ref={navigationRef}
+        linking={linking}
+        onReady={() => setNavigationReady(true)}
+      >
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Main" component={ElmVerifiedTabNavigator} />
