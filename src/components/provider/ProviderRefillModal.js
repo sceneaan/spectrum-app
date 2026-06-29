@@ -29,19 +29,23 @@ const ProviderRefillModal = ({
   const [selectedIds, setSelectedIds] = useState([]);
   const { mutate: processRefill, isPending: processing } = useProcessRefillRequest();
 
-  const medications = refill?.medications || [];
+  const refillId = refill?._id || refill?.id;
+  const medicationList = refill?.medications;
 
   useEffect(() => {
     if (!visible) {
       setSelectedIds([]);
       return;
     }
-    const pendingIds = medications
+    const meds = medicationList || [];
+    const pendingIds = meds
       .filter((med) => med.status === 'Pending' || !med.status)
       .map((med) => med._id || med.id)
       .filter(Boolean);
     setSelectedIds(pendingIds);
-  }, [visible, refill, medications]);
+  }, [visible, refillId, medicationList]);
+
+  const medications = medicationList || [];
 
   const pendingMeds = useMemo(
     () => medications.filter((med) => med.status === 'Pending' || !med.status),

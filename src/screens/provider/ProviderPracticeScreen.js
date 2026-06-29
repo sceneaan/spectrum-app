@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
 import Header from '../../components/Header';
+import AppIcon from '../../components/ui/AppIcon';
 import { AppText, AppCard, SegmentedTabs, EmptyState } from '../../components/ui';
 import ProviderStatusBadge from '../../components/provider/ProviderStatusBadge';
 import { useLanguage } from '../../store/LanguageContext';
@@ -18,15 +19,20 @@ import { useGetIncomingReferrals } from '../../api/services/Referral.Service';
 import { useGetProviderReports } from '../../api/services/MedicalReports.Service';
 import { useGetProviderEncountersAll } from '../../api/services/Encounter.Service';
 import { getPatientDisplayName } from '../../utils/providerAppointments';
+import { formatPersonName } from '../../utils/displayName';
+import { isRTL } from '../../utils/rtlUtils';
 import COLORS from '../../constants/colors';
-import { SPACING } from '../../theme';
+import ICONS from '../../constants/icons';
+import { SPACING, SHADOWS, cardBorder } from '../../theme';
 
 const TAB_KEYS = ['referrals', 'reports', 'encounters'];
 
 const ProviderPracticeScreen = () => {
   const navigation = useNavigation();
-  const { t, isRTL } = useLanguage();
+  const { t } = useLanguage();
   const pd = t.providerDashboard || {};
+  const rtl = isRTL();
+  const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
   const [activeTab, setActiveTab] = useState('referrals');
 
   const {
@@ -85,7 +91,7 @@ const ProviderPracticeScreen = () => {
   }, [activeTab, referrals, reports, encounters]);
 
   const showEncounterDetail = (item) => {
-    const patientName = getPatientDisplayName(item.patient, isRTL) || pd.patient;
+    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
     Alert.alert(
       patientName,
       [
@@ -99,7 +105,7 @@ const ProviderPracticeScreen = () => {
   };
 
   const showReportDetail = (item) => {
-    const patientName = getPatientDisplayName(item.patient, isRTL) || pd.patient;
+    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
     Alert.alert(
       item.type || pd.report || 'Report',
       [
@@ -111,73 +117,91 @@ const ProviderPracticeScreen = () => {
     );
   };
 
+  const PracticeCard = ({ onPress, children }) => (
+    <TouchableOpacity activeOpacity={0.88} onPress={onPress}>
+      <AppCard style={styles.card} padding={SPACING.lg}>
+        <View style={[styles.cardInner, rowStyle]}>
+          <View style={styles.cardContent}>{children}</View>
+          <AppIcon
+            name={rtl ? 'chevron-left' : 'chevron-right'}
+            size={18}
+            color={COLORS.gray500}
+          />
+        </View>
+      </AppCard>
+    </TouchableOpacity>
+  );
+
   const renderReferral = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, isRTL) || pd.patient;
-    const fromDoctor = item.referredBy?.fullName || pd.referringDoctor || 'Referring doctor';
+    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
+    const fromDoctor = formatPersonName(item.referredBy?.fullName) || pd.referringDoctor || 'Referring doctor';
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => navigation.navigate('ProviderReferralDetail', { referralId: item._id || item.id })}
-      >
-        <AppCard style={styles.card}>
-          <View style={styles.cardTop}>
-            <AppText variant="h3">{patientName}</AppText>
-            <ProviderStatusBadge status={item.status} />
-          </View>
-          <AppText variant="caption" color={COLORS.textSecondary}>
-            {pd.referredBy || 'Referred by'}: {fromDoctor}
+      <PracticeCard onPress={() => navigation.navigate('ProviderReferralDetail', { referralId: item._id || item.id })}>
+        <View style={[styles.cardTop, rowStyle]}>
+          <AppText variant="bodyMedium" numberOfLines={1} style={styles.title}>
+            {patientName}
           </AppText>
-          {item.urgency ? (
-            <AppText variant="caption" color={COLORS.textSecondary}>
-              {pd.urgency || 'Urgency'}: {item.urgency}
-            </AppText>
-          ) : null}
-          {item.createdAt ? (
-            <AppText variant="caption" color={COLORS.textSecondary}>
-              {moment(item.createdAt).format('MMM D, YYYY')}
-            </AppText>
-          ) : null}
-        </AppCard>
-      </TouchableOpacity>
+          <ProviderStatusBadge status={item.status} />
+        </View>
+        <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1}>
+          {pd.referredBy || 'Referred by'}: {fromDoctor}
+        </AppText>
+        {item.urgency ? (
+          <AppText variant="caption" color={COLORS.textSecondary}>
+            {pd.urgency || 'Urgency'}: {item.urgency}
+          </AppText>
+        ) : null}
+        {item.createdAt ? (
+          <AppText variant="caption" color={COLORS.textSecondary}>
+            {moment(item.createdAt).format('MMM D, YYYY')}
+          </AppText>
+        ) : null}
+      </PracticeCard>
     );
   };
 
   const renderReport = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, isRTL) || pd.patient;
+    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
     return (
-      <TouchableOpacity activeOpacity={0.85} onPress={() => showReportDetail(item)}>
-        <AppCard style={styles.card}>
-          <View style={styles.cardTop}>
-            <AppText variant="h3">{item.type || pd.report}</AppText>
-            <ProviderStatusBadge status={item.status} />
-          </View>
-          <AppText variant="bodySmall">{patientName}</AppText>
-          {item.createdAt ? (
-            <AppText variant="caption" color={COLORS.textSecondary}>
-              {moment(item.createdAt).format('MMM D, YYYY')}
-            </AppText>
-          ) : null}
-        </AppCard>
-      </TouchableOpacity>
+      <PracticeCard onPress={() => showReportDetail(item)}>
+        <View style={[styles.cardTop, rowStyle]}>
+          <AppText variant="bodyMedium" numberOfLines={1} style={styles.title}>
+            {item.type || pd.report}
+          </AppText>
+          <ProviderStatusBadge status={item.status} />
+        </View>
+        <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1}>
+          {patientName}
+        </AppText>
+        {item.createdAt ? (
+          <AppText variant="caption" color={COLORS.textSecondary}>
+            {moment(item.createdAt).format('MMM D, YYYY')}
+          </AppText>
+        ) : null}
+      </PracticeCard>
     );
   };
 
   const renderEncounter = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, isRTL) || pd.patient;
+    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient;
     const when = item.date
       ? moment(item.date).format('MMM D, YYYY')
       : (item.time || '');
     return (
-      <TouchableOpacity activeOpacity={0.85} onPress={() => showEncounterDetail(item)}>
-        <AppCard style={styles.card}>
-          <View style={styles.cardTop}>
-            <AppText variant="h3">{patientName}</AppText>
-            <ProviderStatusBadge status={item.status || 'open'} />
-          </View>
-          <AppText variant="bodySmall">{item.type || pd.encounter}</AppText>
-          {when ? <AppText variant="caption" color={COLORS.textSecondary}>{when}</AppText> : null}
-        </AppCard>
-      </TouchableOpacity>
+      <PracticeCard onPress={() => showEncounterDetail(item)}>
+        <View style={[styles.cardTop, rowStyle]}>
+          <AppText variant="bodyMedium" numberOfLines={1} style={styles.title}>
+            {patientName}
+          </AppText>
+          <ProviderStatusBadge status={item.status || 'open'} />
+        </View>
+        <AppText variant="caption" color={COLORS.textSecondary}>
+          {item.type || pd.encounter}
+        </AppText>
+        {when ? (
+          <AppText variant="caption" color={COLORS.textSecondary}>{when}</AppText>
+        ) : null}
+      </PracticeCard>
     );
   };
 
@@ -195,10 +219,10 @@ const ProviderPracticeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={pd.practiceTitle || 'Practice'} />
+      <Header title={pd.practiceTitle || 'Practice'} showProfile />
       <View style={styles.tabsWrap}>
         <SegmentedTabs
-          isRTL={isRTL}
+          isRTL={rtl}
           activeKey={activeTab}
           onChange={setActiveTab}
           options={tabs}
@@ -217,7 +241,13 @@ const ProviderPracticeScreen = () => {
           refreshControl={(
             <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
           )}
-          ListEmptyComponent={<EmptyState title={emptyMessage} />}
+          ListEmptyComponent={(
+            <EmptyState
+              icon={ICONS.report}
+              title={emptyMessage}
+              subtitle={pd.practiceEmptyHint || 'Pull to refresh'}
+            />
+          )}
         />
       )}
     </View>
@@ -228,14 +258,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   tabsWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
   list: { padding: SPACING.lg, paddingBottom: 100 },
-  card: { marginBottom: SPACING.md },
+  card: {
+    marginBottom: SPACING.md,
+    ...SHADOWS.sm,
+    ...cardBorder,
+  },
+  cardInner: { alignItems: 'center' },
+  cardContent: { flex: 1, minWidth: 0 },
   cardTop: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: SPACING.sm,
     marginBottom: SPACING.xs,
   },
+  title: { flex: 1 },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
 

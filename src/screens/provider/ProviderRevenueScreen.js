@@ -16,6 +16,7 @@ import { useGetProviderEarningStats } from '../../api/services/Stats.Service';
 import { useGetProviderTransactions } from '../../api/services/Transaction.Service';
 import { useGetProviderPayouts } from '../../api/services/Payout.Service';
 import COLORS from '../../constants/colors';
+import { formatSarAmount } from '../../utils/formatMoney';
 import { SPACING } from '../../theme';
 
 const ProviderRevenueScreen = () => {
@@ -77,11 +78,11 @@ const ProviderRevenueScreen = () => {
           <View style={styles.statsRow}>
             <AppCard style={styles.statCard} padding={SPACING.lg}>
               <AppText variant="caption" color={COLORS.textSecondary}>{pd.totalEarnings || 'Total earnings'}</AppText>
-              <RiyalText text={String(earnings?.totalEarnings ?? 0)} textStyle={styles.statValue} />
+              <RiyalText text={formatSarAmount(earnings?.totalEarnings)} textStyle={styles.statValue} />
             </AppCard>
             <AppCard style={styles.statCard} padding={SPACING.lg}>
               <AppText variant="caption" color={COLORS.textSecondary}>{pd.netRevenue || 'Net revenue'}</AppText>
-              <RiyalText text={String(earnings?.netRevenue ?? 0)} textStyle={styles.statValue} />
+              <RiyalText text={formatSarAmount(earnings?.netRevenue)} textStyle={styles.statValue} />
             </AppCard>
           </View>
 
@@ -142,7 +143,7 @@ const ProviderRevenueScreen = () => {
                       {item.createdAt ? ` · ${moment(item.createdAt).format('MMM D, YYYY')}` : ''}
                     </AppText>
                   </View>
-                  <RiyalText text={String(item.amount ?? item.totalAmount ?? 0)} textStyle={styles.amount} />
+                  <RiyalText text={formatSarAmount(item.amount ?? item.totalAmount)} textStyle={styles.amount} />
                 </View>
               </AppCard>
             ))

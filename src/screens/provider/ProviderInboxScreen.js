@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -16,10 +16,17 @@ import { useProviderGetThreads } from '../../api/services/Thread.Service';
 import { daysAgo } from '../../utils/timeFormatter';
 import { isRTL } from '../../utils/rtlUtils';
 import { getPatientDisplayName } from '../../utils/providerAppointments';
+import { normalizeThreadList, threadHasUnread } from '../../utils/threads';
 import ICONS from '../../constants/icons';
 import COLORS from '../../constants/colors';
 import Skeleton from '../../components/Skeleton';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
+
+const formatThreadType = (type, t) => {
+  if (!type) return t.messaging?.general || 'General';
+  if (type === 'General') return t.messaging?.general || 'General';
+  return type;
+};
 
 const ProviderInboxScreen = () => {
   const { t } = useLanguage();
@@ -29,8 +36,6 @@ const ProviderInboxScreen = () => {
   const pd = t.providerDashboard || {};
 
   const [search, setSearch] = useState('');
-  const [threads, setThreads] = useState([]);
-  const [filteredThreads, setFilteredThreads] = useState([]);
   const [unreadOnly, setUnreadOnly] = useState(Boolean(route.params?.filterUnread));
 
   const rtl = isRTL();
@@ -52,38 +57,25 @@ const ProviderInboxScreen = () => {
   }, [route.params?.filterUnread]);
 
   useEffect(() => {
-    if (isFocused) refetch();
+    if (isFocused) {
+      refetch();
+    }
   }, [isFocused, refetch]);
 
-  useEffect(() => {
-    const threadsList = userThreads?.docs || userThreads?.threads || userThreads || [];
-    setThreads(threadsList);
-    setFilteredThreads(threadsList);
-  }, [userThreads]);
+  const threads = useMemo(() => normalizeThreadList(userThreads), [userThreads]);
 
-  const threadMatchesUnread = (item) => {
-    if (typeof item?.providerUnreadCount === 'number') return item.providerUnreadCount > 0;
-    if (typeof item?.unreadCount === 'number') return item.unreadCount > 0;
-    return Boolean(item?.hasUnread);
-  };
-
-  useEffect(() => {
+  const filteredThreads = useMemo(() => {
     let base = threads;
     if (unreadOnly) {
-      base = threads.filter(threadMatchesUnread);
+      base = threads.filter(threadHasUnread);
     }
-
-    if (search.trim() === '') {
-      setFilteredThreads(base);
-      return;
-    }
+    if (!search.trim()) return base;
 
     const searchLower = search.toLowerCase();
-    const filtered = base.filter((item) => {
+    return base.filter((item) => {
       const name = getPatientDisplayName(item.patient, rtl) || item.patientName || '';
       return name.toLowerCase().includes(searchLower);
     });
-    setFilteredThreads(filtered);
   }, [search, threads, unreadOnly, rtl]);
 
   const openThread = (item) => {
@@ -95,32 +87,48 @@ const ProviderInboxScreen = () => {
     const profileImageSource = item?.patient?.profileImage
       ? { uri: item.patient.profileImage }
       : ICONS.defaultAvatar;
-    const preview = item?.lastMessage?.content || item?.lastMessage?.text || '';
+    const hasAttachment = Boolean(
+      item?.lastMessage?.attachment?.fileId || item?.lastMessage?.attachment?.url,
+    );
+    const preview = item?.lastMessage?.body || item?.lastMessage?.content || item?.lastMessage?.text || '';
     const time = item?.lastMessage?.createdAt || item?.updatedAt;
+    const unread = threadHasUnread(item);
 
     return (
-      <TouchableOpacity style={styles.msgCard} onPress={() => openThread(item)} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.msgCard} onPress={() => openThread(item)} activeOpacity={0.75}>
         <View style={[rowStyle, { alignItems: 'center' }]}>
           <View style={styles.avatarRing}>
             <Image source={profileImageSource} style={styles.avatar} />
+            {unread ? <View style={styles.unreadDot} /> : null}
           </View>
-          <View style={[styles.msgContent, { alignItems: alignText === 'right' ? 'flex-end' : 'flex-start' }]}>
+          <View style={[styles.msgContent, { alignItems: rtl ? 'flex-end' : 'flex-start' }]}>
             <View style={[rowStyle, styles.msgHeader]}>
-              <AppText variant="h3" style={{ textAlign: alignText }}>{patientName}</AppText>
+              <AppText variant="bodyMedium" align={alignText} numberOfLines={1} style={styles.patientName}>
+                {patientName}
+              </AppText>
               {time ? (
-                <AppText variant="caption" muted style={styles.time}>
+                <AppText variant="caption" color={COLORS.textSecondary} style={styles.time}>
                   {daysAgo(time, t)}
                 </AppText>
               ) : null}
             </View>
-            {item.type ? (
-              <AppText variant="caption" muted style={{ textAlign: alignText }}>{item.type}</AppText>
-            ) : null}
-            {preview ? (
-              <AppText variant="body" muted numberOfLines={2} style={{ textAlign: alignText, marginTop: 4 }}>
-                {preview}
+
+            <AppText variant="caption" color={COLORS.primaryDark} style={styles.type}>
+              {formatThreadType(item.type, t)}
+            </AppText>
+
+            {hasAttachment ? (
+              <View style={[styles.fileChip, rowStyle]}>
+                <Image source={ICONS.pdf} style={styles.fileIcon} />
+                <AppText variant="caption" color={COLORS.textSecondary}>
+                  {t.messaging?.attachment || 'Attachment'}
+                </AppText>
+              </View>
+            ) : (
+              <AppText variant="bodySmall" align={alignText} numberOfLines={1} style={styles.msgPreview}>
+                {preview || t.messaging?.noMessages || 'No messages yet'}
               </AppText>
-            ) : null}
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -129,58 +137,101 @@ const ProviderInboxScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={pd.inboxTitle || 'Messages'} />
-      <View style={styles.searchWrap}>
-        <TextInput
-          style={[styles.searchInput, { textAlign: alignText }]}
-          placeholder={pd.searchPatients || 'Search patients'}
-          placeholderTextColor={COLORS.gray500}
-          value={search}
-          onChangeText={setSearch}
-        />
+      <Header title={pd.inboxTitle || 'Messages'} showProfile />
+      <View style={styles.content}>
+        {unreadOnly ? (
+          <TouchableOpacity
+            style={styles.unreadBanner}
+            onPress={() => setUnreadOnly(false)}
+            activeOpacity={0.8}
+          >
+            <AppText variant="caption" color={COLORS.primaryDark}>
+              {t.messaging?.showingUnread || 'Showing unread only'} · {t.messaging?.showAll || 'Show all'}
+            </AppText>
+          </TouchableOpacity>
+        ) : null}
+
+        <View style={[styles.searchBox, rowStyle]}>
+          <Image source={ICONS.search} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.input, { textAlign: alignText }]}
+            placeholder={pd.searchPatients || 'Search patients'}
+            placeholderTextColor={COLORS.gray500}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+
+        {isLoading ? (
+          <View style={styles.listPad}>
+            {[1, 2, 3].map((k) => (
+              <View key={k} style={[styles.skeletonCard, rowStyle]}>
+                <Skeleton width={48} height={48} borderRadius={24} />
+                <View style={{ flex: 1, marginStart: SPACING.md }}>
+                  <Skeleton width="70%" height={13} style={{ marginBottom: SPACING.sm }} />
+                  <Skeleton width="85%" height={11} />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <FlatList
+            data={filteredThreads}
+            keyExtractor={(item) => String(item._id || item.id)}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={(
+              <EmptyState
+                icon={ICONS.inbox}
+                title={pd.noMessages || 'No messages yet'}
+                subtitle={pd.composeHint || pd.noMessagesHint || 'Tap + to start a new conversation'}
+              />
+            )}
+          />
+        )}
       </View>
 
-      {isLoading ? (
-        <View style={styles.listPad}>
-          {[1, 2, 3].map((k) => (
-            <View key={k} style={styles.skeletonCard}>
-              <Skeleton width={48} height={48} borderRadius={24} />
-              <Skeleton width="70%" height={16} style={{ marginTop: SPACING.md }} />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <FlatList
-          data={filteredThreads}
-          keyExtractor={(item) => String(item._id || item.id)}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={(
-            <EmptyState
-              title={pd.noMessages || 'No messages yet'}
-              subtitle={pd.noMessagesHint || 'Patient conversations will appear here'}
-            />
-          )}
-        />
-      )}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          { bottom: SPACING.xxxl + insets.bottom },
+          rtl ? { left: SPACING.xl } : { right: SPACING.xl },
+        ]}
+        onPress={() => navigation.navigate('ProviderNewMessage')}
+        activeOpacity={0.85}
+      >
+        <Image source={ICONS.plus} style={styles.fabIcon} />
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  searchWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
-  searchInput: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.text,
+  content: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, flex: 1 },
+  unreadBanner: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.pill,
+    marginBottom: SPACING.md,
   },
-  listPad: { paddingTop: SPACING.sm, paddingHorizontal: SPACING.lg },
-  listContent: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: 100 },
+  searchBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.lg,
+    height: 48,
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  searchIcon: { width: 18, height: 18, tintColor: COLORS.gray500, marginEnd: SPACING.sm },
+  input: { flex: 1, height: '100%', color: COLORS.textPrimary, fontSize: 15 },
+  listPad: { paddingTop: SPACING.sm },
+  listContent: { paddingTop: SPACING.sm, paddingBottom: 100 },
   skeletonCard: {
     alignItems: 'center',
     padding: SPACING.lg,
@@ -203,11 +254,48 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primaryLight,
     marginEnd: SPACING.md,
+    position: 'relative',
   },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.gray200 },
-  msgContent: { flex: 1 },
+  unreadDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  msgContent: { flex: 1, minWidth: 0 },
   msgHeader: { justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: 2 },
-  time: { marginStart: SPACING.sm },
+  patientName: { flex: 1, marginEnd: SPACING.sm },
+  type: { fontWeight: '600', marginBottom: 2 },
+  msgPreview: { marginTop: 2, color: COLORS.textSecondary },
+  time: { flexShrink: 0 },
+  fileChip: {
+    backgroundColor: COLORS.surfaceMuted,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.sm,
+    alignSelf: 'flex-start',
+    marginTop: SPACING.xs,
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  fileIcon: { width: 12, height: 12, tintColor: COLORS.textSecondary },
+  fab: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.primary,
+  },
+  fabIcon: { width: 22, height: 22, tintColor: COLORS.white },
 });
 
 export default ProviderInboxScreen;

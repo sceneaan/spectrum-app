@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Linking, DeviceEventEmitter } from 'react-native';
+import { View, Linking, DeviceEventEmitter, ActivityIndicator } from 'react-native';
 import BootSplash from 'react-native-bootsplash';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -57,6 +57,8 @@ import ProviderRefillsScreen from '../screens/provider/ProviderRefillsScreen';
 import ProviderRevenueScreen from '../screens/provider/ProviderRevenueScreen';
 import ProviderPerformanceScreen from '../screens/provider/ProviderPerformanceScreen';
 import ProviderReferralDetailScreen from '../screens/provider/ProviderReferralDetailScreen';
+import ProviderNewMessageScreen from '../screens/provider/ProviderNewMessageScreen';
+import COLORS from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -81,6 +83,7 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'ProviderRevenue',
   'ProviderPerformance',
   'ProviderReferralDetail',
+  'ProviderNewMessage',
 ]);
 
 // Require login before navigating to these targets
@@ -98,6 +101,7 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'ProviderRevenue',
   'ProviderPerformance',
   'ProviderReferralDetail',
+  'ProviderNewMessage',
 ]);
 
 const parseNotificationParams = (raw) => {
@@ -252,8 +256,11 @@ const AppNavigator = () => {
   }, []);
 
   if (!initialRoute) {
-    // Native BootSplash stays visible while onboarding flag loads
-    return null;
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
   }
 
   return (
@@ -301,6 +308,7 @@ const AppNavigator = () => {
           <Stack.Screen name="ProviderRevenue" component={makeProtected(ProviderRevenueScreen)} />
           <Stack.Screen name="ProviderPerformance" component={makeProtected(ProviderPerformanceScreen)} />
           <Stack.Screen name="ProviderReferralDetail" component={makeProtected(ProviderReferralDetailScreen)} />
+          <Stack.Screen name="ProviderNewMessage" component={makeProtected(ProviderNewMessageScreen)} />
         </Stack.Navigator>
       </NavigationContainer>
 

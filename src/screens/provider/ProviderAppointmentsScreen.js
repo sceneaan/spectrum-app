@@ -12,6 +12,7 @@ import { useRoute, useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 import { useQueryClient } from '@tanstack/react-query';
 import Header from '../../components/Header';
+import ProviderStatusBadge from '../../components/provider/ProviderStatusBadge';
 import { AppText, AppCard, SegmentedTabs, EmptyState, AppButton } from '../../components/ui';
 import { useLanguage } from '../../store/LanguageContext';
 import {
@@ -26,22 +27,28 @@ import {
   isActiveProviderAppointment,
   partitionProviderSchedule,
 } from '../../utils/providerAppointments';
+import { isRTL } from '../../utils/rtlUtils';
 import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
-import { SPACING, RADIUS } from '../../theme';
+import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
 
 const TAB_KEYS = ['today', 'approvals', 'all'];
+
+const normalizeTab = (tab) => {
+  if (tab === 'upcoming') return 'all';
+  return TAB_KEYS.includes(tab) ? tab : 'today';
+};
 
 const ProviderAppointmentsScreen = () => {
   const route = useRoute();
   const queryClient = useQueryClient();
-  const { t, isRTL } = useLanguage();
+  const { t } = useLanguage();
   const pd = t.providerDashboard || {};
+  const rtl = isRTL();
+  const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
 
-  const initialTab = route.params?.initialTab;
-  const [activeTab, setActiveTab] = useState(
-    TAB_KEYS.includes(initialTab) ? initialTab : 'today',
-  );
+  const initialTab = normalizeTab(route.params?.initialTab);
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const {
     data: todayData,
@@ -62,8 +69,8 @@ const ProviderAppointmentsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (route.params?.initialTab && TAB_KEYS.includes(route.params.initialTab)) {
-        setActiveTab(route.params.initialTab);
+      if (route.params?.initialTab) {
+        setActiveTab(normalizeTab(route.params.initialTab));
       }
     }, [route.params?.initialTab]),
   );
@@ -145,34 +152,54 @@ const ProviderAppointmentsScreen = () => {
   ];
 
   const renderItem = ({ item }) => {
-    const patientName = getPatientDisplayName(item.patient, isRTL) || pd.patient || 'Patient';
-    const timeLabel = item.startTime
-      ? `${moment(item.startTime).format('MMM D, h:mm A')} – ${moment(item.endTime).format('h:mm A')}`
-      : '';
+    const patientName = getPatientDisplayName(item.patient, rtl) || pd.patient || 'Patient';
+    const startLabel = item.startTime ? moment(item.startTime).format('h:mm A') : '—';
+    const endLabel = item.endTime ? moment(item.endTime).format('h:mm A') : '';
+    const dateLabel = item.startTime && activeTab === 'all'
+      ? moment(item.startTime).format('MMM D')
+      : null;
     const needsApproval = item.approvedByDoctor === false;
     const busy = approving || rejecting;
+    const statusLabel = needsApproval
+      ? (pd.awaitingApproval || 'Awaiting approval')
+      : (item.status || pd.confirmedSession || 'Confirmed');
 
     return (
-      <AppCard style={styles.card}>
-        <View style={styles.row}>
-          <Image
-            source={item.patient?.profileImage ? { uri: item.patient.profileImage } : ICONS.defaultAvatar}
-            style={styles.avatar}
-          />
-          <View style={styles.body}>
-            <AppText variant="h3">{patientName}</AppText>
-            <AppText variant="caption" color={COLORS.textSecondary}>{timeLabel}</AppText>
-            {item.reason ? <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={2}>{item.reason}</AppText> : null}
-            {item.status ? (
-              <AppText variant="caption" style={styles.status}>
-                {item.status}
-                {needsApproval ? ` · ${pd.awaitingApproval || 'Awaiting approval'}` : ''}
-              </AppText>
+      <AppCard style={styles.card} padding={SPACING.lg}>
+        <View style={[styles.cardRow, rowStyle]}>
+          <View style={[styles.timePill, rtl ? styles.timePillRtl : styles.timePillLtr]}>
+            {dateLabel ? (
+              <AppText variant="caption" color={COLORS.textSecondary}>{dateLabel}</AppText>
+            ) : null}
+            <AppText variant="label" color={COLORS.primaryDark}>{startLabel}</AppText>
+            {endLabel ? (
+              <AppText variant="caption" color={COLORS.textSecondary}>{endLabel}</AppText>
             ) : null}
           </View>
+
+          <Image
+            source={item.patient?.profileImage ? { uri: item.patient.profileImage } : ICONS.defaultAvatar}
+            style={[styles.avatar, rtl ? styles.avatarRtl : styles.avatarLtr]}
+          />
+
+          <View style={styles.body}>
+            <AppText variant="bodyMedium" numberOfLines={1}>{patientName}</AppText>
+            {item.reason ? (
+              <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={2}>
+                {item.reason}
+              </AppText>
+            ) : null}
+            <View style={[styles.badgeRow, rowStyle]}>
+              <ProviderStatusBadge
+                status={needsApproval ? 'pending' : item.status}
+                label={statusLabel}
+              />
+            </View>
+          </View>
         </View>
+
         {needsApproval ? (
-          <View style={styles.actions}>
+          <View style={[styles.actions, rowStyle]}>
             <AppButton
               title={pd.approve || 'Approve'}
               onPress={() => handleApprove(item)}
@@ -200,10 +227,10 @@ const ProviderAppointmentsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={pd.appointmentsTitle || 'Schedule'} />
+      <Header title={pd.appointmentsTitle || 'Schedule'} showProfile />
       <View style={styles.tabsWrap}>
         <SegmentedTabs
-          isRTL={isRTL}
+          isRTL={rtl}
           activeKey={activeTab}
           onChange={setActiveTab}
           options={tabs}
@@ -224,6 +251,7 @@ const ProviderAppointmentsScreen = () => {
           )}
           ListEmptyComponent={(
             <EmptyState
+              icon={ICONS.calendar}
               title={emptyMessage}
               subtitle={pd.appointmentsEmptyHint || 'Pull to refresh'}
             />
@@ -238,19 +266,33 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   tabsWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
   list: { padding: SPACING.lg, paddingBottom: 100 },
-  card: { marginBottom: SPACING.md },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  card: {
+    marginBottom: SPACING.md,
+    ...SHADOWS.sm,
+    ...cardBorder,
+  },
+  cardRow: { alignItems: 'center' },
+  timePill: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    minWidth: 72,
+    alignItems: 'center',
+  },
+  timePillLtr: { marginRight: SPACING.md },
+  timePillRtl: { marginLeft: SPACING.md },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginRight: SPACING.md,
     backgroundColor: COLORS.gray200,
   },
-  body: { flex: 1 },
-  status: { color: COLORS.primary, marginTop: SPACING.xs },
+  avatarLtr: { marginRight: SPACING.md },
+  avatarRtl: { marginLeft: SPACING.md },
+  body: { flex: 1, minWidth: 0 },
+  badgeRow: { marginTop: SPACING.xs },
   actions: {
-    flexDirection: 'row',
     gap: SPACING.sm,
     marginTop: SPACING.md,
   },

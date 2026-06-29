@@ -69,6 +69,13 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
   const handleProfilePress = () => {
     goToProfile();
   };
+  const handleBackPress = () => {
+    if (onBack) {
+      onBack();
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  };
   const onlineDotPosition = isRTL ? { left: 2 } : { right: 2 };
 
   const profileBlock = isAuthenticated ? (
@@ -127,7 +134,7 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
       <View style={[styles.leftContainer, rowStyle]}>
         {showBack ? (
           <TouchableOpacity
-            onPress={onBack}
+            onPress={handleBackPress}
             style={[styles.iconBtn, isRTL && { transform: [{ rotate: '180deg' }] }]}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"

@@ -108,6 +108,9 @@ export function useCheckRoomId(id) {
 
 // Hook to get associated patients
 export function useGetAssociatedPatients() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = useAuthStore((state) => state.user?.role?.toLowerCase() === 'provider');
+
     return useQuery({
         queryKey: ['associatedPatients'],
         queryFn: async () => {
@@ -122,6 +125,9 @@ export function useGetAssociatedPatients() {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated && isProvider,
+        staleTime: 0,
+        refetchOnMount: 'always',
     });
 }
 

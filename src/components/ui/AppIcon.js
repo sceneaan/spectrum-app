@@ -27,6 +27,12 @@ export const QUICK_ACTION_ICONS = {
   calendar: SHELL_ICONS.calendar.outline,
   inbox: SHELL_ICONS.inbox.outline,
   video: SHELL_ICONS.video,
+  wallet: 'wallet-outline',
+  performance: 'chart-line',
+  practice: 'clipboard-text-outline',
+  approvals: 'calendar-clock',
+  refills: 'pill',
+  videoWeb: 'monitor-lock',
 };
 
 export default function AppIcon({

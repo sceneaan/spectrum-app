@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import moment from 'moment';
 import Header from '../../components/Header';
+import AppIcon from '../../components/ui/AppIcon';
 import ProviderRefillModal from '../../components/provider/ProviderRefillModal';
 import ProviderStatusBadge from '../../components/provider/ProviderStatusBadge';
 import { AppText, AppCard, EmptyState } from '../../components/ui';
@@ -15,8 +17,7 @@ import { useLanguage } from '../../store/LanguageContext';
 import { usePatientToProviderRequests } from '../../api/services/Refill.Service';
 import { getPatientDisplayName } from '../../utils/providerAppointments';
 import COLORS from '../../constants/colors';
-import { SPACING } from '../../theme';
-import moment from 'moment';
+import { SPACING, RADIUS } from '../../theme';
 
 const ProviderRefillsScreen = () => {
   const { t, isRTL } = useLanguage();
@@ -36,22 +37,39 @@ const ProviderRefillsScreen = () => {
     const medCount = item.medications?.length || 0;
     const firstMed = item.medications?.[0]?.drugName;
     const requestedAt = item.createdAt ? moment(item.createdAt).format('MMM D, YYYY') : '';
+    const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
 
     return (
       <TouchableOpacity activeOpacity={0.85} onPress={() => setSelectedRefill(item)}>
-        <AppCard style={styles.card}>
-          <View style={styles.topRow}>
-            <AppText variant="h3">{patientName}</AppText>
+        <AppCard style={styles.card} padding={SPACING.lg}>
+          <View style={[styles.topRow, rowStyle]}>
+            <View style={styles.titleBlock}>
+              <AppText variant="bodyMedium" numberOfLines={1}>{patientName}</AppText>
+              <AppText variant="caption" color={COLORS.textSecondary}>
+                {requestedAt}
+              </AppText>
+            </View>
             <ProviderStatusBadge status={item.status || 'Pending'} />
           </View>
-          <AppText variant="bodySmall">
-            {firstMed || pd.medication}
-            {medCount > 1 ? ` +${medCount - 1}` : ''}
-          </AppText>
-          {requestedAt ? <AppText variant="caption" color={COLORS.textSecondary}>{requestedAt}</AppText> : null}
-          <AppText variant="caption" color={COLORS.primary} style={styles.tapHint}>
-            {pd.tapToReview || 'Tap to review medications'}
-          </AppText>
+          <View style={[styles.medRow, rowStyle]}>
+            <View style={styles.medIcon}>
+              <AppIcon name="pill" size={16} color={COLORS.primaryDark} />
+            </View>
+            <View style={styles.medCopy}>
+              <AppText variant="bodySmall" numberOfLines={2}>
+                {firstMed || pd.medication}
+                {medCount > 1 ? ` +${medCount - 1}` : ''}
+              </AppText>
+              <AppText variant="caption" color={COLORS.primary} style={styles.tapHint}>
+                {pd.tapToReview || 'Tap to review medications'}
+              </AppText>
+            </View>
+            <AppIcon
+              name={isRTL ? 'chevron-left' : 'chevron-right'}
+              size={18}
+              color={COLORS.gray500}
+            />
+          </View>
         </AppCard>
       </TouchableOpacity>
     );
@@ -97,13 +115,24 @@ const styles = StyleSheet.create({
   list: { padding: SPACING.lg, paddingBottom: 40 },
   card: { marginBottom: SPACING.md },
   topRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: SPACING.sm,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.md,
   },
-  tapHint: { marginTop: SPACING.sm, fontWeight: '600' },
+  titleBlock: { flex: 1, minWidth: 0 },
+  medRow: { alignItems: 'center' },
+  medIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginEnd: SPACING.md,
+  },
+  medCopy: { flex: 1, minWidth: 0 },
+  tapHint: { marginTop: SPACING.xs, fontWeight: '600' },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
 

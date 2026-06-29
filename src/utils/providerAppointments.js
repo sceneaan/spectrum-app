@@ -15,12 +15,19 @@ export function partitionProviderSchedule(appointments = []) {
   return { active, pendingApprovals, confirmed };
 }
 
+import { formatPersonName } from './displayName';
+
 export function getPatientDisplayName(patient, isRTL) {
   if (!patient) return '';
-  if (isRTL) {
-    return patient.fullNameArabic || patient.fullName || patient.fullNameEnglish || '';
+  let raw = '';
+  if (typeof patient === 'string') {
+    raw = patient;
+  } else if (isRTL) {
+    raw = patient.fullNameArabic || patient.fullName || patient.fullNameEnglish || patient.name || '';
+  } else {
+    raw = patient.fullNameEnglish || patient.fullName || patient.fullNameArabic || patient.name || '';
   }
-  return patient.fullNameEnglish || patient.fullName || patient.fullNameArabic || '';
+  return formatPersonName(raw);
 }
 
 export function getAppointmentId(appointment) {
