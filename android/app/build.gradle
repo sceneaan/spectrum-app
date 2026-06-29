@@ -148,8 +148,9 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    // Hyperpay SDK - AAR files from libs directory
-    implementation fileTree(include: ["*.aar"], dir: "libs")
+    // Hyperpay SDK — include oppwa + one 3DS AAR only (both ipworks variants duplicate classes)
+    implementation files('libs/oppwa.mobile-7.11.0-release.aar')
+    implementation files('libs/ipworks3ds_sdk_9625_deploy.aar')
 
     // Kotlin coroutines for Hyperpay async operations
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1"
@@ -178,6 +179,8 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
 // Apply Google Services plugin at the bottom of the file
 apply plugin: 'com.google.gms.google-services'

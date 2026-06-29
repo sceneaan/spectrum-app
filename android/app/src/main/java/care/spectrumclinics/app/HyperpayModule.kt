@@ -83,6 +83,11 @@ class HyperpayModule(reactContext: ReactApplicationContext) :
         Log.d(TAG, "Default payment mode: LIVE")
     }
 
+    private fun requireCurrentActivity(): Activity {
+        return reactApplicationContext.currentActivity
+            ?: throw IllegalStateException("No current Activity available for 3DS workflow")
+    }
+
     // ============================================================================
     // MARK: - Helper Methods
     // ============================================================================
@@ -189,7 +194,7 @@ class HyperpayModule(reactContext: ReactApplicationContext) :
 
             transaction = Transaction(paymentParams)
             provider!!.submitTransaction(transaction!!, this)
-            provider!!.setThreeDSWorkflowListener { getCurrentActivity() }
+            provider!!.setThreeDSWorkflowListener { requireCurrentActivity() }
 
             Log.d(TAG, "Transaction submitted successfully")
 
@@ -277,7 +282,7 @@ class HyperpayModule(reactContext: ReactApplicationContext) :
                 val paymentProvider = OppPaymentProvider(reactApplicationContext, paymentMode)
                 val transaction = Transaction(cardPaymentParams)
                 paymentProvider.submitTransaction(transaction, this)
-                paymentProvider.setThreeDSWorkflowListener { getCurrentActivity() }
+                paymentProvider.setThreeDSWorkflowListener { requireCurrentActivity() }
 
                 promise.resolve(null)
                 Log.d(TAG, "Transaction submitted successfully")
@@ -320,7 +325,7 @@ class HyperpayModule(reactContext: ReactApplicationContext) :
                 val paymentProvider = OppPaymentProvider(reactApplicationContext, paymentMode)
                 val transaction = Transaction(paymentParams)
                 paymentProvider.submitTransaction(transaction, this)
-                paymentProvider.setThreeDSWorkflowListener { getCurrentActivity() }
+                paymentProvider.setThreeDSWorkflowListener { requireCurrentActivity() }
 
                 promise.resolve(null)
                 Log.d(TAG, "STCPay transaction submitted")
