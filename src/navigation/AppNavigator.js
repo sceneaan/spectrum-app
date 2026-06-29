@@ -54,6 +54,9 @@ import PaymentFormScreen from '../screens/PaymentFormScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
 import TherapistProfileScreen from '../screens/TherapistProfileScreen';
 import ProviderRefillsScreen from '../screens/provider/ProviderRefillsScreen';
+import ProviderRevenueScreen from '../screens/provider/ProviderRevenueScreen';
+import ProviderPerformanceScreen from '../screens/provider/ProviderPerformanceScreen';
+import ProviderReferralDetailScreen from '../screens/provider/ProviderReferralDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -75,6 +78,9 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'WalletScreen',
   'BillingScreen',
   'ProviderRefills',
+  'ProviderRevenue',
+  'ProviderPerformance',
+  'ProviderReferralDetail',
 ]);
 
 // Require login before navigating to these targets
@@ -89,6 +95,9 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'WalletScreen',
   'BillingScreen',
   'ProviderRefills',
+  'ProviderRevenue',
+  'ProviderPerformance',
+  'ProviderReferralDetail',
 ]);
 
 const parseNotificationParams = (raw) => {
@@ -289,6 +298,9 @@ const AppNavigator = () => {
           <Stack.Screen name="FindTherapist" component={FindTherapistScreen} />
           <Stack.Screen name="TherapistProfile" component={TherapistProfileScreen} />
           <Stack.Screen name="ProviderRefills" component={makeProtected(ProviderRefillsScreen)} />
+          <Stack.Screen name="ProviderRevenue" component={makeProtected(ProviderRevenueScreen)} />
+          <Stack.Screen name="ProviderPerformance" component={makeProtected(ProviderPerformanceScreen)} />
+          <Stack.Screen name="ProviderReferralDetail" component={makeProtected(ProviderReferralDetailScreen)} />
         </Stack.Navigator>
       </NavigationContainer>
 

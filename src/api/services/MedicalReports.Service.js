@@ -130,7 +130,11 @@ export function useGetPatientMedicalReportsPaginated(queryParams = {}) {
 }
 
 // Hook to get provider reports with query params
-export function useGetProviderReports(query) {
+export function useGetProviderReports(query = { page: 1, limit: 20 }) {
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = user?.role?.toLowerCase() === 'provider';
+
     return useQuery({
         queryKey: ['providerReports', query],
         queryFn: async () => {
@@ -145,6 +149,7 @@ export function useGetProviderReports(query) {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated && isProvider,
     });
 }
 

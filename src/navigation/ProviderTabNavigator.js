@@ -4,7 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
 import ProviderAppointmentsScreen from '../screens/provider/ProviderAppointmentsScreen';
-import ProviderInboxScreen from '../screens/provider/ProviderInboxScreen';
+import ProviderPracticeScreen from '../screens/provider/ProviderPracticeScreen';
 import { useLanguage } from '../store/LanguageContext';
 import { makeProtected } from './authGuards';
 import AppIcon, { SHELL_ICONS } from '../components/ui/AppIcon';
@@ -23,10 +23,16 @@ const ProtectedProviderInbox = makeProtected(ProviderInboxScreen, {
   targetParams: {},
 });
 
+const ProtectedProviderPractice = makeProtected(ProviderPracticeScreen, {
+  targetScreen: 'ProviderPracticeTab',
+  targetParams: {},
+});
+
 const PROVIDER_TAB_ICONS = {
   ProviderHomeTab: SHELL_ICONS.home,
   ProviderAppointmentsTab: SHELL_ICONS.calendar,
   ProviderInboxTab: SHELL_ICONS.inbox,
+  ProviderPracticeTab: { outline: 'clipboard-text-outline', filled: 'clipboard-text' },
 };
 
 const TabIcon = ({ tabName, color, focused }) => (
@@ -63,6 +69,12 @@ const ProviderTabNavigator = () => {
         name: 'ProviderInboxTab',
         component: ProtectedProviderInbox,
         label: pd.tabInbox || 'Inbox',
+        lazy: true,
+      },
+      {
+        name: 'ProviderPracticeTab',
+        component: ProtectedProviderPractice,
+        label: pd.tabPractice || 'Practice',
         lazy: true,
       },
     ];

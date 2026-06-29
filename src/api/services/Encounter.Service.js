@@ -117,6 +117,31 @@ export function useListPrescriptionByPatient() {
     });
 }
 
+// List encounters (provider — all open encounters)
+export async function ListProviderEncounters(query) {
+    try {
+        const result = await getRequest(`${MODEL_NAME}/all`, query);
+        if (result.status === HttpStatusCode.Ok) {
+            return result.data.data;
+        }
+        throw new Error(ErrorMessages.generalMessage);
+    } catch (err) {
+        return throwServerError(err);
+    }
+}
+
+export function useGetProviderEncountersAll(query = { page: 1, limit: 20 }) {
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = user?.role?.toLowerCase() === 'provider';
+
+    return useQuery({
+        queryKey: ['providerEncountersAll', query],
+        queryFn: async () => ListProviderEncounters(query),
+        enabled: isAuthenticated && isProvider,
+    });
+}
+
 // List sick leaves by patient
 export async function ListSickLeaves() {
     try {

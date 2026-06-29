@@ -106,29 +106,49 @@ const ProviderHomeScreen = () => {
           {pd.subtitle || 'Your clinic dashboard on mobile'}
         </AppText>
 
-        <View style={styles.statsRow}>
-          <AppCard style={styles.statCard} padding={SPACING.lg}>
-            {earningsLoading ? (
-              <Skeleton width={80} height={20} />
-            ) : (
-              <RiyalText
-                text={String(earnings?.weeklyEarnings ?? 0)}
-                textStyle={styles.statValue}
-              />
-            )}
-            <AppText variant="caption" color={COLORS.textSecondary}>{pd.weeklyEarnings || 'This week'}</AppText>
-          </AppCard>
-          <AppCard style={styles.statCard} padding={SPACING.lg}>
-            {earningsLoading ? (
-              <Skeleton width={80} height={20} />
-            ) : (
-              <RiyalText
-                text={String(earnings?.monthlyEarnings ?? 0)}
-                textStyle={styles.statValue}
-              />
-            )}
-            <AppText variant="caption" color={COLORS.textSecondary}>{pd.monthlyEarnings || 'This month'}</AppText>
-          </AppCard>
+        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('ProviderRevenue')}>
+          <View style={styles.statsRow}>
+            <AppCard style={styles.statCard} padding={SPACING.lg}>
+              {earningsLoading ? (
+                <Skeleton width={80} height={20} />
+              ) : (
+                <RiyalText
+                  text={String(earnings?.weeklyEarnings ?? 0)}
+                  textStyle={styles.statValue}
+                />
+              )}
+              <AppText variant="caption" color={COLORS.textSecondary}>{pd.weeklyEarnings || 'This week'}</AppText>
+            </AppCard>
+            <AppCard style={styles.statCard} padding={SPACING.lg}>
+              {earningsLoading ? (
+                <Skeleton width={80} height={20} />
+              ) : (
+                <RiyalText
+                  text={String(earnings?.monthlyEarnings ?? 0)}
+                  textStyle={styles.statValue}
+                />
+              )}
+              <AppText variant="caption" color={COLORS.textSecondary}>{pd.monthlyEarnings || 'This month'}</AppText>
+            </AppCard>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.quickRow}>
+          <QuickAction
+            icon={ICONS.wallet}
+            label={pd.revenueShort || 'Revenue'}
+            onPress={() => navigation.navigate('ProviderRevenue')}
+          />
+          <QuickAction
+            icon={ICONS.report}
+            label={pd.performanceShort || 'Performance'}
+            onPress={() => navigation.navigate('ProviderPerformance')}
+          />
+          <QuickAction
+            icon={ICONS.file}
+            label={pd.practiceShort || 'Practice'}
+            onPress={() => navigation.navigate('ProviderPracticeTab')}
+          />
         </View>
 
         <View style={styles.quickRow}>
