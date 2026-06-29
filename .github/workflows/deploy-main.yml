@@ -52,7 +52,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   ios-test:
     name: iOS → TestFlight
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
