@@ -95,6 +95,9 @@ jobs:
           cp /tmp/profile.mobileprovision \
             ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
 
+      - name: Set iOS build number
+        run: cd ios && agvtool new-version -all $((50000 + ${{ github.run_number }}))
+
       - name: Strip xcframework signatures
         run: |
           for FW in \
