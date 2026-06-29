@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
-import Header from '../components/Header';
-import RiyalText from '../components/RiyalText';
-import Skeleton from '../components/Skeleton';
-import { AppText, AppCard, SectionHeader, QuickAction } from '../components/ui';
+import Header from '../../components/Header';
+import RiyalText from '../../components/RiyalText';
+import Skeleton from '../../components/Skeleton';
+import { AppText, AppCard, SectionHeader, QuickAction } from '../../components/ui';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
