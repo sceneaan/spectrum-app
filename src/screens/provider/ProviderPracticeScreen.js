@@ -24,6 +24,7 @@ import { isRTL } from '../../utils/rtlUtils';
 import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const TAB_KEYS = ['referrals', 'reports', 'encounters'];
 
@@ -38,6 +39,7 @@ const ProviderPracticeScreen = () => {
   const pd = t.providerDashboard || {};
   const rtl = isRTL();
   const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
   const [activeTab, setActiveTab] = useState('referrals');
   const [referralDirection, setReferralDirection] = useState('incoming');
 
@@ -354,6 +356,7 @@ const ProviderPracticeScreen = () => {
           renderItem={renderItem}
           contentContainerStyle={[
             styles.list,
+            { paddingBottom: tabBarInset },
             listData.length === 0 && styles.listEmpty,
           ]}
           ListHeaderComponent={ListHeader}
@@ -394,7 +397,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countText: { fontWeight: '700' },
-  list: { padding: SPACING.lg, paddingBottom: 100 },
+  list: { padding: SPACING.lg },
   listEmpty: { flexGrow: 1 },
   card: {
     marginBottom: SPACING.md,

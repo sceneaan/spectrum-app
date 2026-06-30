@@ -14,8 +14,10 @@ import TabBarButton from '../components/TabBarButton';
 import TabShortcutSheet from '../components/TabShortcutSheet';
 import TabRadialShortcuts from '../components/TabRadialShortcuts';
 import { SHELL_ICONS } from '../components/ui/AppIcon';
-import { createShellTabBarScreenOptions, ShellTabIcon } from './shellTabBar';
+import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
+import { ShellTabIcon } from './shellTabBar';
 import ICONS from '../constants/icons';
+import haptics from '../utils/haptics';
 
 const Tab = createBottomTabNavigator();
 
@@ -49,7 +51,7 @@ const TabNavigator = () => {
   const { t, isRTL } = useLanguage();
   const { isAuthenticated } = useAuthStore();
   const insets = useSafeAreaInsets();
-  const shellTabOptions = useMemo(() => createShellTabBarScreenOptions(insets), [insets]);
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(insets), [insets]);
   const [shortcutSheet, setShortcutSheet] = useState(null);
   const [appointmentRadial, setAppointmentRadial] = useState(null);
 
@@ -173,7 +175,11 @@ const TabNavigator = () => {
     <>
       <Tab.Navigator
         detachInactiveScreens
+        tabBar={(props) => <GlassShellTabBar {...props} />}
         screenOptions={shellTabOptions}
+        screenListeners={{
+          tabPress: () => haptics.light(),
+        }}
       >
         {orderedTabs.map((tab) => (
           <Tab.Screen

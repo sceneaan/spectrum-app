@@ -10,7 +10,9 @@ import { useAuthStore } from '../store/authStore';
 import { useGetUserData } from '../api/services/User.Service';
 import { hasAdminPermission } from '../utils/adminPermissions';
 import { SHELL_ICONS } from '../components/ui/AppIcon';
-import { createShellTabBarScreenOptions, ShellTabIcon } from './shellTabBar';
+import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
+import { ShellTabIcon } from './shellTabBar';
+import haptics from '../utils/haptics';
 
 const Tab = createBottomTabNavigator();
 
@@ -36,7 +38,7 @@ const TabAdminUsers = () => <AdminUsersScreen showBack={false} />;
 const AdminTabNavigator = () => {
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  const shellTabOptions = useMemo(() => createShellTabBarScreenOptions(insets), [insets]);
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(insets), [insets]);
   const ad = t.adminDashboard || {};
   const user = useAuthStore((state) => state.user);
   const { data: userData } = useGetUserData();
@@ -81,7 +83,11 @@ const AdminTabNavigator = () => {
   return (
     <Tab.Navigator
       detachInactiveScreens
+      tabBar={(props) => <GlassShellTabBar {...props} />}
       screenOptions={shellTabOptions}
+      screenListeners={{
+        tabPress: () => haptics.light(),
+      }}
     >
       {orderedTabs.map((tab) => (
         <Tab.Screen

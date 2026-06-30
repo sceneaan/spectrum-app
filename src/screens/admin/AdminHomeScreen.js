@@ -24,6 +24,7 @@ import {
 } from '../../api/services/Admin.Service';
 import COLORS from '../../constants/colors';
 import { SPACING, RADIUS, SHADOWS } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const StatCard = ({ label, value, icon, onPress, tone = 'primary' }) => {
   const palette = tone === 'warning'
@@ -53,6 +54,7 @@ const AdminHomeScreen = () => {
   const { data: userData } = useGetUserData();
   const profile = userData || user;
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
 
   const canViewAppointments = hasAdminPermission(profile, 'view_appointments');
   const canViewPatients = hasAdminPermission(profile, 'view_patients');
@@ -175,7 +177,7 @@ const AdminHomeScreen = () => {
       <Header showProfile />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarInset }]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
         <AppCard style={styles.heroCard} padding={SPACING.xl}>
@@ -266,7 +268,7 @@ const AdminHomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.lg, paddingBottom: 40 },
+  content: { padding: SPACING.lg },
   heroCard: { marginBottom: SPACING.lg, ...SHADOWS.sm },
   heroTitle: { marginTop: SPACING.sm, marginBottom: SPACING.xs },
   statsRow: { gap: SPACING.md, marginBottom: SPACING.md },

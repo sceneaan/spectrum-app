@@ -26,6 +26,7 @@ import {
 import { getPatientDisplayName } from '../../utils/providerAppointments';
 import COLORS from '../../constants/colors';
 import { SPACING, RADIUS } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const AdminUsersScreen = ({ showBack = false }) => {
   const route = useRoute();
@@ -37,6 +38,7 @@ const AdminUsersScreen = ({ showBack = false }) => {
   const canEditPatients = hasAdminPermission(profile, 'edit_patients');
   const canEditProviders = hasAdminPermission(profile, 'edit_users') || hasAdminPermission(profile, 'edit_providers');
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
 
   const initialTab = route.params?.initialTab === 'providers' ? 'providers' : 'patients';
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -179,7 +181,7 @@ const AdminUsersScreen = ({ showBack = false }) => {
           data={users}
           keyExtractor={(item) => String(item._id || item.id)}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarInset }]}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={COLORS.primary} />}
           ListEmptyComponent={<EmptyState title={ad.noUsers || 'No users found'} />}
         />
@@ -201,7 +203,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     color: COLORS.textPrimary,
   },
-  list: { padding: SPACING.lg, paddingBottom: 40 },
+  list: { padding: SPACING.lg },
   loader: { marginTop: SPACING.xxl },
   card: { marginBottom: SPACING.md },
   topRow: { justifyContent: 'space-between', gap: SPACING.sm },

@@ -36,6 +36,7 @@ import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
 import { formatSarAmount } from '../../utils/formatMoney';
 import { SPACING, RADIUS, SHADOWS } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const StatCard = ({ label, amount, loading, icon, onPress }) => (
   <TouchableOpacity activeOpacity={0.88} onPress={onPress} style={styles.statCardWrap}>
@@ -81,6 +82,7 @@ const ProviderHomeScreen = () => {
   const { t, isRTL } = useLanguage();
   const pd = t.providerDashboard || {};
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
 
   const {
     data: todayAppointments,
@@ -210,7 +212,7 @@ const ProviderHomeScreen = () => {
       <Header showProfile />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarInset }]}
         refreshControl={(
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         )}
@@ -446,7 +448,7 @@ const ProviderHomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.lg, paddingBottom: 110 },
+  content: { padding: SPACING.lg },
   heroCard: {
     marginBottom: SPACING.xl,
     backgroundColor: COLORS.primaryLight,

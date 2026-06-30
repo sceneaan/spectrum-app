@@ -22,6 +22,7 @@ import ICONS from '../../constants/icons';
 import COLORS from '../../constants/colors';
 import Skeleton from '../../components/Skeleton';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const MESSAGE_TYPE_FILTERS = [
   { key: 'all', labelKey: 'all' },
@@ -42,6 +43,7 @@ const ProviderInboxScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const tabBarInset = useGlassTabBarInset();
   const pd = t.providerDashboard || {};
 
   const [search, setSearch] = useState('');
@@ -219,7 +221,7 @@ const ProviderInboxScreen = () => {
             data={filteredThreads}
             keyExtractor={(item) => String(item._id || item.id)}
             renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarInset }]}
             showsVerticalScrollIndicator={false}
             refreshControl={(
               <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={COLORS.primary} />
@@ -282,7 +284,7 @@ const styles = StyleSheet.create({
   },
   filterChipActive: { backgroundColor: COLORS.primaryLight },
   listPad: { paddingTop: SPACING.sm },
-  listContent: { paddingTop: SPACING.sm, paddingBottom: 100 },
+  listContent: { paddingTop: SPACING.sm },
   skeletonCard: {
     alignItems: 'center',
     padding: SPACING.lg,

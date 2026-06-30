@@ -26,6 +26,7 @@ import {
   openAppleCalendarWithEvent,
   openGoogleCalendarWithEvent,
 } from '../utils/calendarEvent';
+import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
 
 const CountdownTimer = ({ startTime, clientTz, label }) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -87,6 +88,7 @@ const AppointmentsScreen = () => {
   const [nowTick, setNowTick] = useState(0);
   const attachedRef = useRef(false);
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
 
   useEffect(() => {
     if (route.params?.initialTab) {
@@ -875,7 +877,7 @@ const AppointmentsScreen = () => {
             data={filteredData}
             renderItem={renderCard}
             keyExtractor={listKeyExtractor}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarInset }]}
             removeClippedSubviews
             initialNumToRender={8}
             maxToRenderPerBatch={6}
@@ -929,7 +931,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   body: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, flex: 1 },
   listPad: { paddingTop: SPACING.sm },
-  listContent: { paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl, flexGrow: 1 },
+  listContent: { paddingTop: SPACING.sm, flexGrow: 1 },
   skeletonCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,

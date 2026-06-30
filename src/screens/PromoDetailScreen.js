@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Image,
   Linking,
   Alert,
 } from 'react-native';
@@ -12,6 +11,7 @@ import FastImage from 'react-native-fast-image';
 import Header from '../components/Header';
 import { AppText, AppButton, AppCard } from '../components/ui';
 import { useLanguage } from '../store/LanguageContext';
+import { getPromoLocalizedFields } from '../utils/promotions';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS } from '../theme';
 
@@ -21,36 +21,41 @@ const PromoDetailScreen = () => {
   const { t, isRTL } = useLanguage();
   const promo = route.params?.promo || {};
   const align = isRTL ? 'right' : 'left';
+  const home = t.home || {};
 
-  const title = isRTL
-    ? (promo.titleArabic || promo.titleEnglish || promo.title)
-    : (promo.titleEnglish || promo.titleArabic || promo.title);
-  const description = isRTL
-    ? (promo.descriptionArabic || promo.descriptionEnglish || promo.subtitle || promo.description)
-    : (promo.descriptionEnglish || promo.descriptionArabic || promo.subtitle || promo.description);
+  const { title, detailBody } = getPromoLocalizedFields(promo, isRTL);
   const imageUri = isRTL
     ? (promo.imageArabic || promo.imageEnglish || promo.image)
     : (promo.imageEnglish || promo.imageArabic || promo.image);
   const externalUrl = promo.link || promo.url || promo.ctaUrl;
+
+  const ctaFromPromo = isRTL ? promo.ctaLabelAr : promo.ctaLabelEn;
+  const primaryLabel = promo.ctaAction === 'search'
+    ? (ctaFromPromo || home.bookAppointment || 'Book Appointment')
+    : (home.bookAppointment || 'Book Appointment');
+
+  const bookNow = () => {
+    navigation.navigate('Main', { screen: 'SearchTab' });
+  };
+
+  const onPrimaryPress = () => {
+    bookNow();
+  };
 
   const openExternal = async () => {
     if (!externalUrl) return;
     try {
       const supported = await Linking.canOpenURL(externalUrl);
       if (supported) await Linking.openURL(externalUrl);
-      else Alert.alert(t.home?.linkError || 'Unable to open link', externalUrl);
+      else Alert.alert(home.linkError || 'Unable to open link', externalUrl);
     } catch {
-      Alert.alert(t.home?.linkError || 'Unable to open link', externalUrl);
+      Alert.alert(home.linkError || 'Unable to open link', externalUrl);
     }
-  };
-
-  const bookNow = () => {
-    navigation.navigate('Main', { screen: 'SearchTab' });
   };
 
   return (
     <View style={styles.container}>
-      <Header showBack title={t.home?.promoDetailTitle || 'Promotion'} />
+      <Header showBack title={home.promoDetailTitle || 'Offer details'} />
       <ScrollView contentContainerStyle={styles.content}>
         {imageUri ? (
           <AppCard style={styles.imageCard} padding={0}>
@@ -63,26 +68,26 @@ const PromoDetailScreen = () => {
         ) : null}
         <AppCard padding={SPACING.lg}>
           <AppText variant="h2" align={align}>{title}</AppText>
-          {description ? (
+          {detailBody ? (
             <AppText variant="bodySmall" color={COLORS.textSecondary} style={styles.body} align={align}>
-              {description}
+              {detailBody}
             </AppText>
           ) : null}
         </AppCard>
         <View style={styles.actions}>
+          <AppButton
+            title={primaryLabel}
+            onPress={onPrimaryPress}
+            style={styles.btn}
+          />
           {externalUrl ? (
             <AppButton
-              label={t.home?.openPromoLink || 'Learn more'}
+              title={home.openPromoLink || 'Learn more'}
+              variant="outline"
               onPress={openExternal}
               style={styles.btn}
             />
           ) : null}
-          <AppButton
-            label={t.home?.bookAppointment || 'Book Appointment'}
-            variant={externalUrl ? 'outline' : 'primary'}
-            onPress={bookNow}
-            style={styles.btn}
-          />
         </View>
       </ScrollView>
     </View>

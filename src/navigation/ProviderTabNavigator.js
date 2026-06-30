@@ -8,7 +8,9 @@ import ProviderPracticeScreen from '../screens/provider/ProviderPracticeScreen';
 import { useLanguage } from '../store/LanguageContext';
 import { makeProtected } from './authGuards';
 import { SHELL_ICONS } from '../components/ui/AppIcon';
-import { createShellTabBarScreenOptions, ShellTabIcon } from './shellTabBar';
+import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
+import { ShellTabIcon } from './shellTabBar';
+import haptics from '../utils/haptics';
 
 const Tab = createBottomTabNavigator();
 
@@ -45,7 +47,7 @@ const TabIcon = ({ tabName, color, focused }) => (
 const ProviderTabNavigator = () => {
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  const shellTabOptions = useMemo(() => createShellTabBarScreenOptions(insets), [insets]);
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(insets), [insets]);
   const pd = t.providerDashboard || {};
 
   const orderedTabs = useMemo(() => {
@@ -80,7 +82,11 @@ const ProviderTabNavigator = () => {
   return (
     <Tab.Navigator
       detachInactiveScreens
+      tabBar={(props) => <GlassShellTabBar {...props} />}
       screenOptions={shellTabOptions}
+      screenListeners={{
+        tabPress: () => haptics.light(),
+      }}
     >
       {orderedTabs.map((tab) => (
         <Tab.Screen

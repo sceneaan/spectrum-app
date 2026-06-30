@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import RiyalText from '../components/RiyalText';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
+import { formatNextAvailabilityLabel } from '../utils/formatAvailability';
 
 const SearchResultsScreen = () => {
     const navigation = useNavigation();
@@ -146,6 +147,12 @@ const SearchResultsScreen = () => {
                         renderItem={({ item }) => {
                             // Get the first available slot date
                             const nextAvailableSlot = item.slots?.find(slot => slot.slotCount > 0)?.date || null;
+                            const nextAvailableLabel = formatNextAvailabilityLabel(nextAvailableSlot, {
+                                todayLabel: t('findTherapist.availableToday') || t('home.today') || 'Today',
+                                tomorrowLabel: t('findTherapist.tomorrow') || 'Tomorrow',
+                                nextPrefix: t('searchResults.nextAvailable') || 'Next available:',
+                                locale: isRTL ? 'ar' : 'en',
+                            });
 
                             // Get specialty name based on language
                             const specialtyName = isRTL
@@ -204,7 +211,7 @@ const SearchResultsScreen = () => {
                                                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.textPrimary }}>{typeof item.rating === 'object' ? (item.rating?.average || '5') : (item.rating || '5')}</Text>
                                             </View>
                                             <Text style={styles.nextSlot}>
-                                                {t('searchResults.nextAvailable') || "Next available:"} {nextAvailableSlot || (t('searchResults.noSlots') || 'No slots')}
+                                                {nextAvailableLabel || (t('searchResults.noSlots') || 'No slots')}
                                             </Text>
                                         </View>
                                         <RiyalText

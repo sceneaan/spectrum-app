@@ -34,6 +34,7 @@ import { isRTL } from '../../utils/rtlUtils';
 import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const TAB_KEYS = ['today', 'approvals', 'all'];
 
@@ -49,6 +50,7 @@ const ProviderAppointmentsScreen = () => {
   const pd = t.providerDashboard || {};
   const rtl = isRTL();
   const rowStyle = { flexDirection: rtl ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
 
   const initialTab = normalizeTab(route.params?.initialTab);
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -277,7 +279,7 @@ const ProviderAppointmentsScreen = () => {
           data={listData}
           keyExtractor={(item) => String(getAppointmentId(item))}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarInset }]}
           refreshControl={(
             <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
           )}
@@ -314,7 +316,7 @@ const ProviderAppointmentsScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   tabsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.sm },
-  list: { padding: SPACING.lg, paddingBottom: 100 },
+  list: { padding: SPACING.lg },
   card: {
     marginBottom: SPACING.md,
     ...SHADOWS.sm,

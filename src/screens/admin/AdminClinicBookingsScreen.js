@@ -19,6 +19,7 @@ import { hasAdminPermission } from '../../utils/adminPermissions';
 import { useAdminGetClinicBookings, useAdminUpdateClinicBooking } from '../../api/services/Admin.Service';
 import COLORS from '../../constants/colors';
 import { SPACING } from '../../theme';
+import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
 
 const AdminClinicBookingsScreen = ({ showBack = true }) => {
   const { t, isRTL } = useLanguage();
@@ -29,6 +30,7 @@ const AdminClinicBookingsScreen = ({ showBack = true }) => {
   const canManage = hasAdminPermission(profile, 'manage_appointments');
   const [activeTab, setActiveTab] = useState('pending');
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
+  const tabBarInset = useGlassTabBarInset();
 
   const query = useMemo(() => ({
     page: 1,
@@ -146,7 +148,7 @@ const AdminClinicBookingsScreen = ({ showBack = true }) => {
           data={bookings}
           keyExtractor={(item) => String(item._id || item.id)}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarInset }]}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={COLORS.primary} />}
           ListEmptyComponent={<EmptyState title={ad.noBookings || 'No clinic bookings'} />}
         />
@@ -158,7 +160,7 @@ const AdminClinicBookingsScreen = ({ showBack = true }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   tabsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.sm },
-  list: { padding: SPACING.lg, paddingBottom: 40 },
+  list: { padding: SPACING.lg },
   loader: { marginTop: SPACING.xxl },
   card: { marginBottom: SPACING.md },
   topRow: { justifyContent: 'space-between', gap: SPACING.sm },

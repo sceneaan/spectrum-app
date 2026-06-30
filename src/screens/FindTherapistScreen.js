@@ -11,6 +11,7 @@ import { useProviderSearch } from '../hooks/useProviderSearch';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { SPACING, RADIUS, cardBorder } from '../theme';
+import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
 
 const FILTER_TYPES = [
     { key: 'issues', label: 'Issues', labelAr: 'المشاكل', icon: 'brain', color: '#8B5CF6' },
@@ -34,6 +35,7 @@ const FindTherapistScreen = () => {
     const route = useRoute();
     const { t, isRTL } = useLanguage();
     const headerMode = useScreenHeaderMode();
+    const tabBarInset = useGlassTabBarInset();
 
     const preSelectedIssue = route.params?.preSelectedIssue;
 
@@ -268,7 +270,7 @@ const FindTherapistScreen = () => {
 
             {/* Results */}
             {loading ? (
-                <ScrollView contentContainerStyle={{ padding: 20 }}>
+                <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: tabBarInset }}>
                     {[1, 2, 3, 4].map(i => <TherapistCardSkeleton key={i} />)}
                 </ScrollView>
             ) : (
@@ -276,7 +278,7 @@ const FindTherapistScreen = () => {
                     data={providers}
                     keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                     renderItem={renderItem}
-                    contentContainerStyle={{ padding: 20 }}
+                    contentContainerStyle={{ padding: 20, paddingBottom: tabBarInset }}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={renderFooter}
                     showsVerticalScrollIndicator={false}
