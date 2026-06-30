@@ -52,13 +52,15 @@ function buildRequiredFields(user) {
     });
   }
 
-  requiredFields.push({
-    key: 'isEmailVerified',
-    value: user.isEmailVerified === true ? true : null,
-    tab: 'verify',
-    label: 'Email verification',
-    editable: false,
-  });
+  if (user.email) {
+    requiredFields.push({
+      key: 'isEmailVerified',
+      value: user.isEmailVerified === true ? true : null,
+      tab: 'verify',
+      label: 'Email verification',
+      editable: false,
+    });
+  }
 
   return requiredFields;
 }

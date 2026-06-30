@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import { useLanguage } from '../../store/LanguageContext';
 import { useGetUserData, useUpdateProfile } from '../../api/services/User.Service';
+import { useGetIssueCategories } from '../../api/services/IssueCategory.Service';
+import YesNoField from './YesNoField';
+import ProfileVerificationSection from './ProfileVerificationSection';
 import { useAuthStore } from '../../store/authStore';
 import {
   uploadAvatar,
@@ -82,7 +85,8 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
   }, [initialTab]);
 
   // Fetch user data from API
-  const { data: userData, isLoading: userDataLoading, error: userDataError } = useGetUserData();
+  const { data: userData, isLoading: userDataLoading, error: userDataError, refetch: refetchUserData } = useGetUserData();
+  const { data: issueCategories = [] } = useGetIssueCategories();
   const { mutate: updateUserProfile, isPending: updateProfileLoader } = useUpdateProfile();
   const [uploadFileLoader, setUploadFileLoader] = useState(false);
 
@@ -108,6 +112,12 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
     medications: '',
     preference: '',
     userId: '',
+    issueCategoryIds: [],
+    visitedPsychiatrist: null,
+    visitedPsychiatristDetails: '',
+    onMedication: null,
+    tookPsychiatricMedications: null,
+    tookPsychiatricMedicationsDetails: '',
   });
 
   const [countryCode, setCountryCode] = useState('+966');
@@ -133,6 +143,7 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
   const [listData, setListData] = useState([]);
   const [listTarget, setListTarget] = useState('');
   const [modalTitle, setModalTitle] = useState('');
+  const [selectedIssueIds, setSelectedIssueIds] = useState([]);
 
   // --- DATE PICKER DATA ---
   const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -185,6 +196,12 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
       medications: profile.medications || '',
       preference: profile.preference || '',
       userId: profile.userId || '',
+      issueCategoryIds: (profile.issueCategories || []).map((item) => item.id || item._id || item).filter(Boolean),
+      visitedPsychiatrist: profile.visitedPsychiatrist ?? null,
+      visitedPsychiatristDetails: profile.visitedPsychiatristDetails || '',
+      onMedication: profile.onMedication ?? null,
+      tookPsychiatricMedications: profile.tookPsychiatricMedications ?? null,
+      tookPsychiatricMedicationsDetails: profile.tookPsychiatricMedicationsDetails || '',
     });
   }, []);
 
@@ -372,6 +389,33 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
     setModalVisible(true);
   };
 
+  const openIssueCategoryPicker = () => {
+    setSelectedIssueIds([...(formData.issueCategoryIds || [])]);
+    setModalType('issueCategories');
+    setModalTitle(t.medicalInformation?.healthConcerns || 'Health concerns');
+    setModalVisible(true);
+  };
+
+  const toggleIssueCategory = (issueId) => {
+    setSelectedIssueIds((prev) => (
+      prev.includes(issueId) ? prev.filter((id) => id !== issueId) : [...prev, issueId]
+    ));
+  };
+
+  const confirmIssueCategories = () => {
+    handleInputChange('issueCategoryIds', selectedIssueIds);
+    setModalVisible(false);
+  };
+
+  const getIssueCategoryLabel = () => {
+    const ids = formData.issueCategoryIds || [];
+    if (!ids.length) return t.medicalInformation?.selectConcerns || 'Select concerns...';
+    const labels = issueCategories
+      .filter((item) => ids.includes(item.id || item._id))
+      .map((item) => (isRTL ? item.nameArabic : item.nameEnglish) || item.nameEnglish);
+    return labels.join(', ') || t.medicalInformation?.selectConcerns || 'Select concerns...';
+  };
+
   const openCountryCodeSelector = (isEmergency = false) => {
     setModalType('countryCode');
     setListTarget(isEmergency ? 'emergencyCountryCode' : 'countryCode');
@@ -506,7 +550,9 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
       fullName: formData.fullName?.trim(),
       nationalId: formData.nationalId?.trim(),
       nationality: formData.nationality?.trim(),
-      dob: formData.dateOfBirth,
+      dob: formData.dateOfBirth instanceof Date
+        ? `${formData.dateOfBirth.getFullYear()}-${String(formData.dateOfBirth.getMonth() + 1).padStart(2, '0')}-${String(formData.dateOfBirth.getDate()).padStart(2, '0')}`
+        : formData.dateOfBirth,
       gender: formData.gender?.toLowerCase(),
       emergencyContact: {
         name: formData.emergencyContactName?.trim(),
@@ -519,6 +565,16 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
       preferredLanguage: formData.preferredLanguage,
       medications: formData.medications?.trim(),
       preference: formData.preference?.trim()?.toLowerCase(),
+      issueCategories: formData.issueCategoryIds,
+      visitedPsychiatrist: formData.visitedPsychiatrist,
+      visitedPsychiatristDetails: formData.visitedPsychiatrist === true
+        ? formData.visitedPsychiatristDetails?.trim()
+        : undefined,
+      onMedication: formData.onMedication,
+      tookPsychiatricMedications: formData.tookPsychiatricMedications,
+      tookPsychiatricMedicationsDetails: formData.tookPsychiatricMedications === true
+        ? formData.tookPsychiatricMedicationsDetails?.trim()
+        : undefined,
     };
 
     updateUserProfile(payload, {
@@ -671,6 +727,15 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
             />
             {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
+            <ProfileVerificationSection
+              user={userData}
+              t={t}
+              isRTL={isRTL}
+              alignText={alignText}
+              rowStyle={rowStyle}
+              onVerified={() => refetchUserData()}
+            />
+
             <View style={styles.divider} />
             <Text style={[styles.sectionTitle, alignText]}>{t.patientInformation?.emergencyContact || 'Emergency Contact'}</Text>
             <CustomInput
@@ -733,6 +798,76 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
               onChange={(val) => handleInputChange('allergies', val)}
               alignText={alignText}
             />
+
+            <View style={styles.divider} />
+            <Text style={[styles.sectionTitle, alignText]}>{t.medicalInformation?.healthConcerns || 'Health concerns'}</Text>
+            <Text style={[styles.sectionHint, alignText]}>
+              {t.medicalInformation?.healthConcernsHint || 'Select what applies to you — helps your provider understand you better'}
+            </Text>
+            <CustomDropdown
+              label={t.medicalInformation?.healthConcerns || 'Health concerns'}
+              value={getIssueCategoryLabel()}
+              onPress={openIssueCategoryPicker}
+              alignText={alignText}
+              rowStyle={rowStyle}
+            />
+
+            <View style={styles.divider} />
+            <Text style={[styles.sectionTitle, alignText]}>{t.medicalInformation?.intakeAssessment || 'Intake assessment'}</Text>
+            <YesNoField
+              label={t.medicalInformation?.visitedPsychiatrist || 'Have you ever visited a psychiatrist or specialist?'}
+              value={formData.visitedPsychiatrist}
+              onChange={(val) => handleInputChange('visitedPsychiatrist', val)}
+              yesLabel={t.common?.yes || 'Yes'}
+              noLabel={t.common?.no || 'No'}
+              alignText={alignText}
+              rowStyle={rowStyle}
+            />
+            {formData.visitedPsychiatrist === true ? (
+              <CustomTextArea
+                label={t.medicalInformation?.details || 'Details'}
+                placeholder={t.medicalInformation?.detailsPlaceholder || 'Please provide details...'}
+                value={formData.visitedPsychiatristDetails}
+                onChange={(val) => handleInputChange('visitedPsychiatristDetails', val)}
+                alignText={alignText}
+              />
+            ) : null}
+            <YesNoField
+              label={t.medicalInformation?.onMedication || 'Are you on any medication?'}
+              value={formData.onMedication}
+              onChange={(val) => handleInputChange('onMedication', val)}
+              yesLabel={t.common?.yes || 'Yes'}
+              noLabel={t.common?.no || 'No'}
+              alignText={alignText}
+              rowStyle={rowStyle}
+            />
+            {formData.onMedication === true ? (
+              <CustomTextArea
+                label={t.medicalInformation?.medications || 'Current Medications'}
+                placeholder={t.medicalInformation?.medicationsPlaceholder || 'Please list your current medications...'}
+                value={formData.medications}
+                onChange={(val) => handleInputChange('medications', val)}
+                alignText={alignText}
+              />
+            ) : null}
+            <YesNoField
+              label={t.medicalInformation?.psychiatricMeds || 'Have you ever taken psychiatric medications?'}
+              value={formData.tookPsychiatricMedications}
+              onChange={(val) => handleInputChange('tookPsychiatricMedications', val)}
+              yesLabel={t.common?.yes || 'Yes'}
+              noLabel={t.common?.no || 'No'}
+              alignText={alignText}
+              rowStyle={rowStyle}
+            />
+            {formData.tookPsychiatricMedications === true ? (
+              <CustomTextArea
+                label={t.medicalInformation?.psychiatricMedsDetails || 'Psychiatric medication details'}
+                placeholder={t.medicalInformation?.psychiatricMedsPlaceholder || 'List medications and duration...'}
+                value={formData.tookPsychiatricMedicationsDetails}
+                onChange={(val) => handleInputChange('tookPsychiatricMedicationsDetails', val)}
+                alignText={alignText}
+              />
+            ) : null}
 
             <View style={styles.divider} />
             <Text style={[styles.sectionTitle, alignText]}>{t.profile?.preferencesTitle || 'Preferences'}</Text>
@@ -822,6 +957,32 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
                   <Text style={{ color: COLORS.textPrimary }}>{t.cancel || 'Cancel'}</Text>
                 </TouchableOpacity>
               </View>
+            ) : modalType === 'issueCategories' ? (
+              <View style={{ height: 400 }}>
+                <FlatList
+                  data={issueCategories}
+                  keyExtractor={(item) => String(item.id || item._id)}
+                  renderItem={({ item }) => {
+                    const issueId = item.id || item._id;
+                    const selected = selectedIssueIds.includes(issueId);
+                    const label = (isRTL ? item.nameArabic : item.nameEnglish) || item.nameEnglish;
+                    return (
+                      <TouchableOpacity
+                        style={[styles.modalItem, rowStyle, { justifyContent: 'space-between' }]}
+                        onPress={() => toggleIssueCategory(issueId)}
+                      >
+                        <Text style={styles.modalItemText}>{label}</Text>
+                        <Text style={{ color: selected ? COLORS.primary : COLORS.gray400 }}>
+                          {selected ? '✓' : '○'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+                <TouchableOpacity style={styles.modalConfirmBtn} onPress={confirmIssueCategories}>
+                  <Text style={styles.modalConfirmText}>{t.confirm || 'Confirm'}</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={{ height: 300 }}>
                 <FlatList data={listData} keyExtractor={(i, x) => x.toString()} renderItem={({ item }) => (
@@ -893,6 +1054,7 @@ const styles = StyleSheet.create({
   tabText: { color: COLORS.gray700, fontWeight: '600' },
   activeTabText: { color: COLORS.white },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: COLORS.textPrimary },
+  sectionHint: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 10, marginTop: -8 },
   divider: { height: 1, backgroundColor: COLORS.gray200, marginVertical: 20 },
 
   inputGroup: { marginBottom: 15 },
