@@ -10,6 +10,9 @@ platform :ios do
       in_house: false
     )
 
+    notes_path = "fastlane/metadata/en-US/release_notes.txt"
+    release_notes_text = File.exist?(notes_path) ? File.read(notes_path).strip : "Bug fixes and performance improvements."
+
     upload_to_app_store(
       api_key: api_key,
       ipa: "/tmp/SpectrumIPA/Spectrum.ipa",
@@ -17,8 +20,8 @@ platform :ios do
       automatic_release: true,
       force: true,
       skip_screenshots: true,
-      skip_metadata: false,
-      metadata_path: "./fastlane/metadata",
+      skip_metadata: true,
+      release_notes: { "en-US" => release_notes_text },
       precheck_include_in_app_purchases: false
     )
   end
