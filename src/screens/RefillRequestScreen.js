@@ -90,7 +90,7 @@ const RefillRequestScreen = () => {
    // Refetch data when screen comes into focus
    useFocusEffect(
      React.useCallback(() => {
-       await invalidateRefillCaches(queryClient);
+       invalidateRefillCaches(queryClient);
      }, [queryClient])
    );
 
@@ -207,7 +207,7 @@ const RefillRequestScreen = () => {
                  onPress: () => {
                    setMessage('');
                    setSelectedMedications([]);
-                   await invalidateRefillCaches(queryClient);
+                   invalidateRefillCaches(queryClient);
                    navigation.goBack();
                  }
                }
