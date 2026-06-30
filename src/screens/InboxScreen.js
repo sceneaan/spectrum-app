@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import moment from 'moment';
 import Skeleton from '../components/Skeleton';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
+import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
 
 const InboxScreen = () => {
   const { t } = useLanguage();
@@ -24,6 +25,7 @@ const InboxScreen = () => {
   const route = useRoute();
   const { isAuthenticated } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const tabBarInset = useGlassTabBarInset();
   const [search, setSearch] = useState('');
   const [threads, setThreads] = useState([]);
   const [filteredThreads, setFilteredThreads] = useState([]);
@@ -234,7 +236,7 @@ const InboxScreen = () => {
             data={filteredThreads}
             renderItem={renderItem}
             keyExtractor={(item, index) => item._id?.toString() || index.toString()}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarInset }]}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews
             initialNumToRender={15}
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, height: '100%', color: COLORS.textPrimary, fontSize: 15 },
   listPad: { paddingTop: SPACING.sm },
   searchSkeleton: { marginBottom: SPACING.lg },
-  listContent: { paddingTop: SPACING.sm, paddingBottom: 100 },
+  listContent: { paddingTop: SPACING.sm },
   skeletonCard: {
     alignItems: 'center',
     padding: SPACING.lg,

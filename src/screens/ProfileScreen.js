@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
@@ -15,16 +15,36 @@ import EditProfileForm from '../components/profile/EditProfileForm';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const { t } = useLanguage();
   const { logout } = useAuthStore();
-  const [viewMode, setViewMode] = useState('menu'); // 'menu' | 'edit'
+  const openedFromCompleteProfile = route.params?.view === 'edit';
+  const [viewMode, setViewMode] = useState(openedFromCompleteProfile ? 'edit' : 'menu');
+
+  useEffect(() => {
+    if (route.params?.view === 'edit') {
+      setViewMode('edit');
+    }
+  }, [route.params?.view]);
 
   const handleBack = () => {
     if (viewMode === 'edit') {
-      setViewMode('menu');
+      if (openedFromCompleteProfile) {
+        navigation.goBack();
+      } else {
+        setViewMode('menu');
+      }
     } else {
       navigation.goBack();
     }
+  };
+
+  const handleSave = () => {
+    if (openedFromCompleteProfile) {
+      navigation.goBack();
+      return;
+    }
+    setViewMode('menu');
   };
 
   const handleLogout = async () => {
@@ -32,22 +52,18 @@ const ProfileScreen = () => {
       socketService.disconnect();
       await Logout();
       await logout();
-      // Clear all React Query cached data so stale user data never leaks post-logout
       queryClient.clear();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [
-            {
-              name: 'Main',
-              state: {
-                routes: [{ name: 'HomeTab' }],
-              },
-            },
-          ],
-        })
+          routes: [{ name: 'Main' }],
+        }),
       );
     } catch (error) {
+      Alert.alert(
+        t.common?.error || 'Error',
+        t.profile?.logoutFailed || 'Could not log out. Please try again.',
+      );
     }
   };
 
@@ -65,8 +81,9 @@ const ProfileScreen = () => {
           onLogout={handleLogout}
         />
       ) : (
-        <EditProfileForm 
-          onSave={() => setViewMode('menu')} 
+        <EditProfileForm
+          onSave={handleSave}
+          initialTab={route.params?.initialTab || 'patient'}
         />
       )}
     </View>

@@ -17,7 +17,7 @@ import ReactNativeBiometrics from 'react-native-biometrics';
 const OTPScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { t, isRTL } = useAppTranslation();
+  const { t, lang, isRTL } = useAppTranslation();
   const { emailOrPhone, targetScreen, targetParams } = route.params || {};
 
   const { setAuth, biometricsEnabled, setBiometricsEnabled } = useAuthStore();
@@ -47,25 +47,7 @@ const OTPScreen = () => {
 
     verifyOtp({ otp: enteredOtp, emailOrPhone }, {
       onSuccess: async (response) => {
-        // Mobile app is patient-only — providers and admins use the website
-        const role = response?.role?.toLowerCase();
-        if (role !== 'patient') {
-          Alert.alert(
-            t('auth.otp.accessDenied') || 'Access Denied',
-            role === 'provider'
-              ? (t('auth.otp.youAreProviderContinueWeb') || 'You are a provider. Please join video sessions from the clinic website.')
-              : (t('auth.otp.patientsOnly') || 'This application is for patients only. Please use the website for your role.'),
-            [
-              {
-                text: t('common.ok') || 'OK',
-                onPress: () => navigation.navigate('LoginScreen'),
-              },
-            ],
-          );
-          return;
-        }
-
-        // Proceed with login for patients
+        // Providers may use the app; video sessions remain patient-only (see videoAccess guards).
         // Note: Response object IS the user object (not nested under response.user)
         setAuth({
           user: response,
@@ -308,7 +290,7 @@ const OTPScreen = () => {
 
     const payload = {
       emailOrPhone: emailOrPhone,
-      preferredLanguage: i18n.language || 'en' // Use current language preference
+      preferredLanguage: lang || 'en',
     };
 
     resendOtp(payload, {

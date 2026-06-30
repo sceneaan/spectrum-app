@@ -64,6 +64,10 @@ class SocketService {
 			DeviceEventEmitter.emit('socket:newMessage', message);
 		});
 
+		this.socket.on('clinicBookingCreated', (payload) => {
+			DeviceEventEmitter.emit('socket:clinicBookingCreated', payload);
+		});
+
 		this.socket.on('disconnect', (reason) => {
 			console.log('[Socket] Disconnected:', reason);
 		});

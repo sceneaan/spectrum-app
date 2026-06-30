@@ -73,6 +73,28 @@ const LoginScreen = () => {
     return validateLoginEmail(email, t);
   };
 
+  const resolveApiMessage = (message) => {
+    if (!message) return '';
+    const keyMap = {
+      'auth.failedToSendOtp': t('auth.otp.sendFailed') || 'Failed to send OTP. Please try again or use email login.',
+      'auth.loginFromWeb': t('auth.otp.providersUseWeb') || 'Please sign in from the Spectrum website.',
+      'auth.isNotVerified': t('auth.otp.notVerified') || 'Account not verified yet.',
+      'auth.profileBlocked': t('auth.otp.profileBlocked') || 'This account is blocked.',
+      'auth.accountInactive': t('auth.otp.accountInactive') || 'This account is inactive.',
+      'validation.invalidEmailOrPhone': t('auth.login.invalidPhone') || 'Invalid phone number.',
+      'validation.userDoesNotExist': t('auth.otp.userNotFound') || 'No account found for this number.',
+    };
+    return keyMap[message] || message;
+  };
+
+  const goToOtp = (identifier) => {
+    navigation.navigate('OTPScreen', {
+      emailOrPhone: identifier,
+      targetScreen,
+      targetParams,
+    });
+  };
+
   const submitOtp = (identifier) => {
     const payload = {
       emailOrPhone: identifier,
@@ -81,26 +103,19 @@ const LoginScreen = () => {
 
     sendOtp(payload, {
       onSuccess: () => {
-        navigation.navigate('OTPScreen', {
-          emailOrPhone: identifier,
-          targetScreen,
-          targetParams,
-        });
+        goToOtp(identifier);
       },
       onError: (err) => {
-        const errorMessage = err.response?.data?.message || err.message || t('auth.otp.error') || 'Failed to send OTP';
+        const rawMessage = err.response?.data?.message || err.message || t('auth.otp.error') || 'Failed to send OTP';
+        const errorMessage = resolveApiMessage(rawMessage);
 
-        if (errorMessage === 'auth.isNotVerified' || errorMessage === 'isNotVerified' || errorMessage.includes('not verified')) {
-          resendOtp({ emailOrPhone: identifier }, {
+        if (rawMessage === 'auth.isNotVerified' || rawMessage === 'isNotVerified' || rawMessage.includes('not verified')) {
+          resendOtp({ emailOrPhone: identifier, preferredLanguage: lang || 'en' }, {
             onSuccess: () => {
-              navigation.navigate('OTPScreen', {
-                emailOrPhone: identifier,
-                targetScreen,
-                targetParams,
-              });
+              goToOtp(identifier);
             },
             onError: (resendErr) => {
-              const msg = resendErr.response?.data?.message || resendErr.message || t('auth.otp.error');
+              const msg = resolveApiMessage(resendErr.response?.data?.message || resendErr.message || t('auth.otp.error'));
               Alert.alert(t('common.error') || 'Error', msg);
             },
           });

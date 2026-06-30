@@ -8,7 +8,7 @@ import COLORS from '../../constants/colors';
  */
 export const SHELL_ICONS = {
   home: { outline: 'home-outline', filled: 'home' },
-  doctors: { outline: 'stethoscope', filled: 'stethoscope' },
+  doctors: { outline: 'magnify', filled: 'magnify' },
   // `calendar` / `video` are solid glyphs — closer optical weight to magnify + email-outline
   calendar: { outline: 'calendar', filled: 'calendar-check' },
   inbox: { outline: 'email-outline', filled: 'email' },
@@ -27,6 +27,12 @@ export const QUICK_ACTION_ICONS = {
   calendar: SHELL_ICONS.calendar.outline,
   inbox: SHELL_ICONS.inbox.outline,
   video: SHELL_ICONS.video,
+  wallet: 'wallet-outline',
+  performance: 'chart-line',
+  practice: 'clipboard-text-outline',
+  approvals: 'calendar-clock',
+  refills: 'pill',
+  videoWeb: 'monitor-lock',
 };
 
 export default function AppIcon({

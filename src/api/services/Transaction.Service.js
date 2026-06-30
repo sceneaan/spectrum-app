@@ -156,3 +156,29 @@ export function useGetWalletTransactions(query = { page: 1, limit: 10 }) {
     enabled: isAuthenticated,
   });
 }
+
+export function useGetProviderTransactions(query = { page: 1, limit: 10 }) {
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  return useQuery({
+    queryKey: ['providerTransactions', query],
+    queryFn: async () => {
+      try {
+        const result = await getRequest(`${MODEL_NAME}/provider`, query);
+        if (result.status === HttpStatusCode.Ok) {
+          const payload = result.data?.data || result.data || {};
+          return {
+            transactions: payload.transactions || payload.docs || [],
+            pagination: payload.pagination || {},
+          };
+        }
+        throw new Error(ErrorMessages.generalMessage);
+      } catch (err) {
+        return throwServerError(err);
+      }
+    },
+    enabled: isAuthenticated && user?.role?.toLowerCase() === 'provider',
+    keepPreviousData: true,
+  });
+}

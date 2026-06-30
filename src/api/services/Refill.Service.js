@@ -44,6 +44,9 @@ export const useProcessRefillRequest = () => {
 };
 
 export const usePatientToProviderRequests = () => {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = useAuthStore((state) => state.user?.role?.toLowerCase() === 'provider');
+
     return useQuery({
         queryKey: ['patientRefillRequests'],
         queryFn: async () => {
@@ -59,6 +62,7 @@ export const usePatientToProviderRequests = () => {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated && isProvider,
     });
 };
 

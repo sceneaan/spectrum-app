@@ -4,7 +4,7 @@ import COLORS from '../../constants/colors';
 import ICONS from '../../constants/icons';
 import RiyalText from '../RiyalText';
 import { RADIUS, SHADOWS, cardBorder } from '../../theme';
-import moment from 'moment-timezone';
+import { formatNextAvailabilityLabel } from '../../utils/formatAvailability';
 
 const TherapistCard = ({ provider, isRTL, t, onPress }) => {
     const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
@@ -27,6 +27,12 @@ const TherapistCard = ({ provider, isRTL, t, onPress }) => {
     const ageGroups = provider.clientAgeGroups || provider.ageGroups || [];
     const sessionTypes = provider.sessionTypes || [];
     const nextAvailable = provider.nextAvailableSlot || provider.slots?.find(s => s.slotCount > 0)?.date;
+    const nextAvailableLabel = formatNextAvailabilityLabel(nextAvailable, {
+        todayLabel: t?.findTherapist?.availableToday || t?.home?.today || t?.providerDashboard?.today || 'Today',
+        tomorrowLabel: t?.findTherapist?.tomorrow || 'Tomorrow',
+        nextPrefix: t?.findTherapist?.nextAvailable || 'Next:',
+        locale: isRTL ? 'ar' : 'en',
+    });
     const ratingObj = provider.rating;
     const rating = typeof ratingObj === 'object' ? ratingObj?.average : ratingObj;
     const reviewCount = typeof ratingObj === 'object' ? ratingObj?.reviewCount : 0;
@@ -164,17 +170,17 @@ const TherapistCard = ({ provider, isRTL, t, onPress }) => {
 
                 {/* Footer: next available + view profile */}
                 <View style={[styles.footer, rowStyle]}>
-                    {nextAvailable ? (
+                    {nextAvailableLabel ? (
                         <View style={styles.nextAvailBadge}>
                             <Image source={ICONS.calendar} style={styles.nextAvailIcon} />
                             <Text style={styles.nextAvailText}>
-                                {t?.findTherapist?.nextAvailable || 'Next:'} {moment(nextAvailable).locale('en').format('MMM D')}
+                                {nextAvailableLabel}
                             </Text>
                         </View>
                     ) : (
                         <View />
                     )}
-                    <TouchableOpacity style={[rowStyle, { alignItems: 'center', gap: 4 }]}>
+                    <TouchableOpacity style={[rowStyle, { alignItems: 'center', gap: 4 }]} onPress={onPress} activeOpacity={0.7}>
                         <Text style={styles.viewProfileText}>
                             {t?.findTherapist?.viewProfile || 'View Profile'}
                         </Text>

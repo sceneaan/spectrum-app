@@ -2,16 +2,22 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Dimensions, Alert, Pressable } from 'react-native';
 import LottieView from 'lottie-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '../store/LanguageContext';
 import { getDynamicData } from '../utils/dataHelper';
 import { useGetAllPromotions } from '../api/services/Public.Service';
 import { useGetSearchFilters, useSearchProviders } from '../api/services/Search.Service';
 import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
-import { useAuthStore } from '../store/authStore';
+import { useGetMyWallet } from '../api/services/Wallet.Service';
+import { useGetUserData } from '../api/services/User.Service';
+import { calculatePatientProfileCompletion, getMissingPatientProfileFields } from '../utils/profileCompletion';
+import { formatSarAmount } from '../utils/formatMoney';
+import RiyalText from '../components/RiyalText';
 import Header from '../components/Header';
 import Skeleton from '../components/Skeleton';
-import { SectionHeader, QuickAction, AppButton, AppText } from '../components/ui';
+import { SectionHeader, QuickAction, AppButton, AppText, AppCard } from '../components/ui';
+import { useAuthStore } from '../store/authStore';
 import SessionCountdownHero from '../components/SessionCountdownHero';
 import ProviderThumb from '../components/ProviderThumb';
 import { usePreSessionJoin } from '../context/PreSessionJoinContext';
@@ -22,8 +28,14 @@ import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 import { interpolate } from '../utils/localeHelpers';
 import { createScrollToIndexFailedHandler } from '../utils/scrollToIndex';
 import haptics from '../utils/haptics';
+import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
 import moment from 'moment-timezone';
 import { getNearestUpcomingAppointment } from '../utils/appointmentFilters';
+import {
+  resolveHomePromoCards,
+  getPromoLocalizedFields,
+  handlePromoAction,
+} from '../utils/promotions';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PROMO_CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -49,10 +61,12 @@ const PROMO_ITEM_LENGTH = PROMO_CARD_WIDTH + 15;
 
 const HomeScreen = () => {
    const navigation = useNavigation();
+   const queryClient = useQueryClient();
    const { t, isRTL } = useLanguage();
    const data = getDynamicData(isRTL);
    const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
    const alignText = { textAlign: isRTL ? 'right' : 'left' };
+   const tabBarInset = useGlassTabBarInset();
 
    const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
    const [nowTick, setNowTick] = useState(0);
@@ -71,6 +85,50 @@ const HomeScreen = () => {
 
    // Fetch upcoming appointments (only for logged in users)
    const { data: upcomingAppointments } = useGetUpcomingAppointments();
+   const { data: walletData } = useGetMyWallet();
+   const { data: userData } = useGetUserData();
+
+   const profileCompletion = useMemo(
+      () => calculatePatientProfileCompletion(userData || user),
+      [userData, user],
+   );
+
+   const missingProfileFields = useMemo(
+      () => getMissingPatientProfileFields(userData || user),
+      [userData, user],
+   );
+
+   const profileEditParams = useMemo(() => {
+      const needsMedical = missingProfileFields.some((field) => field.tab === 'medical');
+      return {
+         view: 'edit',
+         initialTab: needsMedical ? 'medical' : 'patient',
+      };
+   }, [missingProfileFields]);
+
+   const profileCompletionHint = useMemo(() => {
+      const editableMissing = missingProfileFields.filter((field) => field.editable !== false);
+      if (editableMissing.length === 0) {
+         const verifyMissing = missingProfileFields.filter((field) => field.tab === 'verify');
+         if (verifyMissing.length > 0) {
+            return t.home?.profileCompletionVerifyHint
+               || 'Verify your email or phone to reach 100%';
+         }
+         return null;
+      }
+      const labels = editableMissing.slice(0, 2).map((field) => field.label).join(', ');
+      const suffix = editableMissing.length > 2 ? '…' : '';
+      return (t.home?.profileCompletionMissingHint || 'Still needed: {{fields}}')
+         .replace('{{fields}}', `${labels}${suffix}`);
+   }, [missingProfileFields, t.home]);
+
+   useFocusEffect(
+      useCallback(() => {
+         if (isAuthenticated) {
+            queryClient.invalidateQueries({ queryKey: ['userData'] });
+         }
+      }, [isAuthenticated, queryClient]),
+   );
 
    const nearestAppointment = useMemo(
       () => getNearestUpcomingAppointment(upcomingAppointments),
@@ -198,8 +256,8 @@ const HomeScreen = () => {
    }, [nearestAppointment, navigation, nowTick, requestJoinSession, t]);
 
    const promoCards = useMemo(
-      () => promotionsData ? promotionsData.filter(p => p.status === 'active') : [],
-      [promotionsData]
+      () => resolveHomePromoCards(promotionsData, t.home),
+      [promotionsData, t.home],
    );
 
 
@@ -259,23 +317,34 @@ const HomeScreen = () => {
       }
    };
 
+   const onPromoPress = useCallback((item) => {
+      haptics.light();
+      handlePromoAction(item, navigation, Linking, Alert, t.home?.linkError || 'Unable to open link');
+   }, [navigation, t.home?.linkError]);
+
    // Render promo card
    const renderPromoCard = ({ item, index }) => {
-      const { bg, icon } = PROMO_THEMES[index % PROMO_THEMES.length];
-      const title = item.title || t.home?.defaultPromoTitle || 'Your Health, Our Priority';
-      const subtitle = item.subtitle || t.home?.defaultPromoSubtitle || 'Book your session today';
+      const themeIndex = item.themeIndex ?? index;
+      const { bg, icon } = PROMO_THEMES[themeIndex % PROMO_THEMES.length];
+      const { title, subtitle, ctaLabel } = getPromoLocalizedFields(item, isRTL);
+      const cardHeight = isLoggedIn ? 168 : 148;
 
       return (
-         <View style={[styles.promoCard, { backgroundColor: bg, height: isLoggedIn ? 165 : 130, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+         <Pressable
+            style={[styles.promoCard, { backgroundColor: bg, minHeight: cardHeight, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+            onPress={() => onPromoPress(item)}
+            android_ripple={{ color: 'rgba(255,255,255,0.12)' }}
+         >
             <View style={[styles.promoTextBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+               <Text style={[styles.promoEyebrow, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {(t.home?.promoEyebrow || 'Spectrum Care').toUpperCase()}
+               </Text>
                <Text style={[styles.promoTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{title}</Text>
                <Text style={[styles.promoSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{subtitle}</Text>
-               <TouchableOpacity
-                  style={styles.promoBtn}
-                  onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
-               >
-                  <Text style={styles.promoBtnText}>{t.home?.readMore || 'Read More'}</Text>
-               </TouchableOpacity>
+               <View style={[styles.promoBtn, rowStyle]}>
+                  <Text style={styles.promoBtnText}>{ctaLabel || t.home?.bookAppointment || 'Book Appointment'}</Text>
+                  <Image source={ICONS.chevronRight} style={[styles.promoBtnChevron, isRTL && { transform: [{ rotate: '180deg' }] }]} />
+               </View>
             </View>
             <View style={styles.promoVisual}>
                <View style={styles.promoRingOuter}>
@@ -284,38 +353,116 @@ const HomeScreen = () => {
                   </View>
                </View>
             </View>
-         </View>
+         </Pressable>
       );
    };
 
    return (
       <View style={styles.container}>
          <Header showProfile title={data.user} />
-         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+         <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarInset }]}
+         >
+
+            {isLoggedIn && isPatient && profileCompletion < 100 ? (
+               <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => navigation.navigate('Profile', profileEditParams)}
+               >
+                  <AppCard style={styles.dashboardCard} padding={SPACING.lg}>
+                     <AppText variant="bodyMedium">{t.home?.profileCompletionTitle || 'Complete your profile'}</AppText>
+                     <AppText variant="caption" color={COLORS.textSecondary}>
+                        {(t.home?.profileCompletionSubtitle || '{{percent}}% complete — add details for better care')
+                           .replace('{{percent}}', String(profileCompletion))}
+                     </AppText>
+                     {profileCompletionHint ? (
+                        <AppText variant="caption" color={COLORS.textSecondary} style={styles.profileHint}>
+                           {profileCompletionHint}
+                        </AppText>
+                     ) : null}
+                     <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${profileCompletion}%` }]} />
+                     </View>
+                     <AppText variant="caption" color={COLORS.primaryDark} style={styles.linkText}>
+                        {t.home?.completeProfile || 'Complete profile'}
+                     </AppText>
+                  </AppCard>
+               </TouchableOpacity>
+            ) : null}
+
+            {isLoggedIn && isPatient ? (
+               <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => navigation.navigate('WalletScreen')}
+               >
+                  <AppCard style={styles.dashboardCard} padding={SPACING.lg}>
+                     <AppText variant="caption" color={COLORS.textSecondary}>
+                        {t.home?.walletCardTitle || 'Wallet balance'}
+                     </AppText>
+                     <RiyalText
+                        text={formatSarAmount(walletData?.availableBalance ?? walletData?.balance ?? 0)}
+                        textStyle={styles.walletAmount}
+                     />
+                     <AppText variant="caption" color={COLORS.primaryDark} style={styles.linkText}>
+                        {t.home?.viewWallet || 'View wallet'}
+                     </AppText>
+                  </AppCard>
+               </TouchableOpacity>
+            ) : null}
 
             {/* Quick actions for logged-in patients */}
             {isLoggedIn && isPatient && (
-               <View style={[styles.quickActions, rowStyle]}>
-                  <QuickAction
-                     vectorIcon="search"
-                     label={t.home?.quickBook || 'Find Therapist'}
-                     onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
-                  />
-                  <QuickAction
-                     vectorIcon="calendar"
-                     label={t.home?.quickAppointments || 'Appointments'}
-                     onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
-                  />
-                  <QuickAction
-                     vectorIcon="inbox"
-                     label={t.home?.quickInbox || 'Messages'}
-                     onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
-                  />
-                  <QuickAction
-                     vectorIcon="video"
-                     label={t.home?.quickVideo || 'Video'}
-                     onPress={handleQuickVideo}
-                  />
+               <View style={styles.quickActionsGrid}>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="search"
+                        label={t.home?.quickBook || 'Find Therapist'}
+                        onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="calendar"
+                        label={t.home?.quickAppointments || 'Appointments'}
+                        onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="inbox"
+                        label={t.home?.quickInbox || 'Messages'}
+                        onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="video"
+                        label={t.home?.quickVideo || 'Video'}
+                        onPress={handleQuickVideo}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="practice"
+                        label={t.home?.quickRecords || 'Records'}
+                        onPress={() => navigation.navigate('MedicalRecordScreen')}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="wallet"
+                        label={t.home?.quickBilling || 'Billing'}
+                        onPress={() => navigation.navigate('BillingScreen')}
+                        labelLines={1}
+                     />
+                  </View>
                </View>
             )}
 
@@ -674,7 +821,7 @@ const HomeScreen = () => {
                      ref={promoFlatListRef}
                      data={promoCards}
                      renderItem={renderPromoCard}
-                     keyExtractor={(item) => item._id || item.id}
+                     keyExtractor={(item, index) => String(item._id || item.id || item.titleEnglish || `promo-${index}`)}
                      horizontal
                      pagingEnabled={false}
                      showsHorizontalScrollIndicator={false}
@@ -748,15 +895,47 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
    container: { flex: 1, backgroundColor: COLORS.background },
-   scrollContent: { paddingTop: SPACING.xl, paddingBottom: 100 },
+   scroll: { flex: 1 },
+   scrollContent: { paddingTop: SPACING.xl },
 
-   quickActions: {
-      paddingHorizontal: SPACING.xl,
+   quickActionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: SPACING.lg,
       paddingTop: SPACING.md,
       paddingBottom: SPACING.sm,
-      justifyContent: 'space-between',
-      gap: SPACING.sm,
    },
+   quickActionCell: {
+      width: '33.33%',
+      paddingHorizontal: SPACING.xs,
+      marginBottom: SPACING.lg,
+   },
+   dashboardCard: {
+      marginHorizontal: SPACING.xl,
+      marginBottom: SPACING.md,
+      ...cardBorder,
+      ...SHADOWS.sm,
+   },
+   progressTrack: {
+      height: 8,
+      borderRadius: RADIUS.pill,
+      backgroundColor: COLORS.surfaceMuted,
+      marginTop: SPACING.md,
+      overflow: 'hidden',
+   },
+   progressFill: {
+      height: '100%',
+      backgroundColor: COLORS.primary,
+      borderRadius: RADIUS.pill,
+   },
+   walletAmount: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: COLORS.textPrimary,
+      marginTop: SPACING.xs,
+   },
+   linkText: { marginTop: SPACING.sm, fontWeight: '600' },
+   profileHint: { marginTop: SPACING.xs },
    guestHero: {
       marginHorizontal: SPACING.xl,
       marginTop: SPACING.lg,
@@ -838,7 +1017,6 @@ const styles = StyleSheet.create({
    slider: { paddingHorizontal: 0 },
    promoCard: {
       width: PROMO_CARD_WIDTH,
-      height: 165,
       borderRadius: RADIUS.xl,
       paddingHorizontal: 22,
       paddingVertical: 18,
@@ -848,10 +1026,29 @@ const styles = StyleSheet.create({
       ...SHADOWS.md,
    },
    promoTextBlock: { flex: 1, justifyContent: 'center', paddingEnd: 8 },
-   promoTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 5, lineHeight: 21 },
-   promoSub: { fontSize: 11, color: 'rgba(255,255,255,0.82)', marginBottom: 14, lineHeight: 16 },
-   promoBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', alignSelf: 'flex-start' },
-   promoBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
+   promoEyebrow: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: 'rgba(255,255,255,0.72)',
+      letterSpacing: 1.1,
+      marginBottom: 6,
+   },
+   promoTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 6, lineHeight: 22 },
+   promoSub: { fontSize: 12, color: 'rgba(255,255,255,0.88)', marginBottom: 14, lineHeight: 17 },
+   promoBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: RADIUS.pill,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.35)',
+   },
+   promoBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+   promoBtnChevron: { width: 10, height: 10, tintColor: '#FFFFFF' },
    promoVisual: {
       width: 104,
       height: 104,

@@ -44,15 +44,15 @@ export function useGetCurrentUser() {
   });
 }
 
-// Hook to get user data (React Query version)
+// Hook to get user data (React Query version) — full private profile, matches web getUserData()
 export function useGetUserData() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['userData'],
-    queryFn: () => handleRequest(getRequest, `${MODEL_NAME}/context`),
+    queryFn: () => handleRequest(getRequest, `${MODEL_NAME}/user`),
     staleTime: 0,
     refetchOnMount: 'always',
-    enabled: isAuthenticated, // Never fires for guest users
+    enabled: isAuthenticated,
   });
 }
 

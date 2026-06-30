@@ -15,6 +15,7 @@ const TabBarButton = ({
   children,
   style,
   testID,
+  onLayout,
 }) => {
   const longPressTriggered = useRef(false);
   const anchorRef = useRef(null);
@@ -59,6 +60,7 @@ const TabBarButton = ({
       accessibilityHint={accessibilityHint}
       style={[style, styles.fill]}
       testID={testID}
+      onLayout={onLayout}
     >
       <View ref={anchorRef} collapsable={false} style={styles.fill}>
         {children}

@@ -129,8 +129,50 @@ export function useGetPatientMedicalReportsPaginated(queryParams = {}) {
     });
 }
 
+async function fetchProviderReportById(reportId) {
+    let page = 1;
+    const limit = 50;
+    const maxPages = 20;
+
+    while (page <= maxPages) {
+        const result = await getRequest(`${MODEL_NAME}/provider/reports`, { page, limit });
+        if (result.status !== HttpStatusCode.Ok) {
+            throw new Error(ErrorMessages.generalMessage);
+        }
+        const data = result.data.data;
+        const docs = data?.docs || [];
+        const found = docs.find((item) => String(item._id || item.id) === String(reportId));
+        if (found) return found;
+        if (!data?.hasNextPage && page >= (data?.totalPages || 1)) break;
+        page += 1;
+    }
+    return null;
+}
+
+export function useGetProviderReportById(reportId, initialReport) {
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = user?.role?.toLowerCase() === 'provider';
+    const hasInitial = initialReport
+        && String(initialReport._id || initialReport.id) === String(reportId);
+
+    return useQuery({
+        queryKey: ['providerReport', reportId],
+        queryFn: async () => {
+            if (hasInitial) return initialReport;
+            return fetchProviderReportById(reportId);
+        },
+        enabled: isAuthenticated && isProvider && Boolean(reportId),
+        initialData: hasInitial ? initialReport : undefined,
+    });
+}
+
 // Hook to get provider reports with query params
-export function useGetProviderReports(query) {
+export function useGetProviderReports(query = { page: 1, limit: 20 }) {
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isProvider = user?.role?.toLowerCase() === 'provider';
+
     return useQuery({
         queryKey: ['providerReports', query],
         queryFn: async () => {
@@ -145,6 +187,7 @@ export function useGetProviderReports(query) {
                 return throwServerError(err);
             }
         },
+        enabled: isAuthenticated && isProvider,
     });
 }
 

@@ -41,6 +41,7 @@ export const useAuthStore = create(
       refreshToken: null,
       tokenExpiresAt: null,
       isAuthenticated: false,
+      elmVerificationDeferred: false,
 
       isPatient: () => {
         const user = get().user;
@@ -50,6 +51,8 @@ export const useAuthStore = create(
       getUserRole: () => {
         return get().user?.role?.toLowerCase() || null;
       },
+
+      setElmVerificationDeferred: (deferred) => set({ elmVerificationDeferred: deferred }),
 
       // Merge partial updates — preserve refreshToken when omitted (e.g. patient consent)
       setAuth: (data) => set((state) => ({
@@ -89,6 +92,7 @@ export const useAuthStore = create(
           refreshToken: null,
           tokenExpiresAt: null,
           isAuthenticated: false,
+          elmVerificationDeferred: false,
         });
         await EncryptedStorage.removeItem('auth-storage');
       },

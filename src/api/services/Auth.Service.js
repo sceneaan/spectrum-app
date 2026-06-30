@@ -68,15 +68,17 @@ export function usePatientConsent() {
 // Function to send OTP
 export function useSendOtp() {
   return useMutation({
-    mutationFn:
-      async (payload) => {
+    mutationFn: async (payload) => {
+      try {
         const result = await postRequest(`${MODEL_NAME}/app/send/otp`, payload);
         if (result.status === HttpStatusCode.Ok) {
-          return result.data.data;
-        } else {
-          throw new Error(ErrorMessages.generalMessage);
+          return result.data;
         }
-      },
+        throw new Error(ErrorMessages.generalMessage);
+      } catch (err) {
+        throw err;
+      }
+    },
   });
 }
 
@@ -87,12 +89,11 @@ export function useResendOtp() {
       try {
         const result = await postRequest(`${MODEL_NAME}/app/resend/otp`, payload);
         if (result.status === HttpStatusCode.Ok) {
-          return result.data.data;
-        } else {
-          throw new Error(ErrorMessages.generalMessage);
+          return result.data;
         }
+        throw new Error(ErrorMessages.generalMessage);
       } catch (err) {
-        throw err; // Propagate the original error with response data
+        throw err;
       }
     },
   });

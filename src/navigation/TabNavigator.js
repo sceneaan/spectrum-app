@@ -1,7 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
@@ -14,10 +12,11 @@ import { useGetUnreadCount } from '../api/services/Notification.Service';
 import TabBarButton from '../components/TabBarButton';
 import TabShortcutSheet from '../components/TabShortcutSheet';
 import TabRadialShortcuts from '../components/TabRadialShortcuts';
-import AppIcon, { SHELL_ICONS } from '../components/ui/AppIcon';
+import { SHELL_ICONS } from '../components/ui/AppIcon';
+import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
+import { ShellTabIcon } from './shellTabBar';
 import ICONS from '../constants/icons';
-import COLORS from '../constants/colors';
-import { SPACING, RADIUS, SHADOWS } from '../theme';
+import haptics from '../utils/haptics';
 
 const Tab = createBottomTabNavigator();
 
@@ -39,22 +38,18 @@ const TAB_SHELL_ICONS = {
 };
 
 const TabIcon = ({ tabName, color, focused }) => (
-  <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-    <AppIcon
-      pair={TAB_SHELL_ICONS[tabName]}
-      focused={focused}
-      size={focused ? 28 : 26}
-      color={focused ? COLORS.primaryDark : color}
-    />
-  </View>
+  <ShellTabIcon
+    pair={TAB_SHELL_ICONS[tabName]}
+    color={color}
+    focused={focused}
+  />
 );
 
 const TabNavigator = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
   const { isAuthenticated } = useAuthStore();
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = 60 + insets.bottom;
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const [shortcutSheet, setShortcutSheet] = useState(null);
   const [appointmentRadial, setAppointmentRadial] = useState(null);
 
@@ -153,7 +148,7 @@ const TabNavigator = () => {
       {
         name: 'SearchTab',
         component: FindTherapistScreen,
-        label: t.tabs?.doctors || 'Doctors',
+        label: t.tabs?.doctorsTab || t.tabs?.doctors || 'Therapists',
       },
       {
         name: 'AppointmentsTab',
@@ -178,23 +173,10 @@ const TabNavigator = () => {
     <>
       <Tab.Navigator
         detachInactiveScreens
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: COLORS.primary,
-          tabBarInactiveTintColor: COLORS.gray500,
-          tabBarStyle: {
-            height: tabBarHeight,
-            paddingBottom: insets.bottom + SPACING.sm,
-            paddingTop: SPACING.sm,
-            backgroundColor: COLORS.surface,
-            borderTopWidth: 0,
-            ...SHADOWS.md,
-          },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            marginTop: 2,
-            fontWeight: '600',
-          },
+        tabBar={(props) => <GlassShellTabBar {...props} />}
+        screenOptions={shellTabOptions}
+        screenListeners={{
+          tabPress: () => haptics.light(),
         }}
       >
         {orderedTabs.map((tab) => (
@@ -241,28 +223,5 @@ const TabNavigator = () => {
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  iconWrap: {
-    width: 44,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIUS.md,
-  },
-  iconWrapActive: {
-    backgroundColor: COLORS.primaryLight,
-  },
-  icon: {
-    width: 26,
-    height: 26,
-    opacity: 0.85,
-  },
-  iconFocused: {
-    width: 28,
-    height: 28,
-    opacity: 1,
-  },
-});
 
 export default TabNavigator;

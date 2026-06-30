@@ -1,5 +1,6 @@
 import {
   isPatientRole,
+  isProviderRole,
   isStaffRole,
   canAuthenticatedUserJoinMobileVideo,
 } from '../../src/utils/videoAccess';
@@ -9,6 +10,12 @@ describe('videoAccess', () => {
     expect(isPatientRole({ role: 'patient' })).toBe(true);
     expect(isPatientRole({ role: 'Provider' })).toBe(false);
     expect(isPatientRole(null)).toBe(false);
+  });
+
+  test('isProviderRole', () => {
+    expect(isProviderRole({ role: 'provider' })).toBe(true);
+    expect(isProviderRole({ role: 'patient' })).toBe(false);
+    expect(isProviderRole(null)).toBe(false);
   });
 
   test('isStaffRole', () => {

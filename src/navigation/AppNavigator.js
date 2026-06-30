@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Linking, DeviceEventEmitter } from 'react-native';
+import { View, Linking, DeviceEventEmitter, ActivityIndicator } from 'react-native';
 import BootSplash from 'react-native-bootsplash';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -22,7 +22,7 @@ import PatientInfoScreen from '../screens/PatientInfoScreen';
 import ElmVerificationRequiredScreen from '../screens/ElmVerificationRequiredScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 
-import TabNavigator from './TabNavigator';
+import RoleTabNavigator from './RoleTabNavigator';
 import { PreSessionJoinProvider } from '../context/PreSessionJoinContext';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import SupportCardScreen from '../screens/SupportCardScreen';
@@ -53,6 +53,25 @@ import CancelAppointmentScreen from '../screens/CancelAppointmentScreen';
 import PaymentFormScreen from '../screens/PaymentFormScreen';
 import FindTherapistScreen from '../screens/FindTherapistScreen';
 import TherapistProfileScreen from '../screens/TherapistProfileScreen';
+import ProviderRefillsScreen from '../screens/provider/ProviderRefillsScreen';
+import ProviderRevenueScreen from '../screens/provider/ProviderRevenueScreen';
+import ProviderPerformanceScreen from '../screens/provider/ProviderPerformanceScreen';
+import ProviderReferralDetailScreen from '../screens/provider/ProviderReferralDetailScreen';
+import ProviderNewMessageScreen from '../screens/provider/ProviderNewMessageScreen';
+import ProviderReportDetailScreen from '../screens/provider/ProviderReportDetailScreen';
+import ProviderEncounterDetailScreen from '../screens/provider/ProviderEncounterDetailScreen';
+import ProviderProfileScreen from '../screens/provider/ProviderProfileScreen';
+import ProviderPatientsScreen from '../screens/provider/ProviderPatientsScreen';
+import ProviderDiscountsScreen from '../screens/provider/ProviderDiscountsScreen';
+import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
+import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
+import AdminDiscountsScreen from '../screens/admin/AdminDiscountsScreen';
+import AdminAppointmentsScreen from '../screens/admin/AdminAppointmentsScreen';
+import AdminClinicBookingsScreen from '../screens/admin/AdminClinicBookingsScreen';
+import AdminRefundsScreen from '../screens/admin/AdminRefundsScreen';
+import AdminWalletLookupScreen from '../screens/admin/AdminWalletLookupScreen';
+import PromoDetailScreen from '../screens/PromoDetailScreen';
+import COLORS from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -73,6 +92,24 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'SearchResults',
   'WalletScreen',
   'BillingScreen',
+  'ProviderRefills',
+  'ProviderRevenue',
+  'ProviderPerformance',
+  'ProviderReferralDetail',
+  'ProviderNewMessage',
+  'ProviderReportDetail',
+  'ProviderEncounterDetail',
+  'ProviderProfile',
+  'ProviderPatients',
+  'ProviderDiscounts',
+  'AdminProfile',
+  'AdminNotifications',
+  'AdminDiscounts',
+  'AdminAppointments',
+  'AdminClinicBookings',
+  'AdminRefunds',
+  'AdminWalletLookup',
+  'PromoDetail',
 ]);
 
 // Require login before navigating to these targets
@@ -86,6 +123,24 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'Profile',
   'WalletScreen',
   'BillingScreen',
+  'ProviderRefills',
+  'ProviderRevenue',
+  'ProviderPerformance',
+  'ProviderReferralDetail',
+  'ProviderNewMessage',
+  'ProviderReportDetail',
+  'ProviderEncounterDetail',
+  'ProviderProfile',
+  'ProviderPatients',
+  'ProviderDiscounts',
+  'AdminProfile',
+  'AdminNotifications',
+  'AdminDiscounts',
+  'AdminAppointments',
+  'AdminClinicBookings',
+  'AdminRefunds',
+  'AdminWalletLookup',
+  'PromoDetail',
 ]);
 
 const parseNotificationParams = (raw) => {
@@ -119,22 +174,23 @@ export const navigateFromNotification = (remoteMessage) => {
 
 // Wrapper component that checks ELM verification
 const ElmVerifiedTabNavigator = ({ navigation }) => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, elmVerificationDeferred } = useAuthStore();
 
   useEffect(() => {
-    // Skip ELM check if ELM is disabled from backend
     if (user?.elmDisabled) return;
+    if (elmVerificationDeferred) return;
 
-    // Check if user is a patient and not ELM verified
     if (isAuthenticated && user?.role === 'patient' && !user?.elmVerified) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ElmVerificationRequired' }],
-      });
-    }
-  }, [isAuthenticated, user, navigation]);
+      const state = navigation.getState();
+      const currentRoute = state.routes[state.index]?.name;
+      if (currentRoute === 'ElmVerificationRequired') return;
+      if (state.routes.some((route) => route.name === 'ElmVerificationRequired')) return;
 
-  return <PreSessionJoinProvider><TabNavigator /></PreSessionJoinProvider>;
+      navigation.navigate('ElmVerificationRequired');
+    }
+  }, [isAuthenticated, user, navigation, elmVerificationDeferred]);
+
+  return <PreSessionJoinProvider><RoleTabNavigator /></PreSessionJoinProvider>;
 };
 
 const linking = {
@@ -240,8 +296,11 @@ const AppNavigator = () => {
   }, []);
 
   if (!initialRoute) {
-    // Native BootSplash stays visible while onboarding flag loads
-    return null;
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
   }
 
   return (
@@ -254,7 +313,7 @@ const AppNavigator = () => {
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Main" component={ElmVerifiedTabNavigator} />
-          <Stack.Screen name="ElmVerificationRequired" component={ElmVerificationRequiredScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="ElmVerificationRequired" component={ElmVerificationRequiredScreen} />
           <Stack.Screen name="LoginScreen" component={LoginScreen} />
           <Stack.Screen name="OTPScreen" component={OTPScreen} />
           <Stack.Screen name="Consent" component={ConsentScreen} />
@@ -285,6 +344,24 @@ const AppNavigator = () => {
           <Stack.Screen name="CancelAppointment" component={makeProtected(CancelAppointmentScreen)} />
           <Stack.Screen name="FindTherapist" component={FindTherapistScreen} />
           <Stack.Screen name="TherapistProfile" component={TherapistProfileScreen} />
+          <Stack.Screen name="ProviderRefills" component={makeProtected(ProviderRefillsScreen)} />
+          <Stack.Screen name="ProviderRevenue" component={makeProtected(ProviderRevenueScreen)} />
+          <Stack.Screen name="ProviderPerformance" component={makeProtected(ProviderPerformanceScreen)} />
+          <Stack.Screen name="ProviderReferralDetail" component={makeProtected(ProviderReferralDetailScreen)} />
+          <Stack.Screen name="ProviderNewMessage" component={makeProtected(ProviderNewMessageScreen)} />
+          <Stack.Screen name="ProviderReportDetail" component={makeProtected(ProviderReportDetailScreen)} />
+          <Stack.Screen name="ProviderEncounterDetail" component={makeProtected(ProviderEncounterDetailScreen)} />
+          <Stack.Screen name="ProviderProfile" component={makeProtected(ProviderProfileScreen)} />
+          <Stack.Screen name="ProviderPatients" component={makeProtected(ProviderPatientsScreen)} />
+          <Stack.Screen name="ProviderDiscounts" component={makeProtected(ProviderDiscountsScreen)} />
+          <Stack.Screen name="AdminProfile" component={makeProtected(AdminProfileScreen)} />
+          <Stack.Screen name="AdminNotifications" component={makeProtected(AdminNotificationsScreen)} />
+          <Stack.Screen name="AdminDiscounts" component={makeProtected(AdminDiscountsScreen)} />
+          <Stack.Screen name="AdminAppointments" component={makeProtected(AdminAppointmentsScreen)} />
+          <Stack.Screen name="AdminClinicBookings" component={makeProtected(AdminClinicBookingsScreen)} />
+          <Stack.Screen name="AdminRefunds" component={makeProtected(AdminRefundsScreen)} />
+          <Stack.Screen name="AdminWalletLookup" component={makeProtected(AdminWalletLookupScreen)} />
+          <Stack.Screen name="PromoDetail" component={PromoDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 
