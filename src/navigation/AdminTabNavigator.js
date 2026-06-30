@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
 import AdminAppointmentsScreen from '../screens/admin/AdminAppointmentsScreen';
@@ -10,9 +9,8 @@ import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import { useGetUserData } from '../api/services/User.Service';
 import { hasAdminPermission } from '../utils/adminPermissions';
-import AppIcon, { SHELL_ICONS } from '../components/ui/AppIcon';
-import COLORS from '../constants/colors';
-import { SPACING, RADIUS, SHADOWS } from '../theme';
+import { SHELL_ICONS } from '../components/ui/AppIcon';
+import { createShellTabBarScreenOptions, ShellTabIcon } from './shellTabBar';
 
 const Tab = createBottomTabNavigator();
 
@@ -24,14 +22,11 @@ const ADMIN_TAB_ICONS = {
 };
 
 const TabIcon = ({ tabName, color, focused }) => (
-  <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-    <AppIcon
-      pair={ADMIN_TAB_ICONS[tabName]}
-      focused={focused}
-      size={focused ? 28 : 26}
-      color={focused ? COLORS.primaryDark : color}
-    />
-  </View>
+  <ShellTabIcon
+    pair={ADMIN_TAB_ICONS[tabName]}
+    color={color}
+    focused={focused}
+  />
 );
 
 const TabAdminAppointments = () => <AdminAppointmentsScreen showBack={false} />;
@@ -41,7 +36,7 @@ const TabAdminUsers = () => <AdminUsersScreen showBack={false} />;
 const AdminTabNavigator = () => {
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 60 + insets.bottom;
+  const shellTabOptions = useMemo(() => createShellTabBarScreenOptions(insets), [insets]);
   const ad = t.adminDashboard || {};
   const user = useAuthStore((state) => state.user);
   const { data: userData } = useGetUserData();
@@ -86,24 +81,7 @@ const AdminTabNavigator = () => {
   return (
     <Tab.Navigator
       detachInactiveScreens
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.gray500,
-        tabBarStyle: {
-          height: tabBarHeight,
-          paddingBottom: insets.bottom + SPACING.sm,
-          paddingTop: SPACING.sm,
-          backgroundColor: COLORS.surface,
-          borderTopWidth: 0,
-          ...SHADOWS.md,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          marginTop: 2,
-          fontWeight: '600',
-        },
-      }}
+      screenOptions={shellTabOptions}
     >
       {orderedTabs.map((tab) => (
         <Tab.Screen
@@ -122,18 +100,5 @@ const AdminTabNavigator = () => {
     </Tab.Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  iconWrap: {
-    width: 44,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIUS.md,
-  },
-  iconWrapActive: {
-    backgroundColor: COLORS.primaryLight,
-  },
-});
 
 export default AdminTabNavigator;

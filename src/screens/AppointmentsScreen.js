@@ -5,6 +5,7 @@ import { useLanguage } from '../store/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
+import Skeleton from '../components/Skeleton';
 import { EmptyState, SegmentedTabs } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';

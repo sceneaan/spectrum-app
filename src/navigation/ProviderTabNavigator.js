@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
 import ProviderAppointmentsScreen from '../screens/provider/ProviderAppointmentsScreen';
@@ -8,9 +7,8 @@ import ProviderInboxScreen from '../screens/provider/ProviderInboxScreen';
 import ProviderPracticeScreen from '../screens/provider/ProviderPracticeScreen';
 import { useLanguage } from '../store/LanguageContext';
 import { makeProtected } from './authGuards';
-import AppIcon, { SHELL_ICONS } from '../components/ui/AppIcon';
-import COLORS from '../constants/colors';
-import { SPACING, RADIUS, SHADOWS } from '../theme';
+import { SHELL_ICONS } from '../components/ui/AppIcon';
+import { createShellTabBarScreenOptions, ShellTabIcon } from './shellTabBar';
 
 const Tab = createBottomTabNavigator();
 
@@ -37,20 +35,17 @@ const PROVIDER_TAB_ICONS = {
 };
 
 const TabIcon = ({ tabName, color, focused }) => (
-  <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-    <AppIcon
-      pair={PROVIDER_TAB_ICONS[tabName]}
-      focused={focused}
-      size={focused ? 28 : 26}
-      color={focused ? COLORS.primaryDark : color}
-    />
-  </View>
+  <ShellTabIcon
+    pair={PROVIDER_TAB_ICONS[tabName]}
+    color={color}
+    focused={focused}
+  />
 );
 
 const ProviderTabNavigator = () => {
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 60 + insets.bottom;
+  const shellTabOptions = useMemo(() => createShellTabBarScreenOptions(insets), [insets]);
   const pd = t.providerDashboard || {};
 
   const orderedTabs = useMemo(() => {
@@ -85,24 +80,7 @@ const ProviderTabNavigator = () => {
   return (
     <Tab.Navigator
       detachInactiveScreens
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.gray500,
-        tabBarStyle: {
-          height: tabBarHeight,
-          paddingBottom: insets.bottom + SPACING.sm,
-          paddingTop: SPACING.sm,
-          backgroundColor: COLORS.surface,
-          borderTopWidth: 0,
-          ...SHADOWS.md,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          marginTop: 2,
-          fontWeight: '600',
-        },
-      }}
+      screenOptions={shellTabOptions}
     >
       {orderedTabs.map((tab) => (
         <Tab.Screen
@@ -121,18 +99,5 @@ const ProviderTabNavigator = () => {
     </Tab.Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  iconWrap: {
-    width: 44,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIUS.md,
-  },
-  iconWrapActive: {
-    backgroundColor: COLORS.primaryLight,
-  },
-});
 
 export default ProviderTabNavigator;

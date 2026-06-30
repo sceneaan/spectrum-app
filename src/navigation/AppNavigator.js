@@ -62,6 +62,7 @@ import ProviderReportDetailScreen from '../screens/provider/ProviderReportDetail
 import ProviderEncounterDetailScreen from '../screens/provider/ProviderEncounterDetailScreen';
 import ProviderProfileScreen from '../screens/provider/ProviderProfileScreen';
 import ProviderPatientsScreen from '../screens/provider/ProviderPatientsScreen';
+import ProviderDiscountsScreen from '../screens/provider/ProviderDiscountsScreen';
 import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
 import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
 import AdminDiscountsScreen from '../screens/admin/AdminDiscountsScreen';

@@ -60,6 +60,20 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Configure test environment
+        run: |
+          cat > .env.production << 'EOF'
+          API_URL=https://testapi.spectrumclinics.care/api
+          FILE_URL=https://testapi.spectrumclinics.care
+          FRONT_END_URL=https://spectrum-frontend-main.netlify.app
+          HYPERPAY_MODE=test
+          HYPERPAY_TEST_URL=https://eu-test.oppwa.com/v1/
+          HYPERPAY_PROD_URL=https://oppwa.com/v1/
+          APP_BUNDLE_ID=care.spectrumclinics.app
+          APP_SCHEME=spectrum
+          PAYMENT_RESULT_URL=https://spectrum-frontend-main.netlify.app/payment-result
+          EOF
+
       - name: Cache node_modules
         id: node-cache
         uses: actions/cache@v4

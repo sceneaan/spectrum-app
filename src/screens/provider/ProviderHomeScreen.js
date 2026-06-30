@@ -200,7 +200,7 @@ const ProviderHomeScreen = () => {
     {
       key: 'discounts',
       vectorIcon: 'wallet',
-      label: pd.discountsTitle || 'Discounts',
+      label: pd.discountsTitle || 'Invitations',
       onPress: () => navigation.navigate('ProviderDiscounts'),
     },
   ];
@@ -246,7 +246,7 @@ const ProviderHomeScreen = () => {
               {pendingDiscounts.length > 0 ? (
                 <StatusChip
                   tone="warning"
-                  label={(pd.discountChip || '{{count}} discount invitations').replace('{{count}}', String(pendingDiscounts.length))}
+                  label={(pd.discountChip || '{{count}} Discount Invitations').replace('{{count}}', String(pendingDiscounts.length))}
                   onPress={() => navigation.navigate('ProviderDiscounts')}
                 />
               ) : null}

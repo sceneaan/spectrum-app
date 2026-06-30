@@ -31,12 +31,15 @@ const ProviderDiscountsScreen = () => {
   const invitations = data || [];
 
   const handleRespond = (item, status) => {
-    const title = status === 'accepted'
-      ? (pd.acceptDiscount || 'Accept invitation')
-      : (pd.declineDiscount || 'Decline invitation');
+    const isAccept = status === 'accepted';
+    const title = isAccept
+      ? (pd.acceptDiscount || 'Accept')
+      : (pd.declineDiscount || 'Decline');
     Alert.alert(
       title,
-      pd.discountConfirm || 'Update this discount invitation?',
+      isAccept
+        ? (pd.discountConfirmAccept || 'It will appear in your active discounts.')
+        : (pd.discountConfirmDecline || 'Are you sure you want to decline this invitation?'),
       [
         { text: t.common?.cancel || 'Cancel', style: 'cancel' },
         {
@@ -50,8 +53,8 @@ const ProviderDiscountsScreen = () => {
                     type: 'success',
                     title: t.common?.success || 'Success',
                     message: status === 'accepted'
-                      ? (pd.discountAccepted || 'Invitation accepted')
-                      : (pd.discountDeclined || 'Invitation declined'),
+                      ? (pd.discountAccepted || 'Discount invitation accepted! It will now appear in your active discounts.')
+                      : (pd.discountDeclined || 'Discount invitation declined'),
                   });
                   refetch();
                 },
@@ -59,7 +62,7 @@ const ProviderDiscountsScreen = () => {
                   showToast({
                     type: 'error',
                     title: t.common?.error || 'Error',
-                    message: pd.discountFailed || 'Could not update invitation',
+                    message: pd.discountFailed || 'Error responding to invitation',
                   });
                 },
               },
@@ -104,7 +107,7 @@ const ProviderDiscountsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header showBack title={pd.discountsTitle || 'Discount invitations'} />
+      <Header showBack title={pd.discountsTitle || 'Invitations'} />
       {isLoading ? (
         <ActivityIndicator color={COLORS.primary} style={styles.loader} />
       ) : isError ? (
@@ -122,8 +125,8 @@ const ProviderDiscountsScreen = () => {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={COLORS.primary} />}
           ListEmptyComponent={(
             <EmptyState
-              title={pd.noDiscounts || 'No pending discount invitations'}
-              subtitle={pd.noDiscountsHint || 'Admin discount invitations will appear here'}
+              title={pd.noDiscounts || 'No Pending Invitations'}
+              subtitle={pd.noDiscountsHint || "You don't have any pending discount invitations at this time."}
             />
           )}
         />
