@@ -1,4 +1,4 @@
-package care.spectrumclinics.app
+package app.spectrumclinics.care
 
 import android.content.Intent
 import android.os.Bundle
@@ -44,7 +44,7 @@ class MainActivity : ReactActivity() {
 
   /**
    * Handle deep linking for payment redirects and other URL schemes.
-   * Supported schemes: spectrum://, care.spectrumclinics.app.payments://
+   * Supported schemes: spectrum://, app.spectrumclinics.care.payments://
    */
   private fun handleDeepLink(intent: Intent) {
     val action = intent.action

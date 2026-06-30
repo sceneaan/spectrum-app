@@ -1,4 +1,4 @@
-package care.spectrumclinics.app
+package app.spectrumclinics.care
 
 import android.app.Application
 import android.content.Intent

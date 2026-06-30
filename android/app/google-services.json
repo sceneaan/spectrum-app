@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:392196169987:android:52aae69e1768182d834936",
+        "android_client_info": {
+          "package_name": "app.spectrumclinics.care"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8mxncdkuRCH3_YzKJPueL6XM0YKqKwhg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:392196169987:android:75c94c7c6c39dc46834936",
         "android_client_info": {
           "package_name": "care.spectrumclinics.app"

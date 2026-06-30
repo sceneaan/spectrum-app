@@ -42,7 +42,7 @@ jobs:
   #       uses: r0adkll/upload-google-play@v1.1.3
   #       with:
   #         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-  #         packageName: care.spectrumclinics.app
+  #         packageName: app.spectrumclinics.care
   #         releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
   #         track: internal
   #         status: completed
@@ -69,7 +69,7 @@ jobs:
           HYPERPAY_MODE=test
           HYPERPAY_TEST_URL=https://eu-test.oppwa.com/v1/
           HYPERPAY_PROD_URL=https://oppwa.com/v1/
-          APP_BUNDLE_ID=care.spectrumclinics.app
+          APP_BUNDLE_ID=app.spectrumclinics.care
           APP_SCHEME=spectrum
           PAYMENT_RESULT_URL=https://spectrum-frontend-main.netlify.app/payment-result
           EOF

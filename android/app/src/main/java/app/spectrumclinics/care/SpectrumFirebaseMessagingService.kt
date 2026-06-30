@@ -1,4 +1,4 @@
-package care.spectrumclinics.app
+package app.spectrumclinics.care
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

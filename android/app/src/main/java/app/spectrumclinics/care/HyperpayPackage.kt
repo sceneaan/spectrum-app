@@ -1,4 +1,4 @@
-package care.spectrumclinics.app
+package app.spectrumclinics.care
 
 import android.view.View
 import com.facebook.react.ReactPackage

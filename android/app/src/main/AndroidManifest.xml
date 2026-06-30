@@ -72,7 +72,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="care.spectrumclinics.app.payments" />
+                <data android:scheme="app.spectrumclinics.care.payments" />
             </intent-filter>
         </activity>
 
