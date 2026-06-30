@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
 import ProviderAppointmentsScreen from '../screens/provider/ProviderAppointmentsScreen';
 import ProviderInboxScreen from '../screens/provider/ProviderInboxScreen';
@@ -46,8 +45,7 @@ const TabIcon = ({ tabName, color, focused }) => (
 
 const ProviderTabNavigator = () => {
   const { t, isRTL } = useLanguage();
-  const insets = useSafeAreaInsets();
-  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(insets), [insets]);
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const pd = t.providerDashboard || {};
 
   const orderedTabs = useMemo(() => {

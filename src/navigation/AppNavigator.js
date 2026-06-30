@@ -174,20 +174,21 @@ export const navigateFromNotification = (remoteMessage) => {
 
 // Wrapper component that checks ELM verification
 const ElmVerifiedTabNavigator = ({ navigation }) => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, elmVerificationDeferred } = useAuthStore();
 
   useEffect(() => {
-    // Skip ELM check if ELM is disabled from backend
     if (user?.elmDisabled) return;
+    if (elmVerificationDeferred) return;
 
-    // Check if user is a patient and not ELM verified
     if (isAuthenticated && user?.role === 'patient' && !user?.elmVerified) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ElmVerificationRequired' }],
-      });
+      const state = navigation.getState();
+      const currentRoute = state.routes[state.index]?.name;
+      if (currentRoute === 'ElmVerificationRequired') return;
+      if (state.routes.some((route) => route.name === 'ElmVerificationRequired')) return;
+
+      navigation.navigate('ElmVerificationRequired');
     }
-  }, [isAuthenticated, user, navigation]);
+  }, [isAuthenticated, user, navigation, elmVerificationDeferred]);
 
   return <PreSessionJoinProvider><RoleTabNavigator /></PreSessionJoinProvider>;
 };
@@ -312,7 +313,7 @@ const AppNavigator = () => {
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Main" component={ElmVerifiedTabNavigator} />
-          <Stack.Screen name="ElmVerificationRequired" component={ElmVerificationRequiredScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="ElmVerificationRequired" component={ElmVerificationRequiredScreen} />
           <Stack.Screen name="LoginScreen" component={LoginScreen} />
           <Stack.Screen name="OTPScreen" component={OTPScreen} />
           <Stack.Screen name="Consent" component={ConsentScreen} />

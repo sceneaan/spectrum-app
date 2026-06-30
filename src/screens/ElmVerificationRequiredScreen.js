@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,16 +15,25 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import { verifyElmIdentity } from '../api/services/Elm.Service';
-import { updateElmVerification } from '../api/services/User.Service';
+import { updateElmVerification, useGetUserData } from '../api/services/User.Service';
+import Header from '../components/Header';
 import COLORS from '../constants/colors';
+
+const parseUserDob = (dobValue) => {
+  if (!dobValue) return null;
+  const parsed = new Date(dobValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
 
 const ElmVerificationRequiredScreen = ({ navigation }) => {
   const { t, isRTL } = useLanguage();
-  const { user, setAuth, logout } = useAuthStore();
+  const { user, setAuth, logout, setElmVerificationDeferred } = useAuthStore();
+  const { data: userData } = useGetUserData();
+  const profile = userData || user;
 
-  const [nationalId, setNationalId] = useState(user?.nationalId || '');
+  const [nationalId, setNationalId] = useState(profile?.nationalId || '');
   const [dobFormat, setDobFormat] = useState('gregorian');
-  const [dob, setDob] = useState(null);
+  const [dob, setDob] = useState(() => parseUserDob(profile?.dob));
   const [hijriDob, setHijriDob] = useState('');
   const [hijriYear, setHijriYear] = useState('1410');
   const [hijriMonth, setHijriMonth] = useState('01');
@@ -34,6 +43,24 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState('input'); // 'input' | 'confirm' | 'success'
   const [elmData, setElmData] = useState(null);
+
+  useEffect(() => {
+    if (profile?.nationalId && !nationalId) {
+      setNationalId(profile.nationalId);
+    }
+    if (profile?.dob && !dob) {
+      setDob(parseUserDob(profile.dob));
+    }
+  }, [profile?.nationalId, profile?.dob, nationalId, dob]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      if (step !== 'success') {
+        setElmVerificationDeferred(true);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, setElmVerificationDeferred, step]);
 
   const formatDate = (date) => {
     if (!date) return '';
@@ -162,6 +189,7 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
       const result = await updateElmVerification(payload);
 
       if (result) {
+        setElmVerificationDeferred(false);
         // Update local auth state
         setAuth({
           user: {
@@ -216,6 +244,23 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
         },
       ]
     );
+  };
+
+  const handleBack = () => {
+    if (step === 'confirm') {
+      setStep('input');
+      setElmData(null);
+      return;
+    }
+
+    if (step === 'success') return;
+
+    setElmVerificationDeferred(true);
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Main');
   };
 
   const renderInputStep = () => (
@@ -461,13 +506,18 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <Header
+        showBack
+        onBack={handleBack}
+        title={isRTL ? 'التحقق من الهوية' : 'Identity Verification'}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Hero */}
+        <View style={styles.hero}>
           <View style={styles.iconContainer}>
             <Text style={styles.shieldIcon}>🛡️</Text>
           </View>
@@ -509,9 +559,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 20,
-    justifyContent: 'center',
+    paddingTop: 8,
   },
-  header: {
+  hero: {
     alignItems: 'center',
     marginBottom: 30,
   },

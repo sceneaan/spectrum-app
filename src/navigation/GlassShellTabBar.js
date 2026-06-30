@@ -5,34 +5,11 @@ import {
   StyleSheet,
   Animated,
   Platform,
-  UIManager,
 } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShellTabIcon, ShellTabLabel } from './shellTabBar';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS, SHADOWS } from '../theme';
-
-const HAS_NATIVE_BLUR = Boolean(
-  UIManager.getViewManagerConfig?.('BlurView')
-  ?? UIManager.hasViewManagerConfig?.('BlurView'),
-);
-
-function GlassBarBackground() {
-  if (!HAS_NATIVE_BLUR) {
-    return <View style={styles.glassFallback} pointerEvents="none" />;
-  }
-
-  return (
-    <BlurView
-      style={StyleSheet.absoluteFill}
-      blurType={Platform.OS === 'ios' ? 'thinMaterialLight' : 'light'}
-      blurAmount={Platform.OS === 'ios' ? 28 : 22}
-      reducedTransparencyFallbackColor="rgba(255,255,255,0.92)"
-      overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.45)' : undefined}
-    />
-  );
-}
 
 const LENS_SPRING = {
   friction: 8,
@@ -41,6 +18,10 @@ const LENS_SPRING = {
 };
 
 const BAR_HEIGHT = 62;
+
+function GlassBarBackground() {
+  return <View style={styles.glassFallback} pointerEvents="none" />;
+}
 
 export function getGlassTabBarHeight(insets) {
   return BAR_HEIGHT + SPACING.xs + Math.max(insets.bottom, SPACING.sm);
@@ -90,14 +71,9 @@ function GlassShellTabBar({ state, descriptors, navigation }) {
   }, []);
 
   return (
-    <View
-      style={[
-        styles.shell,
-        { paddingBottom: Math.max(insets.bottom, SPACING.sm) },
-      ]}
-    >
-      <View style={styles.outer}>
-      <View style={styles.glassBar}>
+    <View style={styles.shell}>
+      <View style={[styles.outer, { marginBottom: Math.max(insets.bottom, SPACING.sm) }]}>
+        <View style={styles.glassBar}>
         <GlassBarBackground />
         <View style={styles.glassVeil} pointerEvents="none" />
         <View style={styles.glassTint} pointerEvents="none" />
@@ -190,9 +166,7 @@ function GlassShellTabBar({ state, descriptors, navigation }) {
   );
 }
 
-export function createGlassTabNavigatorOptions(insets) {
-  const tabBarSlotHeight = getGlassTabBarHeight(insets) + SPACING.sm;
-
+export function createGlassTabNavigatorOptions() {
   return {
     headerShown: false,
     tabBarActiveTintColor: COLORS.primaryDark,
@@ -208,7 +182,6 @@ export function createGlassTabNavigatorOptions(insets) {
       left: 0,
       right: 0,
       bottom: 0,
-      height: tabBarSlotHeight,
       backgroundColor: 'transparent',
       borderTopWidth: 0,
       elevation: 0,
@@ -228,6 +201,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'transparent',
     pointerEvents: 'box-none',
+    zIndex: 100,
+    elevation: 100,
   },
   outer: {
     paddingHorizontal: SPACING.md,

@@ -60,7 +60,7 @@ const QuickAction = ({
 const styles = StyleSheet.create({
   item: {
     alignItems: 'center',
-    width: '100%',
+    alignSelf: 'stretch',
   },
   iconWrap: {
     width: 60,

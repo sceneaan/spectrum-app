@@ -278,6 +278,7 @@ const FindTherapistScreen = () => {
                     data={providers}
                     keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                     renderItem={renderItem}
+                    style={styles.resultsList}
                     contentContainerStyle={{ padding: 20, paddingBottom: tabBarInset }}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={renderFooter}
@@ -304,6 +305,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
+    },
+    resultsList: {
+        flex: 1,
     },
     searchBar: {
         backgroundColor: COLORS.surface,

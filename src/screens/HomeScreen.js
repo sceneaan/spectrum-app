@@ -2,7 +2,8 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Dimensions, Alert, Pressable } from 'react-native';
 import LottieView from 'lottie-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '../store/LanguageContext';
 import { getDynamicData } from '../utils/dataHelper';
 import { useGetAllPromotions } from '../api/services/Public.Service';
@@ -10,7 +11,7 @@ import { useGetSearchFilters, useSearchProviders } from '../api/services/Search.
 import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
 import { useGetMyWallet } from '../api/services/Wallet.Service';
 import { useGetUserData } from '../api/services/User.Service';
-import { calculatePatientProfileCompletion } from '../utils/profileCompletion';
+import { calculatePatientProfileCompletion, getMissingPatientProfileFields } from '../utils/profileCompletion';
 import { formatSarAmount } from '../utils/formatMoney';
 import RiyalText from '../components/RiyalText';
 import Header from '../components/Header';
@@ -60,6 +61,7 @@ const PROMO_ITEM_LENGTH = PROMO_CARD_WIDTH + 15;
 
 const HomeScreen = () => {
    const navigation = useNavigation();
+   const queryClient = useQueryClient();
    const { t, isRTL } = useLanguage();
    const data = getDynamicData(isRTL);
    const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
@@ -89,6 +91,43 @@ const HomeScreen = () => {
    const profileCompletion = useMemo(
       () => calculatePatientProfileCompletion(userData || user),
       [userData, user],
+   );
+
+   const missingProfileFields = useMemo(
+      () => getMissingPatientProfileFields(userData || user),
+      [userData, user],
+   );
+
+   const profileEditParams = useMemo(() => {
+      const needsMedical = missingProfileFields.some((field) => field.tab === 'medical');
+      return {
+         view: 'edit',
+         initialTab: needsMedical ? 'medical' : 'patient',
+      };
+   }, [missingProfileFields]);
+
+   const profileCompletionHint = useMemo(() => {
+      const editableMissing = missingProfileFields.filter((field) => field.editable !== false);
+      if (editableMissing.length === 0) {
+         const verifyMissing = missingProfileFields.filter((field) => field.tab === 'verify');
+         if (verifyMissing.length > 0) {
+            return t.home?.profileCompletionVerifyHint
+               || 'Verify your email or phone to reach 100%';
+         }
+         return null;
+      }
+      const labels = editableMissing.slice(0, 2).map((field) => field.label).join(', ');
+      const suffix = editableMissing.length > 2 ? '…' : '';
+      return (t.home?.profileCompletionMissingHint || 'Still needed: {{fields}}')
+         .replace('{{fields}}', `${labels}${suffix}`);
+   }, [missingProfileFields, t.home]);
+
+   useFocusEffect(
+      useCallback(() => {
+         if (isAuthenticated) {
+            queryClient.invalidateQueries({ queryKey: ['userData'] });
+         }
+      }, [isAuthenticated, queryClient]),
    );
 
    const nearestAppointment = useMemo(
@@ -323,49 +362,14 @@ const HomeScreen = () => {
          <Header showProfile title={data.user} />
          <ScrollView
             showsVerticalScrollIndicator={false}
+            style={styles.scroll}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarInset }]}
          >
-
-            {/* Quick actions for logged-in patients */}
-            {isLoggedIn && isPatient && (
-               <View style={[styles.quickActions, rowStyle]}>
-                  <QuickAction
-                     vectorIcon="search"
-                     label={t.home?.quickBook || 'Find Therapist'}
-                     onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
-                  />
-                  <QuickAction
-                     vectorIcon="calendar"
-                     label={t.home?.quickAppointments || 'Appointments'}
-                     onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
-                  />
-                  <QuickAction
-                     vectorIcon="inbox"
-                     label={t.home?.quickInbox || 'Messages'}
-                     onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
-                  />
-                  <QuickAction
-                     vectorIcon="video"
-                     label={t.home?.quickVideo || 'Video'}
-                     onPress={handleQuickVideo}
-                  />
-                  <QuickAction
-                     vectorIcon="practice"
-                     label={t.home?.quickRecords || 'Records'}
-                     onPress={() => navigation.navigate('MedicalRecordScreen')}
-                  />
-                  <QuickAction
-                     vectorIcon="wallet"
-                     label={t.home?.quickBilling || 'Billing'}
-                     onPress={() => navigation.navigate('BillingScreen')}
-                  />
-               </View>
-            )}
 
             {isLoggedIn && isPatient && profileCompletion < 100 ? (
                <TouchableOpacity
                   activeOpacity={0.88}
-                  onPress={() => navigation.navigate('Profile')}
+                  onPress={() => navigation.navigate('Profile', profileEditParams)}
                >
                   <AppCard style={styles.dashboardCard} padding={SPACING.lg}>
                      <AppText variant="bodyMedium">{t.home?.profileCompletionTitle || 'Complete your profile'}</AppText>
@@ -373,6 +377,11 @@ const HomeScreen = () => {
                         {(t.home?.profileCompletionSubtitle || '{{percent}}% complete — add details for better care')
                            .replace('{{percent}}', String(profileCompletion))}
                      </AppText>
+                     {profileCompletionHint ? (
+                        <AppText variant="caption" color={COLORS.textSecondary} style={styles.profileHint}>
+                           {profileCompletionHint}
+                        </AppText>
+                     ) : null}
                      <View style={styles.progressTrack}>
                         <View style={[styles.progressFill, { width: `${profileCompletion}%` }]} />
                      </View>
@@ -402,6 +411,60 @@ const HomeScreen = () => {
                   </AppCard>
                </TouchableOpacity>
             ) : null}
+
+            {/* Quick actions for logged-in patients */}
+            {isLoggedIn && isPatient && (
+               <View style={styles.quickActionsGrid}>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="search"
+                        label={t.home?.quickBook || 'Find Therapist'}
+                        onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="calendar"
+                        label={t.home?.quickAppointments || 'Appointments'}
+                        onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="inbox"
+                        label={t.home?.quickInbox || 'Messages'}
+                        onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="video"
+                        label={t.home?.quickVideo || 'Video'}
+                        onPress={handleQuickVideo}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="practice"
+                        label={t.home?.quickRecords || 'Records'}
+                        onPress={() => navigation.navigate('MedicalRecordScreen')}
+                        labelLines={1}
+                     />
+                  </View>
+                  <View style={styles.quickActionCell}>
+                     <QuickAction
+                        vectorIcon="wallet"
+                        label={t.home?.quickBilling || 'Billing'}
+                        onPress={() => navigation.navigate('BillingScreen')}
+                        labelLines={1}
+                     />
+                  </View>
+               </View>
+            )}
 
             {showSessionHero && (
                <SessionCountdownHero
@@ -832,15 +895,20 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
    container: { flex: 1, backgroundColor: COLORS.background },
+   scroll: { flex: 1 },
    scrollContent: { paddingTop: SPACING.xl },
 
-   quickActions: {
-      paddingHorizontal: SPACING.xl,
+   quickActionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: SPACING.lg,
       paddingTop: SPACING.md,
       paddingBottom: SPACING.sm,
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: SPACING.sm,
+   },
+   quickActionCell: {
+      width: '33.33%',
+      paddingHorizontal: SPACING.xs,
+      marginBottom: SPACING.lg,
    },
    dashboardCard: {
       marginHorizontal: SPACING.xl,
@@ -867,6 +935,7 @@ const styles = StyleSheet.create({
       marginTop: SPACING.xs,
    },
    linkText: { marginTop: SPACING.sm, fontWeight: '600' },
+   profileHint: { marginTop: SPACING.xs },
    guestHero: {
       marginHorizontal: SPACING.xl,
       marginTop: SPACING.lg,

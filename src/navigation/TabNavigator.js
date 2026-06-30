@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
@@ -50,8 +49,7 @@ const TabNavigator = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
   const { isAuthenticated } = useAuthStore();
-  const insets = useSafeAreaInsets();
-  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(insets), [insets]);
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const [shortcutSheet, setShortcutSheet] = useState(null);
   const [appointmentRadial, setAppointmentRadial] = useState(null);
 

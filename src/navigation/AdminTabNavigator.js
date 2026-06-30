@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
 import AdminAppointmentsScreen from '../screens/admin/AdminAppointmentsScreen';
 import AdminClinicBookingsScreen from '../screens/admin/AdminClinicBookingsScreen';
@@ -37,8 +36,7 @@ const TabAdminUsers = () => <AdminUsersScreen showBack={false} />;
 
 const AdminTabNavigator = () => {
   const { t, isRTL } = useLanguage();
-  const insets = useSafeAreaInsets();
-  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(insets), [insets]);
+  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const ad = t.adminDashboard || {};
   const user = useAuthStore((state) => state.user);
   const { data: userData } = useGetUserData();

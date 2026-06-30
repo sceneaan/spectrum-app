@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLanguage } from '../../store/LanguageContext';
 import { useGetUserData, useUpdateProfile } from '../../api/services/User.Service';
+import { useAuthStore } from '../../store/authStore';
 import {
   uploadAvatar,
   validateFile,
@@ -70,10 +71,15 @@ const CustomTextArea = ({ label, placeholder, value, onChange, alignText }) => (
   </View>
 );
 
-const EditProfileForm = ({ onSave }) => {
+const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
   const { t, isRTL } = useLanguage();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('patient');
+  const { setAuth, user: authUser } = useAuthStore();
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   // Fetch user data from API
   const { data: userData, isLoading: userDataLoading, error: userDataError } = useGetUserData();
@@ -154,37 +160,38 @@ const EditProfileForm = ({ onSave }) => {
     return { code: '+966', number: fullPhone.replace(/^\+/, '') };
   };
 
+  const applyProfileToForm = useCallback((profile) => {
+    if (!profile) return;
+
+    const phoneData = extractPhoneData(profile.phone);
+    const emergencyPhoneData = extractPhoneData(profile.emergencyContact?.phone);
+
+    setCountryCode(phoneData.code);
+    setEmergencyCountryCode(emergencyPhoneData.code);
+    setFormData({
+      fullName: profile.fullName || '',
+      nationalId: profile.nationalId || '',
+      dateOfBirth: profile.dob ? new Date(profile.dob) : null,
+      gender: profile.gender || '',
+      nationality: profile.nationality || 'Saudi Arabia',
+      relationship: profile.emergencyContact?.relation || '',
+      emergencyContactName: profile.emergencyContact?.name || '',
+      emergencyContact: emergencyPhoneData.number,
+      contact: phoneData.number,
+      email: profile.email || '',
+      history: profile.history || '',
+      allergies: profile.allergies || '',
+      preferredLanguage: profile.preferredLanguage || '',
+      medications: profile.medications || '',
+      preference: profile.preference || '',
+      userId: profile.userId || '',
+    });
+  }, []);
+
   // Load user data from API
   const loadUserData = useCallback(() => {
-    if (userData) {
-      // Extract phone data
-      const phoneData = extractPhoneData(userData.phone);
-      const emergencyPhoneData = extractPhoneData(userData.emergencyContact?.phone);
-
-      // Set country codes
-      setCountryCode(phoneData.code);
-      setEmergencyCountryCode(emergencyPhoneData.code);
-
-      setFormData({
-        fullName: userData.fullName || '',
-        nationalId: userData.nationalId || '',
-        dateOfBirth: userData.dob ? new Date(userData.dob) : null,
-        gender: userData.gender || '',
-        nationality: userData.nationality || 'Saudi Arabia',
-        relationship: userData.emergencyContact?.relation || '',
-        emergencyContactName: userData.emergencyContact?.name || '',
-        emergencyContact: emergencyPhoneData.number,
-        contact: phoneData.number,
-        email: userData.email || '',
-        history: userData.history || '',
-        allergies: userData.allergies || '',
-        preferredLanguage: userData.preferredLanguage || '',
-        medications: userData.medications || '',
-        preference: userData.preference || '',
-        userId: userData.userId || '',
-      });
-    }
-  }, [userData]);
+    applyProfileToForm(userData);
+  }, [userData, applyProfileToForm]);
 
   useEffect(() => {
     loadUserData();
@@ -382,7 +389,10 @@ const EditProfileForm = ({ onSave }) => {
       const langCode = item === 'English' ? 'en' : item === 'Arabic' ? 'ar' : item;
       handleInputChange('preferredLanguage', langCode);
     }
-    if (listTarget === 'commPref') handleInputChange('preference', item);
+    if (listTarget === 'commPref') {
+      const prefMap = { Email: 'email', Phone: 'phone', WhatsApp: 'whatsapp', Post: 'post' };
+      handleInputChange('preference', prefMap[item] || String(item).toLowerCase());
+    }
 
     if (listTarget === 'countryCode') {
       setCountryCode(item.code);
@@ -441,8 +451,13 @@ const EditProfileForm = ({ onSave }) => {
   // Helper function to display preference name
   const getPreferenceDisplayName = (pref) => {
     if (!pref) return '';
-    // Capitalize first letter for display
-    return pref.charAt(0).toUpperCase() + pref.slice(1);
+    const labels = {
+      email: 'Email',
+      phone: 'Phone',
+      whatsapp: 'WhatsApp',
+      post: 'Post',
+    };
+    return labels[pref.toLowerCase()] || pref.charAt(0).toUpperCase() + pref.slice(1);
   };
 
   // Using validatePhone from common components
@@ -507,11 +522,13 @@ const EditProfileForm = ({ onSave }) => {
     };
 
     updateUserProfile(payload, {
-      onSuccess: response => {
+      onSuccess: async (response) => {
         if (response) {
+          setAuth({ user: { ...authUser, ...response } });
+          applyProfileToForm(response);
+          queryClient.setQueryData(['userData'], response);
           Alert.alert(t.common?.success || 'Success', t.profile?.profileUpdated || 'Profile updated successfully');
-          queryClient.invalidateQueries(['userData']);
-          loadUserData();
+          await queryClient.invalidateQueries({ queryKey: ['userData'] });
           if (onSave) onSave();
         }
       },
