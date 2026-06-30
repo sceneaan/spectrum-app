@@ -22,7 +22,7 @@ import {
 } from '@api/services/Upload.Service';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import DocumentViewer from '../components/DocumentViewer';
-import moment from 'moment';
+import { getMessagingEligibility } from '../utils/messagingEligibility';
 import { isMessageFromUser, resolveUserId } from '../utils/threads';
 
 const ChatDetailsScreen = () => {
@@ -46,7 +46,7 @@ const ChatDetailsScreen = () => {
    const flatListRef = useRef(null);
    const invalidThreadHandled = useRef(false);
 
-   const { data: appointments } = useGetCompletedAppointments();
+   const { data: appointments, isLoading: appointmentsLoading } = useGetCompletedAppointments();
    const {
      data: threadMessages,
      error: threadMessagesError,
@@ -73,29 +73,12 @@ const ChatDetailsScreen = () => {
 
    const hasRecentAppointment = () => {
       if (isProviderViewer) return true;
-      if (!appointments || appointments.length === 0 || !providerId) {
-         return true;
-      }
-
-      const thirtyDaysAgo = moment().subtract(30, 'days').startOf('day');
-      const today = moment().endOf('day');
-
-      return appointments.some(apt => {
-         const aptProviderId = apt.provider?._id || apt.provider?.id || apt.provider;
-         const aptProviderIdStr = String(aptProviderId);
-         const targetProviderIdStr = String(providerId);
-
-         const isSameProvider = aptProviderIdStr === targetProviderIdStr;
-         if (!isSameProvider) return false;
-
-         const appointmentDate = moment(apt.endTime || apt.startTime);
-         const isWithin30Days = appointmentDate.isSameOrAfter(thirtyDaysAgo) && appointmentDate.isSameOrBefore(today);
-
-         return isWithin30Days;
-      });
+      const eligibility = getMessagingEligibility(appointments, providerId);
+      if (eligibility === null) return !appointmentsLoading;
+      return eligibility;
    };
 
-   const isThreadExpired = !hasRecentAppointment();
+   const isThreadExpired = appointmentsLoading ? false : !hasRecentAppointment();
 
    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);

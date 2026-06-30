@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import Header from '../../components/Header';
 import AppIcon from '../../components/ui/AppIcon';
 import { AppText, AppCard, AppButton } from '../../components/ui';
@@ -7,10 +8,14 @@ import { useLanguage } from '../../store/LanguageContext';
 import { useAuthStore } from '../../store/authStore';
 import { getAdminPermissions } from '../../utils/adminPermissions';
 import { useGetUserData } from '../../api/services/User.Service';
+import { Logout } from '../../api/services/Auth.Service';
+import socketService from '../../utils/socket';
+import { queryClient } from '../../api/queryClient';
 import COLORS from '../../constants/colors';
 import { SPACING } from '../../theme';
 
 const AdminProfileScreen = () => {
+  const navigation = useNavigation();
   const { t } = useLanguage();
   const ad = t.adminDashboard || {};
   const { user, logout } = useAuthStore();
@@ -20,7 +25,11 @@ const AdminProfileScreen = () => {
 
   const handleLogout = async () => {
     try {
+      socketService.disconnect();
+      await Logout();
       await logout();
+      queryClient.clear();
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'LoginScreen' }] }));
     } catch {
       Alert.alert(t.common?.error || 'Error', ad.logoutFailed || 'Could not log out');
     }
@@ -49,10 +58,10 @@ const AdminProfileScreen = () => {
               {ad.manageOnWebHint || 'Financial reconciliation, roles, settings, and clinical audit are available on the admin website.'}
             </AppText>
           </View>
-          <AppButton variant="outline" label={ad.openWebAdmin || 'Open admin website'} onPress={openWebAdmin} />
         </AppCard>
 
-        <AppButton variant="danger" label={t.profile?.logout || 'Log out'} onPress={handleLogout} style={styles.logout} />
+        <AppButton title={ad.openWebAdmin || 'Open admin website'} onPress={openWebAdmin} style={styles.btn} />
+        <AppButton title={ad.logout || 'Log out'} variant="outline" onPress={handleLogout} style={styles.btn} />
       </ScrollView>
     </View>
   );
@@ -61,11 +70,11 @@ const AdminProfileScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: SPACING.lg, paddingBottom: 40 },
-  role: { marginTop: SPACING.sm },
+  role: { marginTop: SPACING.xs },
   hintCard: { marginTop: SPACING.lg },
-  hintRow: { flexDirection: 'row', gap: SPACING.md, marginBottom: SPACING.lg },
-  hintText: { flex: 1, lineHeight: 20 },
-  logout: { marginTop: SPACING.xl },
+  hintRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md },
+  hintText: { flex: 1 },
+  btn: { marginTop: SPACING.md },
 });
 
 export default AdminProfileScreen;

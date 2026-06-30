@@ -13,7 +13,7 @@ import { uploadAttachment, validateFile } from '@api/services/Upload.Service';
 import DocumentPicker from 'react-native-document-picker';
 import { formatFileSize } from '@utils/fileUtils';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import moment from 'moment';
+import { getMessagingEligibility } from '../utils/messagingEligibility';
 
 const NewMessageScreen = () => {
   const { t, isRTL } = useLanguage();
@@ -32,37 +32,20 @@ const NewMessageScreen = () => {
 
   // API Hooks
   const { data: userProviders } = useGetMyProviders();
-  const { data: appointments } = useGetCompletedAppointments();
+  const { data: appointments, isLoading: appointmentsLoading } = useGetCompletedAppointments();
   const { mutate: createThread, isLoading: isSending } = usePatientCreateThread();
   const [isUploading, setIsUploading] = useState(false);
 
   // Check if the selected provider has a completed appointment within the last 30 days
   const hasRecentAppointment = (providerId) => {
-    // If appointments haven't loaded yet or no provider ID, allow messaging (optimistic)
-    if (!appointments || appointments.length === 0 || !providerId) return true;
-
-    const thirtyDaysAgo = moment().subtract(30, 'days').startOf('day');
-    const today = moment().endOf('day');
-
-    return appointments.some(apt => {
-      // Get provider ID from appointment (handle different formats)
-      const aptProviderId = apt.provider?._id || apt.provider?.id || apt.provider;
-      const aptProviderIdStr = String(aptProviderId);
-      const targetProviderIdStr = String(providerId);
-
-      // Check if this appointment is with the same provider
-      const isSameProvider = aptProviderIdStr === targetProviderIdStr;
-      if (!isSameProvider) return false;
-
-      // Check if appointment end time is within last 30 days
-      const appointmentDate = moment(apt.endTime || apt.startTime);
-      const isWithin30Days = appointmentDate.isSameOrAfter(thirtyDaysAgo) && appointmentDate.isSameOrBefore(today);
-
-      return isWithin30Days;
-    });
+    const eligibility = getMessagingEligibility(appointments, providerId);
+    if (eligibility === null) return !appointmentsLoading;
+    return eligibility;
   };
 
-  const canMessageProvider = providerValue ? hasRecentAppointment(providerValue) : true;
+  const canMessageProvider = providerValue
+    ? hasRecentAppointment(providerValue)
+    : !appointmentsLoading;
 
   // Populate Providers
   useEffect(() => {

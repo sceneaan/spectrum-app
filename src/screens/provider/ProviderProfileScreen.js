@@ -33,7 +33,7 @@ const ProviderProfileScreen = () => {
       await Logout();
       await logout();
       queryClient.clear();
-      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Main' }] }));
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'LoginScreen' }] }));
     } catch {
       Alert.alert(t.common?.error || 'Error', pd.logoutFailed || 'Could not log out');
     }

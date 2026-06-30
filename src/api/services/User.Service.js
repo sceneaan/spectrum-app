@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { HttpStatusCode } from 'axios';
-import { getRequest, putRequest } from '@api';
+import { getRequest, putRequest, postRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
 import { useAuthStore } from '../../store/authStore';
@@ -103,6 +103,31 @@ export function useGetProviders(query = {}) {
  * @param {string} excludeUserId - Optional user ID to exclude (for updates)
  * @returns {Promise<{available: boolean, message: string, messageAr: string}>}
  */
+export async function sendVerificationOtp() {
+  return handleRequest(postRequest, `${MODEL_NAME}/send-otp`);
+}
+
+export async function verifyPhoneOtp(otp) {
+  return handleRequest(postRequest, `${MODEL_NAME}/verify-phone-otp`, { otp });
+}
+
+export async function sendEmailVerificationOtp() {
+  return handleRequest(postRequest, `${MODEL_NAME}/send-email-otp`);
+}
+
+export async function verifyEmailOtp(otp) {
+  return handleRequest(postRequest, `${MODEL_NAME}/verify-email-otp`, { otp });
+}
+
+export function useGetPatientMedicalRecord(patientId) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return useQuery({
+    queryKey: ['patientMedicalRecord', patientId],
+    queryFn: () => handleRequest(getRequest, `${MODEL_NAME}/medical/record/${patientId}`),
+    enabled: isAuthenticated && Boolean(patientId),
+  });
+}
+
 export async function checkNationalIdAvailability(nationalId, excludeUserId = null) {
   try {
     let url = `${MODEL_NAME}/check-national-id/${encodeURIComponent(nationalId)}`;
@@ -116,8 +141,11 @@ export async function checkNationalIdAvailability(nationalId, excludeUserId = nu
     throw new Error(ErrorMessages.generalMessage);
   } catch (err) {
     console.error('Error checking national ID:', err);
-    // Return available: true on error to not block the user
-    // The backend will still validate on submission
-    return { available: true, message: 'Could not verify', messageAr: 'تعذر التحقق' };
+    // Return unavailable on error so duplicate IDs are not silently allowed
+    return {
+      available: false,
+      message: 'Could not verify national ID. Please try again.',
+      messageAr: 'تعذر التحقق من رقم الهوية. يرجى المحاولة مرة أخرى.',
+    };
   }
 }

@@ -7,6 +7,8 @@ import { useAuthStore } from '../store/authStore';
 import { useGetTherapistProfile } from '../api/services/Search.Service';
 import { useGetSlots } from '../api/services/Availablity.Service';
 import { useCreateAppointment } from '../api/services/Appointment.Service';
+import { useGetUserData } from '../api/services/User.Service';
+import { isSlotBookable, needsMedicalConsentForBooking } from '../utils/bookingRules';
 import Header from '../components/Header';
 import ProfileHeroCard from '../components/profile/ProfileHeroCard';
 import MonthlyCalendar from '../components/profile/MonthlyCalendar';
@@ -35,6 +37,8 @@ const TherapistProfileScreen = () => {
     const route = useRoute();
     const { t, isRTL } = useLanguage();
     const { user, isAuthenticated } = useAuthStore();
+    const { data: userData } = useGetUserData();
+    const profileUser = userData || user;
     const insets = useSafeAreaInsets();
 
     const { providerId } = route.params || {};
@@ -80,7 +84,9 @@ const TherapistProfileScreen = () => {
     // Format available slots
     const availableSlots = useMemo(() => {
         if (!slotsData?.slots) return [];
-        return slotsData.slots.map(slot => ({
+        return slotsData.slots
+            .filter((slot) => isSlotBookable(slot.startTime))
+            .map(slot => ({
             ...slot,
             formattedTime: slot.startTime ? moment(slot.startTime).locale('en').format('h:mm A') : 'N/A',
             formattedTimeAr: slot.startTime ? moment(slot.startTime).locale('ar').format('h:mm A') : 'N/A',
@@ -116,6 +122,24 @@ const TherapistProfileScreen = () => {
                 targetScreen: 'TherapistProfile',
                 targetParams: { providerId },
             });
+            return;
+        }
+
+        if (needsMedicalConsentForBooking(profileUser)) {
+            Alert.alert(
+                isRTL ? 'أكمل ملفك' : 'Complete your profile',
+                isRTL ? 'يرجى إكمال الموافقة الطبية قبل الحجز' : 'Please complete medical consent before booking',
+                [
+                    { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                    {
+                        text: isRTL ? 'متابعة' : 'Continue',
+                        onPress: () => navigation.navigate('Consent', {
+                            targetScreen: 'TherapistProfile',
+                            targetParams: { providerId },
+                        }),
+                    },
+                ],
+            );
             return;
         }
 

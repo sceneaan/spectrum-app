@@ -7,7 +7,8 @@ import Header from '../components/Header';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { useAuthStore } from '../store/authStore';
-import { useGetUserProfile } from '../api/services/User.Service';
+import { useGetUserProfile, useGetUserData } from '../api/services/User.Service';
+import { isSlotBookable, needsMedicalConsentForBooking } from '../utils/bookingRules';
 import { useGetAvailabilityByProviderId, useGetSlots } from '../api/services/Availablity.Service';
 import { useCreateAppointment } from '../api/services/Appointment.Service';
 import { getRequest } from '../api';
@@ -81,6 +82,8 @@ const DoctorProfileScreen = () => {
 
    // Get current user from auth store
    const { user, isAuthenticated, token } = useAuthStore();
+   const { data: userData } = useGetUserData();
+   const profileUser = userData || user;
 
    // --- Get doctor from route params ---
    const { doctor } = route.params || {};
@@ -175,7 +178,9 @@ const DoctorProfileScreen = () => {
    // Pre-format time strings to avoid moment() calls during render
    const availableSlots = useMemo(() => {
       if (slotsData && slotsData.slots) {
-         return slotsData.slots.map(slot => ({
+         return slotsData.slots
+            .filter((slot) => isSlotBookable(slot.startTime))
+            .map(slot => ({
             ...slot,
             // Always use 'en' locale for English numerals
             formattedTime: slot.startTime ? moment(slot.startTime).locale('en').format('h:mm A') : 'N/A',
@@ -392,6 +397,24 @@ const DoctorProfileScreen = () => {
                preSelectedReason: reason,
             }
          });
+         return;
+      }
+
+      if (needsMedicalConsentForBooking(profileUser)) {
+         Alert.alert(
+            isRTL ? 'أكمل ملفك' : 'Complete your profile',
+            isRTL ? 'يرجى إكمال الموافقة الطبية قبل الحجز' : 'Please complete medical consent before booking',
+            [
+               { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
+               {
+                  text: isRTL ? 'متابعة' : 'Continue',
+                  onPress: () => navigation.navigate('Consent', {
+                     targetScreen: 'DoctorProfile',
+                     targetParams: route.params,
+                  }),
+               },
+            ],
+         );
          return;
       }
 

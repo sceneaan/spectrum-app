@@ -149,3 +149,12 @@ export function useAdminGetUserWallet(userId, options = {}) {
     enabled: enabled && Boolean(userId) && options.enabled !== false,
   });
 }
+
+export function useAdminGetTransactions(query = {}) {
+  const enabled = useIsAdminEnabled();
+  return useQuery({
+    queryKey: ['adminTransactions', query],
+    queryFn: () => adminRequest(getRequest, '/transaction/', query),
+    enabled,
+  });
+}

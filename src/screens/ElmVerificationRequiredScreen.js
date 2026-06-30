@@ -15,7 +15,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import { verifyElmIdentity } from '../api/services/Elm.Service';
-import { updateElmVerification, useGetUserData } from '../api/services/User.Service';
+import { updateElmVerification, useGetUserData, UpdateProfile } from '../api/services/User.Service';
 import Header from '../components/Header';
 import COLORS from '../constants/colors';
 
@@ -25,8 +25,15 @@ const parseUserDob = (dobValue) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const INTERNATIONAL_NATIONALITIES = [
+  'Egypt', 'United Arab Emirates', 'Jordan', 'Lebanon', 'Palestine', 'Syria', 'Iraq',
+  'Kuwait', 'Oman', 'Bahrain', 'Qatar', 'Pakistan', 'India', 'Bangladesh', 'Philippines',
+  'United Kingdom', 'United States', 'Canada', 'France', 'Germany', 'Other',
+];
+
 const ElmVerificationRequiredScreen = ({ navigation }) => {
   const { t, isRTL } = useLanguage();
+  const ev = t.elmVerification || {};
   const { user, setAuth, logout, setElmVerificationDeferred } = useAuthStore();
   const { data: userData } = useGetUserData();
   const profile = userData || user;
@@ -41,8 +48,15 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
   const [showHijriPicker, setShowHijriPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('input'); // 'input' | 'confirm' | 'success'
+  const [step, setStep] = useState('residency');
   const [elmData, setElmData] = useState(null);
+  const [intlFullName, setIntlFullName] = useState(profile?.fullName || '');
+  const [intlGender, setIntlGender] = useState(profile?.gender || '');
+  const [intlNationality, setIntlNationality] = useState(
+    profile?.nationality && profile.nationality !== 'Saudi Arabia' ? profile.nationality : '',
+  );
+  const [intlNationalId, setIntlNationalId] = useState(profile?.nationalId || '');
+  const [showNationalityPicker, setShowNationalityPicker] = useState(false);
 
   useEffect(() => {
     if (profile?.nationalId && !nationalId) {
@@ -108,6 +122,82 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
   const confirmHijriDate = () => {
     setHijriDob(`${hijriYear}-${hijriMonth}-${hijriDay}`);
     setShowHijriPicker(false);
+  };
+
+  const handleInternationalSubmit = async () => {
+    if (!intlFullName.trim()) {
+      Alert.alert(ev.errorTitle || (isRTL ? 'خطأ' : 'Error'), ev.fullNameRequired || 'Full name is required');
+      return;
+    }
+    if (!intlGender) {
+      Alert.alert(ev.errorTitle || (isRTL ? 'خطأ' : 'Error'), ev.genderRequired || 'Gender is required');
+      return;
+    }
+    if (!intlNationality) {
+      Alert.alert(ev.errorTitle || (isRTL ? 'خطأ' : 'Error'), ev.nationalityRequired || 'Nationality is required');
+      return;
+    }
+    if (!intlNationalId.trim()) {
+      Alert.alert(ev.errorTitle || (isRTL ? 'خطأ' : 'Error'), ev.idRequired || 'ID or passport number is required');
+      return;
+    }
+    if (!dob) {
+      Alert.alert(ev.errorTitle || (isRTL ? 'خطأ' : 'Error'), ev.dobRequired || 'Date of birth is required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formattedDob = formatDate(dob);
+      await UpdateProfile({
+        fullName: intlFullName.trim(),
+        gender: intlGender.toLowerCase(),
+        nationality: intlNationality,
+        dob: formattedDob,
+        nationalId: intlNationalId.trim(),
+      });
+
+      const result = await updateElmVerification({
+        nationalId: intlNationalId.trim(),
+        dob: formattedDob,
+        elmVerified: false,
+        elmData: {},
+        elmDisabled: true,
+      });
+
+      const updatedUser = result?.user || result;
+      setElmVerificationDeferred(false);
+      setAuth({
+        user: {
+          ...user,
+          ...(typeof updatedUser === 'object' ? updatedUser : {}),
+          elmDisabled: true,
+          elmVerified: false,
+          fullName: intlFullName.trim(),
+          gender: intlGender,
+          nationality: intlNationality,
+          nationalId: intlNationalId.trim(),
+          dob: formattedDob,
+        },
+        token: useAuthStore.getState().token,
+        refreshToken: useAuthStore.getState().refreshToken,
+      });
+
+      setStep('success');
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
+      }, 1500);
+    } catch (error) {
+      Alert.alert(
+        ev.errorTitle || (isRTL ? 'خطأ' : 'Error'),
+        error.message || ev.internationalFailed || 'Could not save your information',
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerify = async () => {
@@ -253,6 +343,11 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
       return;
     }
 
+    if (step === 'input' || step === 'international') {
+      setStep('residency');
+      return;
+    }
+
     if (step === 'success') return;
 
     setElmVerificationDeferred(true);
@@ -262,6 +357,110 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
     }
     navigation.navigate('Main');
   };
+
+  const renderResidencyStep = () => (
+    <>
+      <Text style={[styles.label, isRTL && styles.rtlText]}>
+        {ev.residencyPrompt || (isRTL ? 'أين تقيم؟' : 'Where do you reside?')}
+      </Text>
+      <TouchableOpacity style={styles.residencyCard} onPress={() => setStep('input')}>
+        <Text style={styles.residencyTitle}>{ev.ksaResident || (isRTL ? 'المملكة العربية السعودية' : 'Saudi Arabia')}</Text>
+        <Text style={styles.residencyHint}>
+          {ev.ksaResidentHint || (isRTL ? 'التحقق عبر نظام علم' : 'Verify with Saudi ELM (NIN / Iqama)')}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.residencyCard} onPress={() => setStep('international')}>
+        <Text style={styles.residencyTitle}>{ev.internationalResident || (isRTL ? 'خارج السعودية' : 'Outside Saudi Arabia')}</Text>
+        <Text style={styles.residencyHint}>
+          {ev.internationalResidentHint || (isRTL ? 'أدخل بياناتك يدوياً' : 'Enter your details manually — no ELM required')}
+        </Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderInternationalStep = () => (
+    <>
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, isRTL && styles.rtlText]}>{ev.fullName || (isRTL ? 'الاسم الكامل' : 'Full name')}</Text>
+        <TextInput
+          style={[styles.input, isRTL && styles.rtlInput]}
+          value={intlFullName}
+          onChangeText={setIntlFullName}
+          placeholderTextColor={COLORS.gray400}
+        />
+      </View>
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, isRTL && styles.rtlText]}>{ev.gender || (isRTL ? 'الجنس' : 'Gender')}</Text>
+        <View style={[styles.genderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          {['Male', 'Female'].map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[styles.genderChip, intlGender === option && styles.genderChipActive]}
+              onPress={() => setIntlGender(option)}
+            >
+              <Text style={[styles.genderChipText, intlGender === option && styles.genderChipTextActive]}>
+                {option === 'Male' ? (ev.male || 'Male') : (ev.female || 'Female')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, isRTL && styles.rtlText]}>{ev.nationality || (isRTL ? 'الجنسية' : 'Nationality')}</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setShowNationalityPicker(true)}>
+          <Text style={{ color: intlNationality ? COLORS.textPrimary : COLORS.gray400 }}>
+            {intlNationality || ev.selectNationality || 'Select nationality'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, isRTL && styles.rtlText]}>{ev.idOrPassport || (isRTL ? 'رقم الهوية / جواز السفر' : 'ID / Passport number')}</Text>
+        <TextInput
+          style={[styles.input, isRTL && styles.rtlInput]}
+          value={intlNationalId}
+          onChangeText={setIntlNationalId}
+          placeholderTextColor={COLORS.gray400}
+        />
+      </View>
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, isRTL && styles.rtlText]}>{ev.dob || (isRTL ? 'تاريخ الميلاد' : 'Date of birth')}</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+          <Text style={{ color: dob ? COLORS.textPrimary : COLORS.gray400 }}>
+            {dob ? formatDate(dob) : ev.selectDob || 'Select date'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity
+        style={[styles.primaryButton, loading && styles.buttonDisabled]}
+        onPress={handleInternationalSubmit}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color={COLORS.white} />
+        ) : (
+          <Text style={styles.primaryButtonText}>{ev.continue || (isRTL ? 'متابعة' : 'Continue')}</Text>
+        )}
+      </TouchableOpacity>
+      {showNationalityPicker && (
+        <View style={styles.nationalityPicker}>
+          <ScrollView style={{ maxHeight: 180 }}>
+            {INTERNATIONAL_NATIONALITIES.map((country) => (
+              <TouchableOpacity
+                key={country}
+                style={styles.nationalityItem}
+                onPress={() => {
+                  setIntlNationality(country);
+                  setShowNationalityPicker(false);
+                }}
+              >
+                <Text style={styles.nationalityItemText}>{country}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </>
+  );
 
   const renderInputStep = () => (
     <>
@@ -510,7 +709,7 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
       <Header
         showBack
         onBack={handleBack}
-        title={isRTL ? 'التحقق من الهوية' : 'Identity Verification'}
+        title={ev.title || (isRTL ? 'التحقق من الهوية' : 'Identity Verification')}
       />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -522,17 +721,27 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
             <Text style={styles.shieldIcon}>🛡️</Text>
           </View>
           <Text style={styles.title}>
-            {isRTL ? 'التحقق من الهوية مطلوب' : 'Identity Verification Required'}
+            {step === 'international'
+              ? (ev.internationalTitle || (isRTL ? 'بيانات المقيم خارج السعودية' : 'International resident details'))
+              : step === 'residency'
+                ? (ev.residencyTitle || (isRTL ? 'اختر نوع الإقامة' : 'Choose residency type'))
+                : (ev.heroTitle || (isRTL ? 'التحقق من الهوية مطلوب' : 'Identity Verification Required'))}
           </Text>
           <Text style={styles.subtitle}>
-            {isRTL
-              ? 'لحماية سجلاتك الطبية، يرجى التحقق من هويتك عبر نظام ELM'
-              : 'To protect your medical records, please verify your identity via ELM'}
+            {step === 'international'
+              ? (ev.internationalSubtitle || (isRTL ? 'أدخل بياناتك للمتابعة بدون تحقق علم' : 'Enter your details to continue without ELM verification'))
+              : step === 'residency'
+                ? (ev.residencySubtitle || (isRTL ? 'اختر الخيار المناسب لإكمال التسجيل' : 'Select the option that applies to you'))
+                : (ev.heroSubtitle || (isRTL
+                  ? 'لحماية سجلاتك الطبية، يرجى التحقق من هويتك عبر نظام ELM'
+                  : 'To protect your medical records, please verify your identity via ELM'))}
           </Text>
         </View>
 
         {/* Main Card */}
         <View style={styles.card}>
+          {step === 'residency' && renderResidencyStep()}
+          {step === 'international' && renderInternationalStep()}
           {step === 'input' && renderInputStep()}
           {step === 'confirm' && renderConfirmStep()}
           {step === 'success' && renderSuccessStep()}
@@ -823,6 +1032,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray500,
     textDecorationLine: 'underline',
+  },
+  residencyCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  residencyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  residencyHint: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+  },
+  genderChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  genderChipText: {
+    color: COLORS.gray700,
+    fontWeight: '500',
+  },
+  genderChipTextActive: {
+    color: COLORS.white,
+  },
+  nationalityPicker: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    borderRadius: 10,
+    backgroundColor: COLORS.white,
+  },
+  nationalityItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  nationalityItemText: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
   },
 });
 

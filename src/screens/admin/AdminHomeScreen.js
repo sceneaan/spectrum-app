@@ -137,6 +137,14 @@ const AdminHomeScreen = () => {
         onPress: () => navigation.navigate('AdminUsersTab', { initialTab: 'providers' }),
       });
     }
+    if (hasAdminPermission(profile, 'view_refunds') || hasAdminPermission(profile, 'view_transactions')) {
+      actions.push({
+        key: 'financial',
+        vectorIcon: 'wallet',
+        label: ad.financialHubTitle || 'Financial hub',
+        onPress: () => navigation.navigate('AdminFinancial'),
+      });
+    }
     if (hasAdminPermission(profile, 'view_refunds')) {
       actions.push({
         key: 'refunds',

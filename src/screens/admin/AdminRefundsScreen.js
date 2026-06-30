@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -28,10 +28,29 @@ const AdminRefundsScreen = () => {
   const profile = userData || user;
   const canView = hasAdminPermission(profile, 'view_refunds');
   const [page, setPage] = useState(1);
+  const [allRefunds, setAllRefunds] = useState([]);
 
-  const { data, isLoading, isError, refetch, isRefetching } = useAdminListRefunds({ page, limit: 30 });
-  const refunds = data?.refunds || [];
+  const { data, isLoading, isError, refetch, isRefetching, isFetching } = useAdminListRefunds({ page, limit: 30 });
   const hasMore = (data?.pagination?.currentPage || 1) < (data?.pagination?.totalPages || 1);
+
+  useEffect(() => {
+    const pageRefunds = data?.refunds || [];
+    if (page === 1) {
+      setAllRefunds(pageRefunds);
+      return;
+    }
+    if (pageRefunds.length === 0) return;
+    setAllRefunds((prev) => {
+      const ids = new Set(prev.map((item) => String(item._id || item.id || item.slug)));
+      const next = pageRefunds.filter((item) => !ids.has(String(item._id || item.id || item.slug)));
+      return [...prev, ...next];
+    });
+  }, [data?.refunds, page]);
+
+  const handleRefresh = useCallback(async () => {
+    setPage(1);
+    await refetch();
+  }, [refetch]);
 
   const renderItem = ({ item }) => {
     const patient = item.transaction?.patient;
@@ -64,7 +83,7 @@ const AdminRefundsScreen = () => {
       <Header showBack title={ad.refundsTitle || 'Refund history'} />
       {!canView ? (
         <EmptyState title={ad.noPermission || 'You do not have permission to view this'} />
-      ) : isLoading && !refunds.length ? (
+      ) : isLoading && !allRefunds.length ? (
         <ActivityIndicator color={COLORS.primary} style={styles.loader} />
       ) : isError ? (
         <EmptyState
@@ -74,13 +93,15 @@ const AdminRefundsScreen = () => {
         />
       ) : (
         <FlatList
-          data={refunds}
+          data={allRefunds}
           keyExtractor={(item) => String(item._id || item.id || item.slug)}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={COLORS.primary} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching && page === 1} onRefresh={handleRefresh} tintColor={COLORS.primary} />
+          }
           onEndReached={() => {
-            if (hasMore && !isRefetching) setPage((p) => p + 1);
+            if (hasMore && !isFetching) setPage((p) => p + 1);
           }}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={<EmptyState title={ad.noRefunds || 'No refunds found'} />}

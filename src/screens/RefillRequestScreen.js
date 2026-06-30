@@ -13,6 +13,7 @@ import {
 } from '@api/services/Encounter.Service';
 import { useCreateRefillRequestFromPatient, usePendingMedications } from '@api/services/Refill.Service';
 import { useQueryClient } from '@tanstack/react-query';
+import { invalidateRefillCaches } from '../utils/queryInvalidation';
 import Icon from 'react-native-vector-icons/Feather';
 
 const MedicationCheckBox = ({
@@ -89,8 +90,7 @@ const RefillRequestScreen = () => {
    // Refetch data when screen comes into focus
    useFocusEffect(
      React.useCallback(() => {
-       queryClient.invalidateQueries({ queryKey: ['listPrescriptionByPatient'] });
-       queryClient.invalidateQueries({ queryKey: ['pendingMedications'] });
+       await invalidateRefillCaches(queryClient);
      }, [queryClient])
    );
 
@@ -207,8 +207,7 @@ const RefillRequestScreen = () => {
                  onPress: () => {
                    setMessage('');
                    setSelectedMedications([]);
-                   queryClient.invalidateQueries({ queryKey: ['listRefillRequests'] });
-                   queryClient.invalidateQueries({ queryKey: ['pendingMedications'] });
+                   await invalidateRefillCaches(queryClient);
                    navigation.goBack();
                  }
                }

@@ -7,7 +7,9 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
 import Header from '../../components/Header';
 import { AppText, AppCard, EmptyState } from '../../components/ui';
@@ -20,6 +22,7 @@ import ICONS from '../../constants/icons';
 import { SPACING, RADIUS } from '../../theme';
 
 const ProviderPatientsScreen = () => {
+  const navigation = useNavigation();
   const { t } = useLanguage();
   const pd = t.providerDashboard || {};
   const rtl = isRTL();
@@ -43,22 +46,30 @@ const ProviderPatientsScreen = () => {
     const lastVisit = item.lastVisit ? moment(item.lastVisit).format('MMM D, YYYY') : '';
 
     return (
-      <AppCard style={styles.card} padding={SPACING.lg}>
-        <View style={[rowStyle, styles.row]}>
-          <Image source={ICONS.defaultAvatar} style={styles.avatar} />
-          <View style={styles.body}>
-            <AppText variant="bodyMedium" numberOfLines={1}>{name}</AppText>
-            {item.email ? (
-              <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1}>{item.email}</AppText>
-            ) : null}
-            {lastVisit ? (
-              <AppText variant="caption" color={COLORS.textSecondary}>
-                {(pd.lastVisit || 'Last visit')}: {lastVisit}
-              </AppText>
-            ) : null}
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={() => navigation.navigate('ProviderPatientDetail', {
+          patientId: item._id,
+          patientName: name,
+        })}
+      >
+        <AppCard style={styles.card} padding={SPACING.lg}>
+          <View style={[rowStyle, styles.row]}>
+            <Image source={ICONS.defaultAvatar} style={styles.avatar} />
+            <View style={styles.body}>
+              <AppText variant="bodyMedium" numberOfLines={1}>{name}</AppText>
+              {item.email ? (
+                <AppText variant="caption" color={COLORS.textSecondary} numberOfLines={1}>{item.email}</AppText>
+              ) : null}
+              {lastVisit ? (
+                <AppText variant="caption" color={COLORS.textSecondary}>
+                  {(pd.lastVisit || 'Last visit')}: {lastVisit}
+                </AppText>
+              ) : null}
+            </View>
           </View>
-        </View>
-      </AppCard>
+        </AppCard>
+      </TouchableOpacity>
     );
   };
 

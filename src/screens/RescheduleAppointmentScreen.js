@@ -6,12 +6,15 @@ import moment from 'moment';
 import Header from '../components/Header';
 import COLORS from '../constants/colors';
 import { useRescheduleAppointment } from '../api/services/Appointment.Service';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateAppointmentCaches } from '../utils/queryInvalidation';
 import { useGetSlots } from '../api/services/Availablity.Service';
 import Icon from 'react-native-vector-icons/FontAwesome6';
 
 const RescheduleAppointmentScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
   const { appointment, onRescheduleSuccess } = route.params || {};
 
@@ -81,19 +84,20 @@ const RescheduleAppointmentScreen = () => {
     };
 
     rescheduleAppointment(payload, {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await invalidateAppointmentCaches(queryClient);
         Alert.alert(
           t.appointments?.success || 'Success',
-          'Your appointment has been rescheduled successfully!',
+          t.appointments?.rescheduleSuccess || 'Your appointment has been rescheduled successfully!',
           [
             {
-              text: 'OK',
+              text: t.common?.ok || 'OK',
               onPress: () => {
                 onRescheduleSuccess?.();
                 navigation.goBack();
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
       },
       onError: (error) => {
@@ -105,9 +109,17 @@ const RescheduleAppointmentScreen = () => {
     });
   };
 
+  useEffect(() => {
+    if (!appointment) {
+      Alert.alert(
+        t.appointments?.error || 'Error',
+        t.appointments?.appointmentNotFound || 'Appointment information not available',
+        [{ text: t.common?.ok || 'OK', onPress: () => navigation.goBack() }],
+      );
+    }
+  }, [appointment, navigation, t]);
+
   if (!appointment) {
-    Alert.alert('Error', 'Appointment information not available');
-    navigation.goBack();
     return null;
   }
 

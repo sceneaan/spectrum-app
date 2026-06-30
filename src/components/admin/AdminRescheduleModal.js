@@ -43,7 +43,7 @@ const AdminRescheduleModal = ({ visible, appointment, onClose, onSuccess }) => {
   const dates = useMemo(() => {
     const items = [];
     const today = new Date();
-    for (let i = 1; i < 15; i += 1) {
+    for (let i = 0; i < 15; i += 1) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       items.push(d);

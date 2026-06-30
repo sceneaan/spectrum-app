@@ -7,7 +7,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Header from '../components/Header';
 import DocumentViewer from '../components/DocumentViewer';
 import { useLanguage } from '../store/LanguageContext';
-import { useGetCurrentUser } from '../api/services/User.Service';
+import { useGetUserData } from '../api/services/User.Service';
+import { getUserId } from '../utils/userId';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { GetAllDocuments, AddDocumentByPatient } from '../api/services/Document.Service';
@@ -32,7 +33,8 @@ import moment from 'moment';
 const MedicalRecordScreen = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
-  const { data: currentUser } = useGetCurrentUser();
+  const { data: currentUser } = useGetUserData();
+  const patientId = getUserId(currentUser);
 
   // Dynamic styles
   const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
@@ -70,7 +72,7 @@ const MedicalRecordScreen = () => {
 
   // Fetch all data
   const fetchAllData = useCallback(async () => {
-    if (!currentUser?._id) return;
+    if (!patientId) return;
 
     setLoading(true);
     try {
@@ -79,7 +81,7 @@ const MedicalRecordScreen = () => {
         ListSickLeaves(),
         ListProcedureRequestByPatient(),
         ListRefillRequest(),
-        GetAllDocuments(currentUser._id),
+        GetAllDocuments(patientId),
       ]);
 
       if (prescriptions?.prescriptions) setPrescriptionsList(prescriptions.prescriptions);
@@ -92,14 +94,14 @@ const MedicalRecordScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser?._id, t]);
+  }, [patientId, t]);
 
   // Update available test names (procedures without results)
   const updateAvailableTestNames = useCallback(async () => {
     try {
-      if (!currentUser?._id) return;
+      if (!patientId) return;
 
-      const documents = await GetAllDocuments(currentUser._id);
+      const documents = await GetAllDocuments(patientId);
       const availableProcedures = procedureList.filter((procedure) =>
         !documents.some((doc) => doc.formId === procedure.formId)
       );
@@ -107,15 +109,15 @@ const MedicalRecordScreen = () => {
       setAvailableTestNames(availableProcedures);
     } catch {
     }
-  }, [currentUser?._id, procedureList]);
+  }, [patientId, procedureList]);
 
   // Fetch data on focus
   useFocusEffect(
     React.useCallback(() => {
-      if (currentUser?._id) {
+      if (patientId) {
         fetchAllData();
       }
-    }, [fetchAllData, currentUser?._id])
+    }, [fetchAllData, patientId])
   );
 
   // Update test names when procedures change
@@ -176,7 +178,7 @@ const MedicalRecordScreen = () => {
       try {
         // Use the secure upload function
         const uploadResponse = await uploadMedicalDocument(file, {
-          relatedPatient: currentUser?._id,
+          relatedPatient: patientId,
         });
 
 
@@ -224,7 +226,7 @@ const MedicalRecordScreen = () => {
     const payload = {
       title: `${selectedTest.procedureType} ${selectedTest.name}`,
       providerId: selectedTest.provider?.id,
-      patientId: currentUser?._id,
+      patientId,
       formId: selectedTest.formId || null,
       document: selectedFile.url, // Legacy URL field
       documentFileId: selectedFile.fileId, // New secure fileId field
@@ -239,7 +241,7 @@ const MedicalRecordScreen = () => {
       setUploadModalVisible(false);
 
       // Refresh data
-      if (currentUser?._id) {
+      if (patientId) {
         await fetchAllData();
         await updateAvailableTestNames();
       }

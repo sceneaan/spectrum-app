@@ -7,7 +7,8 @@ import RiyalText from '../components/RiyalText';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { useLanguage } from '../store/LanguageContext';
-import { useGetCurrentUser } from '@api/services/User.Service';
+import { useGetUserData } from '@api/services/User.Service';
+import { getUserId } from '../utils/userId';
 import { useGetAllTransactions } from '@api/services/Transaction.Service';
 import { GetInvoice, GenerateInvoice } from '@api/services/Invoice.Service';
 import { generateInvoiceHTML } from '../utils/htmlTemplates/invoiceHtml';
@@ -99,7 +100,8 @@ const BillingScreen = () => {
   const [viewerTitle, setViewerTitle] = useState('');
 
   // Get current user
-  const { data: currentUser } = useGetCurrentUser();
+  const { data: currentUser } = useGetUserData();
+  const patientId = getUserId(currentUser);
 
   // Prepare query parameters
   const queryParams = React.useMemo(() => ({
@@ -116,17 +118,17 @@ const BillingScreen = () => {
     isLoading: allTransactionsLoader,
     refetch: refetchTransactions,
   } = useGetAllTransactions(
-    currentUser?._id,
+    patientId,
     queryParams
   );
 
   // Effect for when user data loads - only on initial load
   useEffect(() => {
-    if (currentUser && currentUser._id && isInitialLoadRef.current) {
+    if (patientId && isInitialLoadRef.current) {
       isInitialLoadRef.current = false;
       refetchTransactions();
     }
-  }, [currentUser?._id, refetchTransactions]);
+  }, [patientId, refetchTransactions]);
 
   // Effect for handling transaction data
   useEffect(() => {

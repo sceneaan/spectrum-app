@@ -14,8 +14,7 @@ import { daysAgo } from '@utils/timeFormatter';
 import { getProviderId } from '@utils/userId';
 import { isRTL } from '@utils/rtlUtils';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import moment from 'moment';
-import Skeleton from '../components/Skeleton';
+import { getMessagingEligibility } from '@utils/messagingEligibility';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
 
@@ -42,23 +41,12 @@ const InboxScreen = () => {
     refetch,
   } = usePatientGetThreads();
 
-  const { data: appointments } = useGetCompletedAppointments();
+  const { data: appointments, isLoading: appointmentsLoading } = useGetCompletedAppointments();
 
   const hasRecentAppointment = (providerId) => {
-    if (!appointments || appointments.length === 0 || !providerId) return true;
-
-    const thirtyDaysAgo = moment().subtract(30, 'days').startOf('day');
-    const today = moment().endOf('day');
-
-    return appointments.some((apt) => {
-      const aptProviderIdStr = getProviderId(apt.provider);
-      const targetProviderIdStr = getProviderId(providerId);
-      const isSameProvider = aptProviderIdStr === targetProviderIdStr;
-      if (!isSameProvider) return false;
-
-      const appointmentDate = moment(apt.endTime || apt.startTime);
-      return appointmentDate.isSameOrAfter(thirtyDaysAgo) && appointmentDate.isSameOrBefore(today);
-    });
+    const eligibility = getMessagingEligibility(appointments, providerId);
+    if (eligibility === null) return !appointmentsLoading;
+    return eligibility;
   };
 
   const isFocused = useIsFocused();

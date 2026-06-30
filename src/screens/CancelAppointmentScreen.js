@@ -16,6 +16,7 @@ import moment from 'moment';
 import Header from '../components/Header';
 import COLORS from '../constants/colors';
 import { useCancelAppointment } from '../api/services/Appointment.Service';
+import { invalidateAppointmentCaches } from '../utils/queryInvalidation';
 import Icon from 'react-native-vector-icons/FontAwesome6';
 
 const CancelAppointmentScreen = () => {
@@ -60,12 +61,8 @@ const CancelAppointmentScreen = () => {
               [
                 {
                   text: t.common?.ok || 'OK',
-                  onPress: () => {
-                    // Invalidate queries to refresh data
-                    queryClient.invalidateQueries(['upcomingAppointments']);
-                    queryClient.invalidateQueries(['pendingAppointments']);
-                    queryClient.invalidateQueries(['appointments']);
-                    queryClient.invalidateQueries(['myWallet']); // Refresh wallet balance
+                  onPress: async () => {
+                    await invalidateAppointmentCaches(queryClient);
                     navigation.goBack();
                   }
                 }
@@ -78,11 +75,8 @@ const CancelAppointmentScreen = () => {
               [
                 {
                   text: t.common?.ok || 'OK',
-                  onPress: () => {
-                    queryClient.invalidateQueries(['upcomingAppointments']);
-                    queryClient.invalidateQueries(['pendingAppointments']);
-                    queryClient.invalidateQueries(['appointments']);
-                    queryClient.invalidateQueries(['myWallet']); // Refresh wallet balance
+                  onPress: async () => {
+                    await invalidateAppointmentCaches(queryClient);
                     navigation.goBack();
                   }
                 }

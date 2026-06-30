@@ -56,7 +56,7 @@ const ProfileScreen = () => {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'Main' }],
+          routes: [{ name: 'LoginScreen' }],
         }),
       );
     } catch (error) {

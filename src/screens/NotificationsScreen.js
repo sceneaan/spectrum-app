@@ -32,6 +32,7 @@ import { useAuthStore } from '../store/authStore';
 import { FCM_FOREGROUND_EVENT } from '../utils/fcmEvents';
 import { useLanguage } from '../store/LanguageContext';
 import { daysAgo } from '../utils/timeFormatter';
+import { resolveNotificationNavigation } from '../utils/notificationNavigation';
 import Skeleton from '../components/Skeleton';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 
@@ -138,6 +139,15 @@ const NotificationsScreen = () => {
   const handleNotificationPress = (item) => {
     if (!item.read) {
       markRead([item._id]);
+    }
+
+    const target = resolveNotificationNavigation(item);
+    if (!target?.screen) return;
+
+    try {
+      navigation.navigate(target.screen, target.params);
+    } catch (error) {
+      console.warn('Notification navigation failed:', error);
     }
   };
 

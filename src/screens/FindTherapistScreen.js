@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
@@ -11,23 +11,24 @@ import { useProviderSearch } from '../hooks/useProviderSearch';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { SPACING, RADIUS, cardBorder } from '../theme';
+import { AppText, EmptyState } from '../components/ui';
 import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
 
-const FILTER_TYPES = [
-    { key: 'issues', label: 'Issues', labelAr: 'المشاكل', icon: 'brain', color: '#8B5CF6' },
-    { key: 'approaches', label: 'Approaches', labelAr: 'الأساليب', icon: 'therapy', color: '#EC4899' },
-    { key: 'sessionType', label: 'Session Type', labelAr: 'نوع الجلسة', icon: 'session', color: '#3B82F6' },
-    { key: 'language', label: 'Language', labelAr: 'اللغة', icon: 'language', color: '#10B981' },
-    { key: 'gender', label: 'Gender', labelAr: 'الجنس', icon: 'gender', color: '#F59E0B' },
-    { key: 'advanced', label: 'More', labelAr: 'المزيد', icon: 'sliders', color: '#6366F1' },
+const FILTER_META = [
+    { key: 'issues', icon: 'brain', color: '#8B5CF6', labelKey: 'issues' },
+    { key: 'approaches', icon: 'therapy', color: '#EC4899', labelKey: 'approaches' },
+    { key: 'sessionType', icon: 'session', color: '#3B82F6', labelKey: 'sessionType' },
+    { key: 'language', icon: 'language', color: '#10B981', labelKey: 'language' },
+    { key: 'gender', icon: 'gender', color: '#F59E0B', labelKey: 'gender' },
+    { key: 'advanced', icon: 'sliders', color: '#6366F1', labelKey: 'advanced' },
 ];
 
-const SORT_OPTIONS = [
-    { value: '', label: 'Relevance', labelAr: 'الأكثر صلة' },
-    { value: 'price_asc', label: 'Price: Low to High', labelAr: 'السعر: من الأقل للأعلى' },
-    { value: 'price_desc', label: 'Price: High to Low', labelAr: 'السعر: من الأعلى للأقل' },
-    { value: 'rating', label: 'Highest Rated', labelAr: 'الأعلى تقييماً' },
-    { value: 'experience', label: 'Most Experienced', labelAr: 'الأكثر خبرة' },
+const SORT_META = [
+    { value: '', labelKey: 'sortRelevance' },
+    { value: 'price_asc', labelKey: 'sortPriceLow' },
+    { value: 'price_desc', labelKey: 'sortPriceHigh' },
+    { value: 'rating', labelKey: 'sortRating' },
+    { value: 'experience', labelKey: 'sortExperience' },
 ];
 
 const FindTherapistScreen = () => {
@@ -45,6 +46,9 @@ const FindTherapistScreen = () => {
         filters,
         loading,
         filtersLoading,
+        isError,
+        error,
+        refetch,
         pagination,
         updateFilters,
         clearFilters,
@@ -61,6 +65,16 @@ const FindTherapistScreen = () => {
 
     const [activeFilterSheet, setActiveFilterSheet] = useState(null);
     const [showSortMenu, setShowSortMenu] = useState(false);
+
+    const filterTypes = useMemo(() => FILTER_META.map((item) => ({
+        ...item,
+        label: t?.findTherapist?.filters?.[item.labelKey] || item.labelKey,
+    })), [t]);
+
+    const sortOptions = useMemo(() => SORT_META.map((item) => ({
+        ...item,
+        label: t?.findTherapist?.[item.labelKey] || item.labelKey,
+    })), [t]);
 
     const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
     const alignText = { textAlign: isRTL ? 'right' : 'left' };
@@ -197,7 +211,7 @@ const FindTherapistScreen = () => {
                 ]}
                 style={{ maxHeight: 52 }}
             >
-                {FILTER_TYPES.map(ft => {
+                {filterTypes.map(ft => {
                     const count = getFilterCount(ft.key);
                     const isActive = count > 0;
                     return (
@@ -216,7 +230,7 @@ const FindTherapistScreen = () => {
                                 style={[styles.filterPillIcon, { tintColor: ft.color }]}
                             />
                             <Text style={[styles.filterPillText, { color: isActive ? ft.color : COLORS.textPrimary }]}>
-                                {isRTL ? ft.labelAr : ft.label}
+                                {ft.label}
                             </Text>
                             {isActive && (
                                 <View style={[styles.filterBadge, { backgroundColor: ft.color }]}>
@@ -273,6 +287,15 @@ const FindTherapistScreen = () => {
                 <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: tabBarInset }}>
                     {[1, 2, 3, 4].map(i => <TherapistCardSkeleton key={i} />)}
                 </ScrollView>
+            ) : isError ? (
+                <View style={{ padding: 20, paddingBottom: tabBarInset }}>
+                    <EmptyState
+                        title={t?.findTherapist?.loadError || 'Could not load therapists'}
+                        subtitle={error?.message}
+                        actionLabel={t?.common?.retry || 'Retry'}
+                        onAction={() => refetch()}
+                    />
+                </View>
             ) : (
                 <FlatList
                     data={providers}

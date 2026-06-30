@@ -54,7 +54,7 @@ export function useProviderSearch(initialFilters = {}) {
 
     // API calls
     const { data: filterOptions, isLoading: filtersLoading } = useGetSearchFilters();
-    const { data: searchResult, isLoading: loading } = useSearchProviders(apiQuery);
+    const { data: searchResult, isLoading: loading, isError, error, refetch } = useSearchProviders(apiQuery);
 
     const providers = searchResult?.providers || searchResult || [];
     const pagination = searchResult?.pagination || { page: filters.page, totalPages: 1, total: providers.length };
@@ -119,6 +119,9 @@ export function useProviderSearch(initialFilters = {}) {
         filters,
         loading,
         filtersLoading,
+        isError,
+        error,
+        refetch,
         pagination,
         updateFilters,
         clearFilters,

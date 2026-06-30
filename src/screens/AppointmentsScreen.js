@@ -156,7 +156,7 @@ const AppointmentsScreen = () => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
-        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
         showToast({
           variant: 'info',
           title: t.appointments?.rejectedTitle || 'Appointment update',
@@ -168,7 +168,7 @@ const AppointmentsScreen = () => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
-        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
         showToast({
           variant: 'info',
           title: t.appointments?.cancelledTitle || 'Appointment cancelled',
@@ -180,7 +180,7 @@ const AppointmentsScreen = () => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
-        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
         showToast({
           variant: 'success',
           title: t.appointments?.statusChangedTitle || 'Appointment updated',
@@ -192,7 +192,7 @@ const AppointmentsScreen = () => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
-        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
         showToast({
           variant: 'success',
           title: t.appointments?.approvedTitle || 'Appointment approved',
@@ -204,7 +204,7 @@ const AppointmentsScreen = () => {
         refetchUpcoming();
         refetchPending();
         queryClient.invalidateQueries({ queryKey: ['upcomingAppointments'] });
-        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGrouped'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAppointmentsGroupedByDoctor'] });
         showToast({
           variant: 'success',
           title: t.appointments?.createdTitle || 'Appointment booked',

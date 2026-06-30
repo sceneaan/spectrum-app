@@ -10,7 +10,7 @@ import socketService from '../utils/socket';
 import InAppToast from '../components/InAppToast';
 import OfflineBanner from '../components/OfflineBanner';
 import BiometricLockModal from '../components/BiometricLockModal';
-import { makeProtected } from './authGuards';
+import { makeProtected, makeProviderProtected, makeAdminProtected } from './authGuards';
 
 // Shared ref for imperative navigation outside React context (toasts, deep links, etc.)
 export const navigationRef = createNavigationContainerRef();
@@ -62,6 +62,7 @@ import ProviderReportDetailScreen from '../screens/provider/ProviderReportDetail
 import ProviderEncounterDetailScreen from '../screens/provider/ProviderEncounterDetailScreen';
 import ProviderProfileScreen from '../screens/provider/ProviderProfileScreen';
 import ProviderPatientsScreen from '../screens/provider/ProviderPatientsScreen';
+import ProviderPatientDetailScreen from '../screens/provider/ProviderPatientDetailScreen';
 import ProviderDiscountsScreen from '../screens/provider/ProviderDiscountsScreen';
 import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
 import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
@@ -69,6 +70,7 @@ import AdminDiscountsScreen from '../screens/admin/AdminDiscountsScreen';
 import AdminAppointmentsScreen from '../screens/admin/AdminAppointmentsScreen';
 import AdminClinicBookingsScreen from '../screens/admin/AdminClinicBookingsScreen';
 import AdminRefundsScreen from '../screens/admin/AdminRefundsScreen';
+import AdminFinancialScreen from '../screens/admin/AdminFinancialScreen';
 import AdminWalletLookupScreen from '../screens/admin/AdminWalletLookupScreen';
 import PromoDetailScreen from '../screens/PromoDetailScreen';
 import COLORS from '../constants/colors';
@@ -92,6 +94,11 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'SearchResults',
   'WalletScreen',
   'BillingScreen',
+  'RefillRequestScreen',
+  'MedicalReportsScreen',
+  'MedicalRecordScreen',
+  'PaymentSuccessScreen',
+  'PaymentFailureScreen',
   'ProviderRefills',
   'ProviderRevenue',
   'ProviderPerformance',
@@ -101,6 +108,7 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'ProviderEncounterDetail',
   'ProviderProfile',
   'ProviderPatients',
+  'ProviderPatientDetail',
   'ProviderDiscounts',
   'AdminProfile',
   'AdminNotifications',
@@ -108,6 +116,7 @@ const ALLOWED_NOTIFICATION_SCREENS = new Set([
   'AdminAppointments',
   'AdminClinicBookings',
   'AdminRefunds',
+  'AdminFinancial',
   'AdminWalletLookup',
   'PromoDetail',
 ]);
@@ -123,6 +132,11 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'Profile',
   'WalletScreen',
   'BillingScreen',
+  'RefillRequestScreen',
+  'MedicalReportsScreen',
+  'MedicalRecordScreen',
+  'PaymentSuccessScreen',
+  'PaymentFailureScreen',
   'ProviderRefills',
   'ProviderRevenue',
   'ProviderPerformance',
@@ -132,6 +146,7 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'ProviderEncounterDetail',
   'ProviderProfile',
   'ProviderPatients',
+  'ProviderPatientDetail',
   'ProviderDiscounts',
   'AdminProfile',
   'AdminNotifications',
@@ -139,6 +154,7 @@ const PROTECTED_NOTIFICATION_SCREENS = new Set([
   'AdminAppointments',
   'AdminClinicBookings',
   'AdminRefunds',
+  'AdminFinancial',
   'AdminWalletLookup',
   'PromoDetail',
 ]);
@@ -159,16 +175,16 @@ export const navigateFromNotification = (remoteMessage) => {
 
   const screen = remoteMessage.data?.screen;
   const targetScreen = ALLOWED_NOTIFICATION_SCREENS.has(screen) ? screen : 'Notifications';
+  const params = parseNotificationParams(remoteMessage.data?.params);
 
   if (PROTECTED_NOTIFICATION_SCREENS.has(targetScreen)) {
     const { isAuthenticated } = useAuthStore.getState();
     if (!isAuthenticated) {
-      navigationRef.navigate('LoginScreen');
+      navigationRef.navigate('LoginScreen', { targetScreen, targetParams: params });
       return;
     }
   }
 
-  const params = parseNotificationParams(remoteMessage.data?.params);
   navigationRef.navigate(targetScreen, params);
 };
 
@@ -179,6 +195,12 @@ const ElmVerifiedTabNavigator = ({ navigation }) => {
   useEffect(() => {
     if (user?.elmDisabled) return;
     if (elmVerificationDeferred) return;
+
+    const nationality = user?.nationality;
+    const isNonKsa = typeof nationality === 'string'
+      && nationality.trim() !== ''
+      && nationality !== 'Saudi Arabia';
+    if (isNonKsa) return;
 
     if (isAuthenticated && user?.role === 'patient' && !user?.elmVerified) {
       const state = navigation.getState();
@@ -344,23 +366,25 @@ const AppNavigator = () => {
           <Stack.Screen name="CancelAppointment" component={makeProtected(CancelAppointmentScreen)} />
           <Stack.Screen name="FindTherapist" component={FindTherapistScreen} />
           <Stack.Screen name="TherapistProfile" component={TherapistProfileScreen} />
-          <Stack.Screen name="ProviderRefills" component={makeProtected(ProviderRefillsScreen)} />
-          <Stack.Screen name="ProviderRevenue" component={makeProtected(ProviderRevenueScreen)} />
-          <Stack.Screen name="ProviderPerformance" component={makeProtected(ProviderPerformanceScreen)} />
-          <Stack.Screen name="ProviderReferralDetail" component={makeProtected(ProviderReferralDetailScreen)} />
-          <Stack.Screen name="ProviderNewMessage" component={makeProtected(ProviderNewMessageScreen)} />
-          <Stack.Screen name="ProviderReportDetail" component={makeProtected(ProviderReportDetailScreen)} />
-          <Stack.Screen name="ProviderEncounterDetail" component={makeProtected(ProviderEncounterDetailScreen)} />
-          <Stack.Screen name="ProviderProfile" component={makeProtected(ProviderProfileScreen)} />
-          <Stack.Screen name="ProviderPatients" component={makeProtected(ProviderPatientsScreen)} />
-          <Stack.Screen name="ProviderDiscounts" component={makeProtected(ProviderDiscountsScreen)} />
-          <Stack.Screen name="AdminProfile" component={makeProtected(AdminProfileScreen)} />
-          <Stack.Screen name="AdminNotifications" component={makeProtected(AdminNotificationsScreen)} />
-          <Stack.Screen name="AdminDiscounts" component={makeProtected(AdminDiscountsScreen)} />
-          <Stack.Screen name="AdminAppointments" component={makeProtected(AdminAppointmentsScreen)} />
-          <Stack.Screen name="AdminClinicBookings" component={makeProtected(AdminClinicBookingsScreen)} />
-          <Stack.Screen name="AdminRefunds" component={makeProtected(AdminRefundsScreen)} />
-          <Stack.Screen name="AdminWalletLookup" component={makeProtected(AdminWalletLookupScreen)} />
+          <Stack.Screen name="ProviderRefills" component={makeProviderProtected(ProviderRefillsScreen)} />
+          <Stack.Screen name="ProviderRevenue" component={makeProviderProtected(ProviderRevenueScreen)} />
+          <Stack.Screen name="ProviderPerformance" component={makeProviderProtected(ProviderPerformanceScreen)} />
+          <Stack.Screen name="ProviderReferralDetail" component={makeProviderProtected(ProviderReferralDetailScreen)} />
+          <Stack.Screen name="ProviderNewMessage" component={makeProviderProtected(ProviderNewMessageScreen)} />
+          <Stack.Screen name="ProviderReportDetail" component={makeProviderProtected(ProviderReportDetailScreen)} />
+          <Stack.Screen name="ProviderEncounterDetail" component={makeProviderProtected(ProviderEncounterDetailScreen)} />
+          <Stack.Screen name="ProviderProfile" component={makeProviderProtected(ProviderProfileScreen)} />
+          <Stack.Screen name="ProviderPatients" component={makeProviderProtected(ProviderPatientsScreen)} />
+          <Stack.Screen name="ProviderPatientDetail" component={makeProviderProtected(ProviderPatientDetailScreen)} />
+          <Stack.Screen name="ProviderDiscounts" component={makeProviderProtected(ProviderDiscountsScreen)} />
+          <Stack.Screen name="AdminProfile" component={makeAdminProtected(AdminProfileScreen)} />
+          <Stack.Screen name="AdminNotifications" component={makeAdminProtected(AdminNotificationsScreen)} />
+          <Stack.Screen name="AdminDiscounts" component={makeAdminProtected(AdminDiscountsScreen)} />
+          <Stack.Screen name="AdminAppointments" component={makeAdminProtected(AdminAppointmentsScreen)} />
+          <Stack.Screen name="AdminClinicBookings" component={makeAdminProtected(AdminClinicBookingsScreen)} />
+          <Stack.Screen name="AdminRefunds" component={makeAdminProtected(AdminRefundsScreen)} />
+          <Stack.Screen name="AdminFinancial" component={makeAdminProtected(AdminFinancialScreen)} />
+          <Stack.Screen name="AdminWalletLookup" component={makeAdminProtected(AdminWalletLookupScreen)} />
           <Stack.Screen name="PromoDetail" component={PromoDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
