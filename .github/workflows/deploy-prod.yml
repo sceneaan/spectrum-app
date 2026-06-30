@@ -98,6 +98,21 @@ jobs:
       - name: Set iOS build number
         run: cd ios && agvtool new-version -all $((50000 + ${{ github.run_number }}))
 
+      - name: Generate release notes from git commits
+        run: |
+          PREV=$(git log --merges --format="%H" -n 2 | tail -1)
+          if [ -z "$PREV" ]; then
+            NOTES="Bug fixes and performance improvements."
+          else
+            NOTES=$(git log "$PREV"..HEAD --no-merges --format="- %s" | head -20)
+            if [ -z "$NOTES" ]; then
+              NOTES="Bug fixes and performance improvements."
+            fi
+          fi
+          echo "$NOTES" > fastlane/metadata/en-US/release_notes.txt
+          echo "Release notes:"
+          cat fastlane/metadata/en-US/release_notes.txt
+
       - name: Strip xcframework signatures
         run: |
           for FW in \
