@@ -164,7 +164,7 @@ jobs:
 
       - name: Export IPA
         run: |
-          /usr/libexec/PlistBuddy -c "Add :method string app-store"           /tmp/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c "Add :method string app-store-connect"    /tmp/ExportOptions.plist
           /usr/libexec/PlistBuddy -c "Add :teamID string 28KLUG5WLQ"           /tmp/ExportOptions.plist
           /usr/libexec/PlistBuddy -c "Add :signingStyle string manual"          /tmp/ExportOptions.plist
           /usr/libexec/PlistBuddy -c "Add :signingCertificate string 'Apple Distribution'" /tmp/ExportOptions.plist
