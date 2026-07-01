@@ -6,6 +6,7 @@ import {
   Animated,
   Platform,
 } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShellTabIcon, ShellTabLabel } from './shellTabBar';
 import COLORS from '../constants/colors';
@@ -20,6 +21,19 @@ const LENS_SPRING = {
 const BAR_HEIGHT = 62;
 
 function GlassBarBackground() {
+  if (Platform.OS === 'ios') {
+    return (
+      <>
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          blurType="light"
+          blurAmount={28}
+          reducedTransparencyFallbackColor={COLORS.surface}
+        />
+        <View style={styles.glassFallback} pointerEvents="none" />
+      </>
+    );
+  }
   return <View style={styles.glassFallback} pointerEvents="none" />;
 }
 
@@ -70,16 +84,22 @@ function GlassShellTabBar({ state, descriptors, navigation }) {
     setLayouts((prev) => ({ ...prev, [routeKey]: { x, width } }));
   }, []);
 
+  const barTotalHeight = getGlassTabBarHeight(insets);
+
   return (
     <View style={styles.shell}>
+      <View
+        style={[styles.shellBackdrop, { height: barTotalHeight }]}
+        pointerEvents="none"
+      />
       <View style={[styles.outer, { marginBottom: Math.max(insets.bottom, SPACING.sm) }]}>
         <View style={styles.glassBar}>
-        <GlassBarBackground />
-        <View style={styles.glassVeil} pointerEvents="none" />
-        <View style={styles.glassTint} pointerEvents="none" />
-        <View style={styles.glassHighlight} pointerEvents="none" />
+          <GlassBarBackground />
+          <View style={styles.glassVeil} pointerEvents="none" />
+          <View style={styles.glassTint} pointerEvents="none" />
+          <View style={styles.glassHighlight} pointerEvents="none" />
 
-        <View style={styles.tabsRow}>
+          <View style={styles.tabsRow}>
           <Animated.View
             pointerEvents="none"
             style={[
@@ -159,8 +179,8 @@ function GlassShellTabBar({ state, descriptors, navigation }) {
               </Pressable>
             );
           })}
+          </View>
         </View>
-      </View>
       </View>
     </View>
   );
@@ -204,6 +224,15 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 100,
   },
+  shellBackdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.borderLight,
+  },
   outer: {
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.xs,
@@ -213,23 +242,23 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth + 0.5,
-    borderColor: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: COLORS.surface,
     ...SHADOWS.lg,
   },
   glassFallback: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Platform.select({
-      ios: 'rgba(255,255,255,0.78)',
-      android: 'rgba(255,255,255,0.92)',
-      default: 'rgba(255,255,255,0.88)',
+      ios: 'rgba(255,255,255,0.72)',
+      android: 'rgba(255,255,255,0.97)',
+      default: 'rgba(255,255,255,0.94)',
     }),
   },
   glassVeil: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Platform.select({
-      ios: 'rgba(255,255,255,0.18)',
-      android: 'rgba(255,255,255,0.22)',
+      ios: 'rgba(255,255,255,0.35)',
+      android: 'rgba(255,255,255,0.08)',
       default: 'rgba(255,255,255,0.2)',
     }),
   },

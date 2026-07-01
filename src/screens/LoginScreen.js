@@ -77,14 +77,26 @@ const LoginScreen = () => {
     if (!message) return '';
     const keyMap = {
       'auth.failedToSendOtp': t('auth.otp.sendFailed') || 'Failed to send OTP. Please try again or use email login.',
-      'auth.loginFromWeb': t('auth.otp.providersUseWeb') || 'Please sign in from the Spectrum website.',
+      'auth.loginFromWeb': t('auth.otp.responsePleaseLoginFromWeb') || 'Please sign in from the Spectrum website.',
       'auth.isNotVerified': t('auth.otp.notVerified') || 'Account not verified yet.',
       'auth.profileBlocked': t('auth.otp.profileBlocked') || 'This account is blocked.',
       'auth.accountInactive': t('auth.otp.accountInactive') || 'This account is inactive.',
+      'auth.profileUnderReview': t('auth.otp.profileUnderReview') || 'Your profile is under review.',
       'validation.invalidEmailOrPhone': t('auth.login.invalidPhone') || 'Invalid phone number.',
       'validation.userDoesNotExist': t('auth.otp.userNotFound') || 'No account found for this number.',
     };
     return keyMap[message] || message;
+  };
+
+  const isLoginFromWebResponse = (response) => {
+    const nested = response?.data?.message || '';
+    const topLevel = response?.message || '';
+    const combined = `${nested} ${topLevel}`.toLowerCase();
+    return (
+      nested === 'auth.loginFromWeb' ||
+      combined.includes('login from web') ||
+      combined.includes('تسجيل الدخول من الموقع')
+    );
   };
 
   const goToOtp = (identifier) => {
@@ -102,7 +114,11 @@ const LoginScreen = () => {
     };
 
     sendOtp(payload, {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        if (isLoginFromWebResponse(response)) {
+          setError(resolveApiMessage('auth.loginFromWeb'));
+          return;
+        }
         goToOtp(identifier);
       },
       onError: (err) => {
@@ -111,7 +127,11 @@ const LoginScreen = () => {
 
         if (rawMessage === 'auth.isNotVerified' || rawMessage === 'isNotVerified' || rawMessage.includes('not verified')) {
           resendOtp({ emailOrPhone: identifier, preferredLanguage: lang || 'en' }, {
-            onSuccess: () => {
+            onSuccess: (response) => {
+              if (isLoginFromWebResponse(response)) {
+                setError(resolveApiMessage('auth.loginFromWeb'));
+                return;
+              }
               goToOtp(identifier);
             },
             onError: (resendErr) => {

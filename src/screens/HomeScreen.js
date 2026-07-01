@@ -82,6 +82,8 @@ const HomeScreen = () => {
    const { requestJoinSession } = usePreSessionJoin();
    const isLoggedIn = isAuthenticated && user;
    const isPatient = user?.role?.toLowerCase() === 'patient';
+   const isProvider = user?.role?.toLowerCase() === 'provider';
+   const showJoinUs = !(isLoggedIn && (isPatient || isProvider));
 
    // Fetch upcoming appointments (only for logged in users)
    const { data: upcomingAppointments } = useGetUpcomingAppointments();
@@ -880,7 +882,8 @@ const HomeScreen = () => {
                </View>
             </View>
 
-            {/* Zone 5: Join Us */}
+            {/* Zone 5: Join Us — provider recruitment; hidden for logged-in patients & providers */}
+            {showJoinUs ? (
             <TouchableOpacity style={[styles.joinContainer, rowStyle]} onPress={openJoinUs}>
                <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                   <Text style={styles.joinTitle}>{t.home?.joinUs || 'Join Us'}</Text>
@@ -888,6 +891,7 @@ const HomeScreen = () => {
                </View>
                <Image source={ICONS.general} style={{ width: 30, height: 30, tintColor: COLORS.darkSlateBlue }} />
             </TouchableOpacity>
+            ) : null}
          </ScrollView>
       </View>
    );

@@ -65,12 +65,12 @@ export function usePatientConsent() {
   });
 }
 
-// Function to send OTP
+// Function to send OTP (standard endpoint — allows patient, provider, and admin)
 export function useSendOtp() {
   return useMutation({
     mutationFn: async (payload) => {
       try {
-        const result = await postRequest(`${MODEL_NAME}/app/send/otp`, payload);
+        const result = await postRequest(`${MODEL_NAME}/send/otp`, payload);
         if (result.status === HttpStatusCode.Ok) {
           return result.data;
         }
@@ -82,12 +82,12 @@ export function useSendOtp() {
   });
 }
 
-// Function to resend OTP
+// Function to resend OTP (standard endpoint — allows patient, provider, and admin)
 export function useResendOtp() {
   return useMutation({
     mutationFn: async (payload) => {
       try {
-        const result = await postRequest(`${MODEL_NAME}/app/resend/otp`, payload);
+        const result = await postRequest(`${MODEL_NAME}/resend/otp`, payload);
         if (result.status === HttpStatusCode.Ok) {
           return result.data;
         }
@@ -117,7 +117,7 @@ export function useSignupProvider() {
 // Direct function versions (used in some components)
 export async function SendOtp(payload) {
   try {
-    const result = await postRequest(`${MODEL_NAME}/app/send/otp`, payload);
+    const result = await postRequest(`${MODEL_NAME}/send/otp`, payload);
     if (result.status === HttpStatusCode.Ok) {
       return result.data.data;
     } else {
@@ -143,7 +143,7 @@ export async function VerifyOtp(payload) {
 
 export async function ResendOtp(payload) {
   try {
-    const result = await postRequest(`${MODEL_NAME}/app/resend/otp`, payload);
+    const result = await postRequest(`${MODEL_NAME}/resend/otp`, payload);
     if (result.status === HttpStatusCode.Ok) {
       return result.data.data;
     } else {

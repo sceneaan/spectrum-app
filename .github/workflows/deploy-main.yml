@@ -176,16 +176,16 @@ jobs:
             -exportPath /tmp/SpectrumIPA \
             -exportOptionsPlist /tmp/ExportOptions.plist
 
-      - name: Upload to TestFlight
+      - name: Decode ASC API key
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
           echo "${{ secrets.ASC_API_KEY_BASE64 }}" | base64 --decode \
             > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
 
-          xcrun altool \
-            --upload-app \
-            --type ios \
-            --file /tmp/SpectrumIPA/Spectrum.ipa \
-            --apiKey "${{ secrets.ASC_KEY_ID }}" \
-            --apiIssuer "${{ secrets.ASC_ISSUER_ID }}" \
-            --verbose
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          gem install fastlane --no-document
+          fastlane beta
