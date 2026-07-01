@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppTranslation } from '../hooks/useAppTranslation';
-import { AppButton, AppCard, AppText, TrustBadge } from '../components/ui';
+import { AppButton, AppCard, AppText, TrustBadge, SegmentedTabs } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { useSendOtp, useResendOtp } from '../api/services/Auth.Service';
@@ -207,31 +207,16 @@ const LoginScreen = () => {
           </View>
 
           <AppCard style={styles.card}>
-            <View style={styles.tabBar}>
-              {LOGIN_TABS.map((tab) => {
-                const isActive = activeTab === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[styles.tab, isActive && styles.tabActive]}
-                    onPress={() => switchTab(tab.key)}
-                    activeOpacity={0.85}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={t(tab.labelKey)}
-                  >
-                    <AppText
-                      variant="bodySmall"
-                      align="center"
-                      color={isActive ? COLORS.primary : COLORS.gray500}
-                      style={isActive ? styles.tabLabelActive : styles.tabLabel}
-                    >
-                      {t(tab.labelKey)}
-                    </AppText>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <SegmentedTabs
+              isRTL={isRTL}
+              activeKey={activeTab}
+              onChange={switchTab}
+              options={LOGIN_TABS.map((tab) => ({
+                key: tab.key,
+                label: t(tab.labelKey),
+              }))}
+              style={styles.loginTabs}
+            />
 
             <View style={styles.inputSection}>
               {activeTab === 'email' ? (
@@ -337,30 +322,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   card: { width: '100%' },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surfaceMuted,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.xs,
-    marginBottom: SPACING.lg,
-    gap: SPACING.xs,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: SPACING.sm + 2,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: COLORS.white,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
-  },
-  tabLabel: { fontWeight: '600' },
-  tabLabelActive: { fontWeight: '700' },
+  loginTabs: { marginBottom: SPACING.lg },
   inputSection: {
     minHeight: 96,
   },

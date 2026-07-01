@@ -18,7 +18,8 @@ const SegmentedTabs = ({ options, activeKey, onChange, isRTL, style }) => (
           <AppText
             variant="bodySmall"
             align="center"
-            color={isActive ? COLORS.white : COLORS.textSecondary}
+            numberOfLines={2}
+            color={isActive ? COLORS.white : COLORS.textPrimary}
             style={isActive ? styles.activeLabel : styles.inactiveLabel}
           >
             {option.label}
@@ -31,12 +32,12 @@ const SegmentedTabs = ({ options, activeKey, onChange, isRTL, style }) => (
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.surfaceMuted,
+    backgroundColor: COLORS.gray200,
     borderRadius: RADIUS.lg,
-    padding: SPACING.xs,
+    padding: SPACING.sm,
     marginBottom: SPACING.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderLight,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   tab: {
     flex: 1,
@@ -45,13 +46,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   tabInactive: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'transparent',
   },
   tabActive: {
     backgroundColor: COLORS.primary,
     ...SHADOWS.sm,
   },
-  inactiveLabel: { fontWeight: '600' },
+  inactiveLabel: { fontWeight: '600', color: COLORS.textPrimary },
   activeLabel: { fontWeight: '700' },
 });
 

@@ -21,6 +21,7 @@ import ICONS from '../../constants/icons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Feather';
 import PhoneInputComponent, { validatePhone as validatePhoneUtil, COUNTRY_CODES as COUNTRY_CODES_LIST } from '../common/PhoneInput';
+import { SegmentedTabs } from '../ui';
 
 // --- EXTRACTED COMPONENTS ---
 
@@ -635,15 +636,16 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
           </View>
         </View>
 
-        {/* Tabs */}
-        <View style={[styles.tabContainer, rowStyle]}>
-          <TouchableOpacity style={[styles.tabBtn, activeTab === 'patient' && styles.activeTabBtn]} onPress={() => setActiveTab('patient')}>
-            <Text style={[styles.tabText, activeTab === 'patient' && styles.activeTabText]}>{t.profile?.patientTab || 'Patient Information'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tabBtn, activeTab === 'medical' && styles.activeTabBtn]} onPress={() => setActiveTab('medical')}>
-            <Text style={[styles.tabText, activeTab === 'medical' && styles.activeTabText]}>{t.profile?.medicalTab || 'Medical Information'}</Text>
-          </TouchableOpacity>
-        </View>
+        <SegmentedTabs
+          isRTL={isRTL}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { key: 'patient', label: t.profile?.patientTab || 'Patient Information' },
+            { key: 'medical', label: t.profile?.medicalTab || 'Medical Information' },
+          ]}
+          style={{ marginBottom: 20 }}
+        />
 
         {activeTab === 'patient' ? (
           <View>
@@ -1048,11 +1050,6 @@ const styles = StyleSheet.create({
   userName: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
   userId: { fontSize: 12, color: COLORS.gray600, marginTop: 4 },
 
-  tabContainer: { flexDirection: 'row', marginBottom: 20 },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: COLORS.gray100, borderRadius: 8, marginHorizontal: 2 },
-  activeTabBtn: { backgroundColor: COLORS.primary },
-  tabText: { color: COLORS.gray700, fontWeight: '600' },
-  activeTabText: { color: COLORS.white },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: COLORS.textPrimary },
   sectionHint: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 10, marginTop: -8 },
   divider: { height: 1, backgroundColor: COLORS.gray200, marginVertical: 20 },
