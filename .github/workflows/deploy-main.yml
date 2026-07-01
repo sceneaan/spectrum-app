@@ -48,10 +48,11 @@ jobs:
           status: completed
 
   # ─────────────────────────────────────────────────────────────
-  # iOS → TestFlight
+  # iOS → TestFlight (disabled temporarily)
   # ─────────────────────────────────────────────────────────────
   ios-test:
     name: iOS → TestFlight
+    if: false
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
