@@ -6,46 +6,46 @@ on:
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # Android → Google Play Internal Testing (disabled until Play Store service account is fixed)
+  # Android → Google Play Internal Testing
   # ─────────────────────────────────────────────────────────────
-  # android-test:
-  #   name: Android → Internal Testing
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #     - uses: actions/setup-java@v4
-  #       with:
-  #         java-version: '17'
-  #         distribution: 'temurin'
-  #     - name: Install JS dependencies
-  #       run: npm ci
-  #     - name: Decode release keystore
-  #       run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/spectrum-release.keystore
-  #     - name: Make gradlew executable
-  #       run: chmod +x android/gradlew
-  #     - name: Build release AAB
-  #       run: |
-  #         VERSION_CODE=$((10000 + ${{ github.run_number }}))
-  #         cd android
-  #         ./gradlew bundleRelease \
-  #           -PRELEASE_STORE_FILE=spectrum-release.keystore \
-  #           -PRELEASE_STORE_PASSWORD="${{ secrets.RELEASE_STORE_PASSWORD }}" \
-  #           -PRELEASE_KEY_ALIAS="${{ secrets.RELEASE_KEY_ALIAS }}" \
-  #           -PRELEASE_KEY_PASSWORD="${{ secrets.RELEASE_KEY_PASSWORD }}" \
-  #           -PBUILD_VERSION_CODE="$VERSION_CODE" \
-  #           -PBUILD_VERSION_NAME="1.2-test.${{ github.run_number }}"
-  #     - name: Upload to Play Store Internal Testing
-  #       uses: r0adkll/upload-google-play@v1.1.3
-  #       with:
-  #         serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-  #         packageName: app.spectrumclinics.care
-  #         releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-  #         track: internal
-  #         status: completed
+  android-test:
+    name: Android → Internal Testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Install JS dependencies
+        run: npm ci
+      - name: Decode release keystore
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/spectrum-release.keystore
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+      - name: Build release AAB
+        run: |
+          VERSION_CODE=$((10000 + ${{ github.run_number }}))
+          cd android
+          ./gradlew bundleRelease \
+            -PRELEASE_STORE_FILE=spectrum-release.keystore \
+            -PRELEASE_STORE_PASSWORD="${{ secrets.RELEASE_STORE_PASSWORD }}" \
+            -PRELEASE_KEY_ALIAS="${{ secrets.RELEASE_KEY_ALIAS }}" \
+            -PRELEASE_KEY_PASSWORD="${{ secrets.RELEASE_KEY_PASSWORD }}" \
+            -PBUILD_VERSION_CODE="$VERSION_CODE" \
+            -PBUILD_VERSION_NAME="1.5-test.${{ github.run_number }}"
+      - name: Upload to Play Store Internal Testing
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: app.spectrumclinics.care
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
 
   # ─────────────────────────────────────────────────────────────
   # iOS → TestFlight
