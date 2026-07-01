@@ -398,49 +398,42 @@ const HomeScreen = () => {
                <TouchableOpacity
                   activeOpacity={0.88}
                   onPress={() => navigation.navigate('WalletScreen')}
+                  style={styles.walletCardTouch}
                >
-                  <AppCard style={styles.dashboardCard} padding={SPACING.lg}>
-                     <AppText variant="caption" color={COLORS.textSecondary}>
-                        {t.home?.walletCardTitle || 'Wallet balance'}
-                     </AppText>
-                     <RiyalText
-                        text={formatSarAmount(walletData?.availableBalance ?? walletData?.balance ?? 0)}
-                        textStyle={styles.walletAmount}
-                     />
-                     <AppText variant="caption" color={COLORS.primaryDark} style={styles.linkText}>
-                        {t.home?.viewWallet || 'View wallet'}
-                     </AppText>
-                  </AppCard>
+                  <View style={styles.walletCard}>
+                     <View style={[styles.walletDecorCircle, isRTL && styles.walletDecorCircleRtl]} />
+                     <View style={[styles.walletCardInner, rowStyle]}>
+                        <View style={styles.walletCardCopy}>
+                           <AppText variant="caption" style={styles.walletCardLabel}>
+                              {t.home?.walletCardTitle || 'Wallet balance'}
+                           </AppText>
+                           <RiyalText
+                              text={formatSarAmount(walletData?.availableBalance ?? walletData?.balance ?? 0)}
+                              textStyle={styles.walletCardAmount}
+                              size={22}
+                              logoColor
+                           />
+                           <View style={[styles.walletCardLinkRow, rowStyle]}>
+                              <AppText variant="caption" style={styles.walletCardLink}>
+                                 {t.home?.viewWallet || 'View wallet'}
+                              </AppText>
+                              <Image
+                                 source={ICONS.chevronRight}
+                                 style={[styles.walletChevron, isRTL && styles.walletChevronRtl]}
+                              />
+                           </View>
+                        </View>
+                        <View style={styles.walletIconBubble}>
+                           <Image source={ICONS.wallet} style={styles.walletIcon} />
+                        </View>
+                     </View>
+                  </View>
                </TouchableOpacity>
             ) : null}
 
-            {/* Quick actions for logged-in patients */}
+            {/* Shortcuts not in the tab bar — therapists, appointments, and messages use bottom tabs */}
             {isLoggedIn && isPatient && (
                <View style={styles.quickActionsGrid}>
-                  <View style={styles.quickActionCell}>
-                     <QuickAction
-                        vectorIcon="search"
-                        label={t.home?.quickBook || 'Find Therapist'}
-                        onPress={() => navigation.navigate('Main', { screen: 'SearchTab' })}
-                        labelLines={1}
-                     />
-                  </View>
-                  <View style={styles.quickActionCell}>
-                     <QuickAction
-                        vectorIcon="calendar"
-                        label={t.home?.quickAppointments || 'Appointments'}
-                        onPress={() => navigation.navigate('Main', { screen: 'AppointmentsTab' })}
-                        labelLines={1}
-                     />
-                  </View>
-                  <View style={styles.quickActionCell}>
-                     <QuickAction
-                        vectorIcon="inbox"
-                        label={t.home?.quickInbox || 'Messages'}
-                        onPress={() => navigation.navigate('Main', { screen: 'InboxTab' })}
-                        labelLines={1}
-                     />
-                  </View>
                   <View style={styles.quickActionCell}>
                      <QuickAction
                         vectorIcon="video"
@@ -932,11 +925,85 @@ const styles = StyleSheet.create({
       backgroundColor: COLORS.primary,
       borderRadius: RADIUS.pill,
    },
-   walletAmount: {
-      fontSize: 24,
+   walletCardTouch: {
+      marginHorizontal: SPACING.xl,
+      marginBottom: SPACING.md,
+   },
+   walletCard: {
+      backgroundColor: COLORS.primary,
+      borderRadius: RADIUS.xl,
+      padding: SPACING.lg,
+      overflow: 'hidden',
+      position: 'relative',
+      shadowColor: COLORS.primaryDark,
+      shadowOpacity: 0.28,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 5,
+   },
+   walletDecorCircle: {
+      position: 'absolute',
+      right: -24,
+      bottom: -24,
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+   },
+   walletDecorCircleRtl: {
+      right: undefined,
+      left: -24,
+   },
+   walletCardInner: {
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: SPACING.md,
+   },
+   walletCardCopy: {
+      flex: 1,
+      minWidth: 0,
+   },
+   walletCardLabel: {
+      color: 'rgba(255,255,255,0.92)',
+      marginBottom: SPACING.xs,
+   },
+   walletCardAmount: {
+      color: COLORS.white,
+      fontSize: 28,
       fontWeight: '700',
-      color: COLORS.textPrimary,
       marginTop: SPACING.xs,
+   },
+   walletCardLinkRow: {
+      alignItems: 'center',
+      marginTop: SPACING.md,
+      gap: SPACING.xs,
+   },
+   walletCardLink: {
+      color: 'rgba(255,255,255,0.95)',
+      fontWeight: '600',
+   },
+   walletChevron: {
+      width: 14,
+      height: 14,
+      tintColor: 'rgba(255,255,255,0.95)',
+   },
+   walletChevronRtl: {
+      transform: [{ scaleX: -1 }],
+   },
+   walletIconBubble: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+   },
+   walletIcon: {
+      width: 26,
+      height: 26,
+      tintColor: COLORS.white,
    },
    linkText: { marginTop: SPACING.sm, fontWeight: '600' },
    profileHint: { marginTop: SPACING.xs },

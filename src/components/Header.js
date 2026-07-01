@@ -14,7 +14,7 @@ import { isProviderRole, isAdminRole, isPatientRole } from '../utils/videoAccess
 import { SPACING, RADIUS, SHADOWS } from '../theme';
 
 const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
-const SPECTRUM_LOGO = require('../assets/images/spectrum_logo.png');
+const SPECTRUM_ICON = require('../assets/images/spectrum_icon.png');
 
 const Header = ({ showBack, onBack, title, showProfile }) => {
   const navigation = useNavigation();
@@ -146,7 +146,7 @@ const Header = ({ showBack, onBack, title, showProfile }) => {
     <View style={[rowStyle, { alignItems: 'center', flex: 1 }]} accessibilityRole="header">
       <View style={styles.avatarRing}>
         <View style={styles.logoWrap}>
-          <Image source={SPECTRUM_LOGO} style={styles.headerLogo} resizeMode="contain" />
+          <Image source={SPECTRUM_ICON} style={styles.headerLogo} resizeMode="contain" />
         </View>
       </View>
       <View style={{ marginHorizontal: SPACING.md, flex: 1 }}>

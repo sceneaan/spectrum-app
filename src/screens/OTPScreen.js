@@ -331,7 +331,8 @@ const OTPScreen = () => {
             {t('auth.otp.enterCode') || 'Enter Verification Code'}
           </AppText>
           <AppText variant="bodySmall" align={alignText} style={styles.subtitle}>
-            {t('auth.otp.codeSentTo') || "We've sent a code to "}
+            {t('auth.otp.codeSentTo') || "We've sent a code to"}
+            {' '}
             <AppText variant="bodySmall" color={COLORS.primary} style={{ writingDirection: 'ltr' }}>
               {emailOrPhone}
             </AppText>

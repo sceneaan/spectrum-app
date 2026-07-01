@@ -11,14 +11,14 @@ const SegmentedTabs = ({ options, activeKey, onChange, isRTL, style }) => (
       return (
         <TouchableOpacity
           key={option.key}
-          style={[styles.tab, isActive && styles.tabActive]}
+          style={[styles.tab, isActive ? styles.tabActive : styles.tabInactive]}
           onPress={() => onChange(option.key)}
           activeOpacity={0.8}
         >
           <AppText
             variant="bodySmall"
             align="center"
-            color={isActive ? COLORS.white : COLORS.textPrimary}
+            color={isActive ? COLORS.white : COLORS.textSecondary}
             style={isActive ? styles.activeLabel : styles.inactiveLabel}
           >
             {option.label}
@@ -35,6 +35,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     padding: SPACING.xs,
     marginBottom: SPACING.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderLight,
   },
   tab: {
     flex: 1,
@@ -42,11 +44,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: RADIUS.md,
   },
+  tabInactive: {
+    backgroundColor: COLORS.surface,
+  },
   tabActive: {
     backgroundColor: COLORS.primary,
     ...SHADOWS.sm,
   },
-  inactiveLabel: { fontWeight: '600', color: COLORS.textPrimary },
+  inactiveLabel: { fontWeight: '600' },
   activeLabel: { fontWeight: '700' },
 });
 
