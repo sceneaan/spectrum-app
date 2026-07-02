@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import EncryptedStorage from 'react-native-encrypted-storage';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { createResilientEncryptedStorage } from './resilientStorage';
 
 const decodeJwtExpMs = (token) => {
   try {
@@ -99,7 +99,11 @@ export const useAuthStore = create(
           biometricsEnabled: false,
           pendingBiometricOffer: false,
         });
-        await EncryptedStorage.removeItem('auth-storage');
+        try {
+          await createResilientEncryptedStorage().removeItem('auth-storage');
+        } catch {
+          // ignore
+        }
       },
 
       biometricsEnabled: false,
@@ -109,7 +113,8 @@ export const useAuthStore = create(
       setPendingBiometricOffer: (value) => set({ pendingBiometricOffer: value }),
 
       initializeAuth: async () => {
-        const sessionJson = await EncryptedStorage.getItem('auth-storage');
+        const storage = createResilientEncryptedStorage();
+        const sessionJson = await storage.getItem('auth-storage');
         if (sessionJson) {
           const { state } = JSON.parse(sessionJson);
           if (state.user && state.token) {
@@ -126,7 +131,8 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => EncryptedStorage),
+      storage: createJSONStorage(() => createResilientEncryptedStorage()),
+      skipHydration: true,
       partialize: (state) => ({
         user: state.user,
         token: state.token,

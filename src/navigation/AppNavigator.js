@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Linking, DeviceEventEmitter, ActivityIndicator } from 'react-native';
-import BootSplash from 'react-native-bootsplash';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -195,15 +194,6 @@ const AppNavigator = () => {
   const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   useEffect(() => {
-    const hydrationFallback = setTimeout(() => {
-      if (!useAuthStore.getState()._hasHydrated) {
-        useAuthStore.getState().setHasHydrated(true);
-      }
-    }, 2000);
-    return () => clearTimeout(hydrationFallback);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
 
     AsyncStorage.getItem('@spectrum_onboarding_done')
@@ -225,24 +215,6 @@ const AppNavigator = () => {
       flushPendingNotifications();
     }
   }, [navigationReady, hasHydrated]);
-
-  useEffect(() => {
-    if (!hasHydrated) return undefined;
-
-    const hideTimer = setTimeout(() => {
-      BootSplash.hide({ fade: true });
-    }, navigationReady ? 0 : 150);
-
-    return () => clearTimeout(hideTimer);
-  }, [hasHydrated, navigationReady]);
-
-  // Never leave the native splash visible if JS recovers slowly or navigation stalls.
-  useEffect(() => {
-    const safetyTimer = setTimeout(() => {
-      BootSplash.hide({ fade: true });
-    }, 8000);
-    return () => clearTimeout(safetyTimer);
-  }, []);
 
   // Deep links from push notifications
   useEffect(() => {

@@ -20,14 +20,18 @@ import { fullLogout } from './src/utils/fullLogout';
 import './src/config/i18n';
 import socketService from './src/utils/socket';
 
-Sentry.init({
-  dsn: 'https://c68e58ce3455b390446a130ab4414277@o4510318499069952.ingest.us.sentry.io/4510466371682304',
-  sendDefaultPii: false,
-  enableLogs: true,
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: __DEV__ ? 0 : 0.15,
-  integrations: [Sentry.feedbackIntegration()],
-});
+try {
+  Sentry.init({
+    dsn: 'https://c68e58ce3455b390446a130ab4414277@o4510318499069952.ingest.us.sentry.io/4510466371682304',
+    sendDefaultPii: false,
+    enableLogs: true,
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: __DEV__ ? 0 : 0.15,
+    integrations: [Sentry.feedbackIntegration()],
+  });
+} catch (error) {
+  console.warn('Sentry init skipped:', error);
+}
 
 const App = () => {
   const { user, token, isAuthenticated, _hasHydrated } = useAuthStore();
@@ -35,34 +39,39 @@ const App = () => {
   useAuthSessionRefresh();
 
   useEffect(() => {
-    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
-      useAuthStore.getState().setHasHydrated(true);
-    });
+    BootSplash.hide({ fade: true }).catch(() => {});
+  }, []);
 
-    useAuthStore.persist.rehydrate();
+  useEffect(() => {
+    let cancelled = false;
 
     const hydrationFallback = setTimeout(() => {
-      if (!useAuthStore.getState()._hasHydrated) {
+      if (!cancelled && !useAuthStore.getState()._hasHydrated) {
         useAuthStore.getState().setHasHydrated(true);
       }
-    }, 2000);
+    }, 1500);
+
+    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
+      if (!cancelled) {
+        useAuthStore.getState().setHasHydrated(true);
+      }
+    });
+
+    try {
+      useAuthStore.persist.rehydrate();
+    } catch (error) {
+      console.warn('Auth rehydrate failed:', error);
+      useAuthStore.getState().setHasHydrated(true);
+    }
 
     return () => {
-      unsubFinishHydration?.();
+      cancelled = true;
       clearTimeout(hydrationFallback);
+      unsubFinishHydration?.();
     };
   }, []);
 
   useDeviceActivity();
-
-  // Absolute fallback: hide BootSplash even if AppNavigator errors and unmounts
-  // (AppNavigator's own safety timer gets cleared on unmount via its cleanup)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      BootSplash.hide({ fade: true });
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -136,4 +145,12 @@ const App = () => {
   );
 };
 
-export default Sentry.wrap(App);
+const RootApp = (() => {
+  try {
+    return Sentry.wrap(App);
+  } catch {
+    return App;
+  }
+})();
+
+export default RootApp;
