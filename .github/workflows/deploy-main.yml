@@ -10,6 +10,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   android-test:
     name: Android → Internal Testing
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +53,6 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   ios-test:
     name: iOS → TestFlight
-    if: false
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
