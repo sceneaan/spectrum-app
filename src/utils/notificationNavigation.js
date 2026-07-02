@@ -1,17 +1,8 @@
 import { NOTIFICATION_TYPES } from '../api/services/Notification.Service';
+import { parseSafeJson } from './parseSafeJson';
 
 export function parseNotificationParams(raw) {
-  if (!raw) return undefined;
-  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
+  return parseSafeJson(raw);
 }
 
 /**

@@ -4,9 +4,9 @@ import { ErrorMessages } from '@api/messages/generic';
 import { NativeModules, Platform } from 'react-native';
 import { DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
-import { queryClient } from './queryClient';
-import i18n from '../config/i18n';
 import { refreshAccessToken } from '../utils/tokenRefresh';
+import { fullLogout } from '../utils/fullLogout';
+import i18n from '../config/i18n';
 
 // ==========================================
 // CONFIGURATION
@@ -156,13 +156,19 @@ axios.interceptors.response.use(
 );
 
 // Clear both Zustand state and React Query cache, then emit event for UI
+let sessionExpiryInProgress = false;
+
 const handleSessionExpired = async () => {
+  if (sessionExpiryInProgress) return;
+  sessionExpiryInProgress = true;
+
   try {
-    await useAuthStore.getState().logout();
-    queryClient.clear();
+    await fullLogout({ callServer: false });
     DeviceEventEmitter.emit('auth:sessionExpired');
   } catch (err) {
     console.error('Error during session expiry cleanup:', err);
+  } finally {
+    sessionExpiryInProgress = false;
   }
 };
 

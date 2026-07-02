@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TextInput, TouchableOpacity,
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../store/LanguageContext';
+import { AppText } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { SPACING, RADIUS } from '../theme';
@@ -24,6 +25,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import DocumentViewer from '../components/DocumentViewer';
 import { getMessagingEligibility } from '../utils/messagingEligibility';
 import { isMessageFromUser, resolveUserId } from '../utils/threads';
+import { useResolvedChatThread } from '../hooks/useResolvedChatThread';
 
 const ChatDetailsScreen = () => {
    const navigation = useNavigation();
@@ -32,14 +34,15 @@ const ChatDetailsScreen = () => {
    const { t, isRTL } = useLanguage();
 
    const { user } = useAuthStore();
-   const { thread } = route.params || {};
-   const threadId = thread?._id || thread?.id;
+   const { thread, threadId, hasValidThread, threadsLoading } = useResolvedChatThread(route.params);
    const { data: loggedInUser } = useGetCurrentUser();
    const currentUser = loggedInUser || user;
    const isProviderViewer = isProviderRole(user) || isProviderRole(loggedInUser);
    const counterparty = isProviderViewer ? thread?.patient : thread?.provider;
-   const hasValidThread = Boolean(counterparty);
-   const providerId = thread?.provider?._id || thread?.provider?.id;
+   const providerId = thread?.provider?._id || thread?.provider?.id || route.params?.providerId;
+   const counterpartyDisplayName = isRTL
+      ? (counterparty?.fullNameArabic || counterparty?.fullName || route.params?.providerName)
+      : (counterparty?.fullNameEnglish || counterparty?.fullName || route.params?.providerName);
 
    const [messages, setMessages] = useState([]);
    const [inputText, setInputText] = useState('');
@@ -62,23 +65,23 @@ const ChatDetailsScreen = () => {
    const [attachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
 
    useEffect(() => {
-      if (hasValidThread || invalidThreadHandled.current) return;
+      if (threadsLoading || hasValidThread || invalidThreadHandled.current) return;
       invalidThreadHandled.current = true;
       Alert.alert(
          t.common?.error || 'Error',
          t.messaging?.chatUnavailable || 'Chat information not available',
          [{ text: t.common?.ok || 'OK', onPress: () => navigation.goBack() }]
       );
-   }, [hasValidThread, isRTL, navigation]);
+   }, [threadsLoading, hasValidThread, t, navigation]);
 
    const hasRecentAppointment = () => {
       if (isProviderViewer) return true;
       const eligibility = getMessagingEligibility(appointments, providerId);
-      if (eligibility === null) return !appointmentsLoading;
+      if (eligibility === null) return false;
       return eligibility;
    };
 
-   const isThreadExpired = appointmentsLoading ? false : !hasRecentAppointment();
+   const isThreadExpired = appointmentsLoading || threadsLoading ? true : !hasRecentAppointment();
 
    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -451,7 +454,7 @@ const ChatDetailsScreen = () => {
                                  <Text
                                     numberOfLines={1}
                                     ellipsizeMode="middle"
-                                    style={[styles.attachmentFileName, { color: isMyMessage ? '#fff' : COLORS.textPrimary }]}
+                                    style={[styles.attachmentFileName, { color: isMyMessage ? COLORS.white : COLORS.textPrimary }]}
                                  >
                                     {fileName}
                                  </Text>
@@ -491,15 +494,21 @@ const ChatDetailsScreen = () => {
            defaultSource={ICONS.defaultAvatar}
          />
          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-            <Text style={styles.headerName}>
-              {isRTL
-                ? (counterparty?.fullNameArabic || counterparty?.fullName)
-                : (counterparty?.fullNameEnglish || counterparty?.fullName)}
-            </Text>
+            <AppText variant="bodyMedium" style={styles.headerName}>
+              {counterpartyDisplayName || (isProviderViewer ? (t.messaging?.patient || 'Patient') : (t.messaging?.provider || 'Provider'))}
+            </AppText>
             {/* Online status could be dynamic if we had socket presence events */}
          </View>
       </View>
    );
+
+   if (threadsLoading && !hasValidThread) {
+      return (
+         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+         </View>
+      );
+   }
 
    if (!hasValidThread) {
       return null;
@@ -515,9 +524,9 @@ const ChatDetailsScreen = () => {
              </View>
          ) : threadMessagesError ? (
              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-                 <Text style={{ color: COLORS.gray500, textAlign: 'center', marginBottom: 16 }}>
+                 <AppText variant="body" color={COLORS.gray500} align="center" style={{ marginBottom: 16 }}>
                    {t.messaging?.loadError || 'Could not load messages.'}
-                 </Text>
+                 </AppText>
              </View>
          ) : (
              <FlatList
@@ -538,9 +547,9 @@ const ChatDetailsScreen = () => {
             {isThreadExpired ? (
                <View style={styles.expiredBanner}>
                   <Icon name="clock" size={16} color={COLORS.gray500} />
-                  <Text style={styles.expiredText}>
+                  <AppText variant="caption" color={COLORS.gray500} style={styles.expiredText}>
                      {t.messaging?.expiredBanner || 'You cannot send messages. Your last completed appointment must be within the past 30 days.'}
-                  </Text>
+                  </AppText>
                </View>
             ) : (
                <View style={[styles.footer, rowStyle, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -588,7 +597,7 @@ const ChatDetailsScreen = () => {
                      onPress={handleImageUpload}
                   >
                      <Icon name="image" size={20} color={COLORS.primary} />
-                     <Text style={styles.attachmentMenuText}>{t.messaging?.image || 'Image'}</Text>
+                     <AppText variant="body" style={styles.attachmentMenuText}>{t.messaging?.image || 'Image'}</AppText>
                   </TouchableOpacity>
                   <View style={styles.attachmentMenuDivider} />
                   <TouchableOpacity
@@ -596,7 +605,7 @@ const ChatDetailsScreen = () => {
                      onPress={handleFileUpload}
                   >
                      <Icon name="file-pdf" size={20} color={COLORS.danger} />
-                     <Text style={styles.attachmentMenuText}>{t.messaging?.pdfFile || 'PDF File'}</Text>
+                     <AppText variant="body" style={styles.attachmentMenuText}>{t.messaging?.pdfFile || 'PDF File'}</AppText>
                   </TouchableOpacity>
                   <View style={styles.attachmentMenuDivider} />
                   <TouchableOpacity
@@ -604,7 +613,7 @@ const ChatDetailsScreen = () => {
                      onPress={() => setAttachmentMenuVisible(false)}
                   >
                      <Icon name="times" size={20} color={COLORS.gray500} />
-                     <Text style={[styles.attachmentMenuText, { color: COLORS.gray500 }]}>{t.messaging?.cancel || 'Cancel'}</Text>
+                     <AppText variant="body" color={COLORS.gray500} style={styles.attachmentMenuText}>{t.messaging?.cancel || 'Cancel'}</AppText>
                   </TouchableOpacity>
                </View>
             </TouchableOpacity>
@@ -627,8 +636,8 @@ const styles = StyleSheet.create({
    // Header
    header: { backgroundColor: COLORS.white, paddingHorizontal: 15, paddingBottom: 15, alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.gray200 },
    icon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
-   headerAvatar: { width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, backgroundColor: '#eee' },
-   headerName: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
+   headerAvatar: { width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, backgroundColor: COLORS.gray200 },
+   headerName: { fontWeight: 'bold' },
    headerStatus: { fontSize: 12, color: COLORS.success },
 
    // Messages
@@ -636,10 +645,10 @@ const styles = StyleSheet.create({
    bubble: { padding: 12, borderRadius: 14, minWidth: 0 },
 
    bubbleReceived: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.gray200 },
-   textReceived: { color: '#000', fontSize: 14 },
+   textReceived: { color: COLORS.gray900, fontSize: 14 },
 
    bubbleSent: { backgroundColor: COLORS.primary },
-   textSent: { color: '#fff', fontSize: 14 },
+   textSent: { color: COLORS.white, fontSize: 14 },
 
    timestamp: { fontSize: 10, color: COLORS.gray500, marginTop: 4 },
 
@@ -715,8 +724,6 @@ const styles = StyleSheet.create({
       gap: 8,
    },
    expiredText: {
-      color: COLORS.gray500,
-      fontSize: 13,
       textAlign: 'center',
       flex: 1,
    },
@@ -740,8 +747,6 @@ const styles = StyleSheet.create({
       paddingVertical: 15,
    },
    attachmentMenuText: {
-      fontSize: 16,
-      color: COLORS.textPrimary,
       marginHorizontal: 15,
    },
    attachmentMenuDivider: {

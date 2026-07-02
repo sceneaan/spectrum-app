@@ -5,9 +5,7 @@ import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
 import COLORS from '../constants/colors';
-import { Logout } from '../api/services/Auth.Service';
-import socketService from '../utils/socket';
-import { queryClient } from '../api/queryClient';
+import { fullLogout } from '../utils/fullLogout';
 
 // Import your new sub-components
 import ProfileMenu from '../components/profile/ProfileMenu';
@@ -17,7 +15,6 @@ const ProfileScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { t } = useLanguage();
-  const { logout } = useAuthStore();
   const openedFromCompleteProfile = route.params?.view === 'edit';
   const [viewMode, setViewMode] = useState(openedFromCompleteProfile ? 'edit' : 'menu');
 
@@ -49,10 +46,7 @@ const ProfileScreen = () => {
 
   const handleLogout = async () => {
     try {
-      socketService.disconnect();
-      await Logout();
-      await logout();
-      queryClient.clear();
+      await fullLogout();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,

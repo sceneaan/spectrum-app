@@ -1,6 +1,7 @@
 import { environmentUrls } from '../config';
 import { useAuthStore } from '../store/authStore';
 import socketService from './socket';
+import { fullLogout } from './fullLogout';
 
 let refreshPromise = null;
 
@@ -55,7 +56,11 @@ export async function refreshTokenIfNeeded() {
   try {
     await refreshAccessToken();
     return true;
-  } catch {
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      await fullLogout({ callServer: false });
+    }
     return false;
   }
 }

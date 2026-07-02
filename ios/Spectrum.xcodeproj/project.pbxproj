@@ -16,6 +16,7 @@
 		6EB1516A2ED4E8C400FDA0E6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6EB151692ED4E8C400FDA0E6 /* GoogleService-Info.plist */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		761780EF2CA45675006654EE /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45675006654EE /* SceneDelegate.swift */; };
+		E7A100012ED5000100FDA0E6 /* RCTLinkingBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = E7A100002ED5000100FDA0E6 /* RCTLinkingBridge.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		DEADBEEF0000000000000002 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = DEADBEEF0000000000000001 /* BootSplash.storyboard */; };
 		EC9AC7B418FF9011EFA68E71 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -52,6 +53,9 @@
 		6EB1516B2ED4E94300FDA0E6 /* Spectrum.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = Spectrum.entitlements; path = Spectrum/Spectrum.entitlements; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Spectrum/AppDelegate.swift; sourceTree = "<group>"; };
 		761780EE2CA45675006654EE /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = Spectrum/SceneDelegate.swift; sourceTree = "<group>"; };
+		E7A100002ED5000100FDA0E6 /* RCTLinkingBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RCTLinkingBridge.m; path = Spectrum/RCTLinkingBridge.m; sourceTree = "<group>"; };
+		E7A100022ED5000100FDA0E6 /* RCTLinkingBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RCTLinkingBridge.h; path = Spectrum/RCTLinkingBridge.h; sourceTree = "<group>"; };
+		E7A100032ED5000100FDA0E6 /* Spectrum-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Spectrum-Bridging-Header.h"; path = "Spectrum/Spectrum-Bridging-Header.h"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Spectrum/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		CADC24B82034B1229B8F37D9 /* Pods_Spectrum.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Spectrum.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DEADBEEF0000000000000001 /* BootSplash.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = BootSplash.storyboard; path = Spectrum/BootSplash.storyboard; sourceTree = "<group>"; };
@@ -79,6 +83,9 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				761780EE2CA45675006654EE /* SceneDelegate.swift */,
+				E7A100002ED5000100FDA0E6 /* RCTLinkingBridge.m */,
+				E7A100022ED5000100FDA0E6 /* RCTLinkingBridge.h */,
+				E7A100032ED5000100FDA0E6 /* Spectrum-Bridging-Header.h */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				DEADBEEF0000000000000001 /* BootSplash.storyboard */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -322,6 +329,7 @@
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				761780EF2CA45675006654EE /* SceneDelegate.swift in Sources */,
+				E7A100012ED5000100FDA0E6 /* RCTLinkingBridge.m in Sources */,
 				6EB151682ED4E80500FDA0E6 /* HyperpayModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -353,6 +361,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = org.reactApp.spectrum;
 				PRODUCT_NAME = Spectrum;
+				SWIFT_OBJC_BRIDGING_HEADER = "Spectrum/Spectrum-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -382,6 +391,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = org.reactApp.spectrum;
 				PRODUCT_NAME = Spectrum;
+				SWIFT_OBJC_BRIDGING_HEADER = "Spectrum/Spectrum-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

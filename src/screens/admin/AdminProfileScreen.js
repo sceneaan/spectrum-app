@@ -8,9 +8,7 @@ import { useLanguage } from '../../store/LanguageContext';
 import { useAuthStore } from '../../store/authStore';
 import { getAdminPermissions } from '../../utils/adminPermissions';
 import { useGetUserData } from '../../api/services/User.Service';
-import { Logout } from '../../api/services/Auth.Service';
-import socketService from '../../utils/socket';
-import { queryClient } from '../../api/queryClient';
+import { fullLogout } from '../../utils/fullLogout';
 import COLORS from '../../constants/colors';
 import { SPACING } from '../../theme';
 
@@ -18,17 +16,14 @@ const AdminProfileScreen = () => {
   const navigation = useNavigation();
   const { t } = useLanguage();
   const ad = t.adminDashboard || {};
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { data: userData } = useGetUserData();
   const profile = userData || user;
   const permissions = getAdminPermissions(profile);
 
   const handleLogout = async () => {
     try {
-      socketService.disconnect();
-      await Logout();
-      await logout();
-      queryClient.clear();
+      await fullLogout();
       navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'LoginScreen' }] }));
     } catch {
       Alert.alert(t.common?.error || 'Error', ad.logoutFailed || 'Could not log out');

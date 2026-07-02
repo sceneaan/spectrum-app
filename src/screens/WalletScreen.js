@@ -9,12 +9,15 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
+import { AdaptiveContainer, AppText } from '../components/ui';
 import RiyalText from '../components/RiyalText';
 import RedeemSupportCardModal from '../components/RedeemSupportCardModal';
 import COLORS from '../constants/colors';
+import ICONS from '../constants/icons';
 import { useLanguage } from '../store/LanguageContext';
 import { useGetMyWallet } from '../api/services/Wallet.Service';
 import { useGetWalletTransactions } from '../api/services/Transaction.Service';
@@ -87,11 +90,11 @@ const getTransactionStatusMeta = (item, t) => {
     return {
       label: t.wallet?.statusRefunded || 'Refunded',
       color: COLORS.success,
-      bg: '#E8F5E9',
+      bg: COLORS.statusSuccessBg,
     };
   }
   if (status === 'pending') {
-    return { label: t.wallet?.statusPending || 'Pending', color: '#B45309', bg: '#FEF3C7' };
+    return { label: t.wallet?.statusPending || 'Pending', color: COLORS.statusPendingText, bg: COLORS.statusPendingBg };
   }
   if (status === 'failed') {
     return { label: t.wallet?.statusFailed || 'Failed', color: COLORS.danger, bg: COLORS.errorBg };
@@ -102,7 +105,7 @@ const getTransactionStatusMeta = (item, t) => {
   return {
     label: t.wallet?.statusCompleted || 'Completed',
     color: COLORS.success,
-    bg: '#E8F5E9',
+    bg: COLORS.statusSuccessBg,
   };
 };
 
@@ -110,18 +113,18 @@ const TX_FILTER_KEYS = ['all', 'completed', 'refunded', 'cancelled'];
 
 const getTransactionVisual = (item, isCredit, isDebit) => {
   if (item?.type === 'refund') {
-    return { glyph: '↩', bubble: '#E8F5E9', color: COLORS.success };
+    return { icon: ICONS.refresh, symbol: null, bubble: COLORS.statusSuccessBg, color: COLORS.success };
   }
   if (item?.type === 'redeem') {
-    return { glyph: '🎁', bubble: COLORS.promo1, color: COLORS.primaryDark };
+    return { icon: ICONS.gift, symbol: null, bubble: COLORS.promo1, color: COLORS.primaryDark };
   }
   if (isCredit) {
-    return { glyph: '+', bubble: '#E8F5E9', color: COLORS.success };
+    return { icon: null, symbol: '+', bubble: COLORS.statusSuccessBg, color: COLORS.success };
   }
   if (isDebit) {
-    return { glyph: '−', bubble: COLORS.errorBg, color: COLORS.danger };
+    return { icon: null, symbol: '−', bubble: COLORS.errorBg, color: COLORS.danger };
   }
-  return { glyph: '₿', bubble: COLORS.primaryLight, color: COLORS.primaryDark };
+  return { icon: ICONS.wallet, symbol: null, bubble: COLORS.primaryLight, color: COLORS.primaryDark };
 };
 
 const WalletScreen = () => {
@@ -239,20 +242,24 @@ const WalletScreen = () => {
       <View style={styles.card}>
         <View style={[styles.txRow, isRTL && styles.rowRTL]}>
           <View style={[styles.txIconBubble, { backgroundColor: visual.bubble }]}>
-            <Text style={[styles.txIconGlyph, { color: visual.color }]}>{visual.glyph}</Text>
+            {visual.icon ? (
+              <Image source={visual.icon} style={[styles.txIconImage, { tintColor: visual.color }]} resizeMode="contain" />
+            ) : (
+              <Text style={[styles.txIconGlyph, { color: visual.color }]}>{visual.symbol}</Text>
+            )}
           </View>
 
           <View style={styles.txBody}>
-            <Text style={[styles.txTitle, isRTL && styles.textRTL]} numberOfLines={2}>
+            <AppText variant="bodySmall" color={COLORS.textPrimary} style={[styles.txTitle, isRTL && styles.textRTL]} numberOfLines={2}>
               {description}
-            </Text>
-            <Text style={[styles.txDate, isRTL && styles.textRTL]}>
+            </AppText>
+            <AppText variant="caption" color={COLORS.textSecondary} style={[styles.txDate, isRTL && styles.textRTL]}>
               {moment(item.createdAt).locale(isRTL ? 'ar' : 'en').format('LL')}
-            </Text>
+            </AppText>
             <View style={[styles.statusChip, { backgroundColor: statusMeta.bg }, isRTL && styles.statusChipRtl]}>
-              <Text style={[styles.statusChipText, { color: statusMeta.color }]}>
+              <AppText variant="caption" color={statusMeta.color} style={styles.statusChipText}>
                 {statusMeta.label}
-              </Text>
+              </AppText>
             </View>
           </View>
 
@@ -285,7 +292,7 @@ const WalletScreen = () => {
       return (
         <View style={{ padding: 16 }}>
           {[0, 1, 2].map(i => (
-            <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 12 }}>
+            <View key={i} style={{ backgroundColor: COLORS.white, borderRadius: 16, padding: 15, marginBottom: 12 }}>
               <Skeleton width="60%" height={14} style={{ marginBottom: 8 }} />
               <Skeleton width="40%" height={12} />
             </View>
@@ -337,13 +344,13 @@ const WalletScreen = () => {
       <StatusBar backgroundColor={COLORS.white} barStyle="dark-content" />
       <Header title={t.wallet?.title || 'Wallet'} showBack onBack={() => navigation.goBack()} />
 
-      <View style={styles.content}>
+      <AdaptiveContainer style={styles.content}>
         {/* Balance Card */}
         <View style={styles.balanceCard}>
           <View style={[styles.cardDecorationCircle, isRTL && styles.cardDecorationCircleRtl]} />
-          <Text style={[styles.balanceLabel, isRTL && styles.textRTL]}>
+          <AppText variant="bodySmall" color="rgba(255,255,255,0.92)" align={isRTL ? 'right' : 'left'} style={[styles.balanceLabel, isRTL && styles.textRTL]}>
             {t.wallet?.availableBalance || 'Available Balance'}
-          </Text>
+          </AppText>
           {walletLoading ? (
             <ActivityIndicator color={COLORS.white} size="small" style={styles.balanceLoader} />
           ) : (
@@ -362,31 +369,31 @@ const WalletScreen = () => {
               onPress={() => navigation.navigate('SupportCard')}
               activeOpacity={0.85}
             >
-              <Text style={styles.actionEmoji}>🎁</Text>
-              <Text style={styles.actionBtnText} numberOfLines={1}>
+              <Image source={ICONS.gift} style={styles.actionIcon} resizeMode="contain" />
+              <AppText variant="bodySmall" color={COLORS.primaryDark} style={styles.actionBtnText} numberOfLines={1}>
                 {t.wallet?.buySupportCard || 'Buy Card'}
-              </Text>
+              </AppText>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => setRedeemModalVisible(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.actionEmoji}>🏷️</Text>
-              <Text style={styles.actionBtnText} numberOfLines={1}>
+              <Image source={ICONS.creditCard} style={styles.actionIcon} resizeMode="contain" />
+              <AppText variant="bodySmall" color={COLORS.primaryDark} style={styles.actionBtnText} numberOfLines={1}>
                 {t.wallet?.redeemCode || 'Redeem'}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
+          <AppText variant="h3" align={isRTL ? 'right' : 'left'} style={[styles.sectionTitle, isRTL && styles.textRTL]}>
             {t.wallet?.allTransactions || 'All Transactions'}
-          </Text>
-          <Text style={[styles.sectionSubtitle, isRTL && styles.textRTL]}>
+          </AppText>
+          <AppText variant="bodySmall" color={COLORS.textSecondary} align={isRTL ? 'right' : 'left'} style={[styles.sectionSubtitle, isRTL && styles.textRTL]}>
             {t.wallet?.transactionsSubtitle || 'Payments, refunds, and support card activity'}
-          </Text>
+          </AppText>
         </View>
 
         <View style={styles.filterTrack}>
@@ -407,9 +414,9 @@ const WalletScreen = () => {
                   onPress={() => setTxFilter(option.key)}
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                  <AppText variant="caption" style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                     {option.label}
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
               );
             })}
@@ -430,7 +437,7 @@ const WalletScreen = () => {
           initialNumToRender={15}
           maxToRenderPerBatch={10}
         />
-      </View>
+      </AdaptiveContainer>
 
       {/* Redeem Support Card Modal */}
       <RedeemSupportCardModal
@@ -515,8 +522,10 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     minHeight: 44,
   },
-  actionEmoji: {
-    fontSize: 16,
+  actionIcon: {
+    width: 18,
+    height: 18,
+    tintColor: COLORS.primaryDark,
   },
   actionBtnText: {
     color: COLORS.primaryDark,
@@ -593,6 +602,10 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  txIconImage: {
+    width: 22,
+    height: 22,
   },
   txIconGlyph: {
     fontSize: 20,

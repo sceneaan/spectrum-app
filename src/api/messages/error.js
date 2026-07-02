@@ -1,11 +1,12 @@
 import { ErrorMessages } from './generic';
+import logger from '../../utils/logger';
 
 export const throwServerError = error => {
   const serverError = error.response?.data;
 
-  console.log('throwServerError - Full error:', error);
-  console.log('throwServerError - Server error:', serverError);
-  console.log('throwServerError - Error response:', error.response);
+  logger.debug('throwServerError - Full error:', error);
+  logger.debug('throwServerError - Server error:', serverError);
+  logger.debug('throwServerError - Error response:', error.response);
 
   if (serverError) {
     // Handle case where message is an object

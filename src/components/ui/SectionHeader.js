@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import AppText from './AppText';
 import COLORS from '../../constants/colors';
 import { SPACING } from '../../theme';
+import { useLanguage } from '../../store/LanguageContext';
 
 const SectionHeader = ({
   title,
@@ -11,27 +12,31 @@ const SectionHeader = ({
   onAction,
   align = 'left',
   style,
-}) => (
-  <View style={[styles.container, style]}>
-    <View style={styles.textBlock}>
-      <AppText variant="h3" align={align} style={styles.title}>
-        {title}
-      </AppText>
-      {subtitle ? (
-        <AppText variant="bodySmall" align={align} style={styles.subtitle}>
-          {subtitle}
+}) => {
+  const { isRTL } = useLanguage();
+
+  return (
+    <View style={[styles.container, isRTL && styles.containerRtl, style]}>
+      <View style={styles.textBlock}>
+        <AppText variant="h3" align={align} style={styles.title}>
+          {title}
         </AppText>
+        {subtitle ? (
+          <AppText variant="bodySmall" align={align} style={styles.subtitle}>
+            {subtitle}
+          </AppText>
+        ) : null}
+      </View>
+      {actionLabel && onAction ? (
+        <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <AppText variant="bodySmall" color={COLORS.primary} style={styles.action}>
+            {actionLabel}
+          </AppText>
+        </TouchableOpacity>
       ) : null}
     </View>
-    {actionLabel && onAction ? (
-      <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <AppText variant="bodySmall" color={COLORS.primary} style={styles.action}>
-          {actionLabel}
-        </AppText>
-      </TouchableOpacity>
-    ) : null}
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -39,6 +44,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: SPACING.lg,
+  },
+  containerRtl: {
+    flexDirection: 'row-reverse',
   },
   textBlock: { flex: 1 },
   title: { marginBottom: SPACING.xs },

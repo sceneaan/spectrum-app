@@ -222,7 +222,6 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
       if (userData?.profileImageFileId) {
         setProfileImageLoading(true);
         try {
-          console.log('🖼️ [EditProfile] Loading private profile image:', userData.profileImageFileId);
           const base64Url = await getPrivateFileAsBase64(userData.profileImageFileId);
           if (base64Url) {
             setProfileImage(base64Url);
@@ -259,7 +258,6 @@ const EditProfileForm = ({ onSave, initialTab = 'patient' }) => {
       });
 
       if (result.didCancel) {
-        console.log('User cancelled image picker');
         return;
       }
 

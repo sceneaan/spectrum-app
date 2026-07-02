@@ -75,6 +75,7 @@ const ChatPanel = ({
   participantCount,
   onSendMessage,
   currentUserName,
+  currentUserId,
 }) => {
   const { t } = useTranslation();
   const [messageText, setMessageText] = useState('');
@@ -141,7 +142,10 @@ const ChatPanel = ({
               renderItem={({ item }) => (
                 <ChatMessage
                   message={item}
-                  isCurrentUser={item.sender === currentUserName}
+                  isCurrentUser={
+                    (currentUserId && item.senderId && String(item.senderId) === String(currentUserId))
+                    || item.sender === currentUserName
+                  }
                 />
               )}
               contentContainerStyle={styles.messagesList}

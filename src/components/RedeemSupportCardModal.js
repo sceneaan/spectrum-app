@@ -13,6 +13,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { useLanguage } from '../store/LanguageContext';
 import { useRedeemSupportCard } from '../api/services/SupportCard.Service';
 import COLORS from '../constants/colors';
+import logger from '../utils/logger';
 import RiyalText from './RiyalText';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -64,7 +65,7 @@ const RedeemSupportCardModal = ({ visible, onClose, onSuccess }) => {
         handleClose();
       }, 2500);
     } catch (error) {
-      console.log('Redeem error details:', error);
+      logger.debug('Redeem error details:', error);
 
       // Provide more helpful error messages
       let errorMessage = error.message || t.wallet?.redeemError || 'Failed to redeem support card';

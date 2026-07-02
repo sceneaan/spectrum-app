@@ -4,11 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppTranslation } from '../hooks/useAppTranslation';
-import LottieView from 'lottie-react-native';
 import InAppReview from 'react-native-in-app-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment-timezone';
 import COLORS from '../constants/colors';
+import { AdaptiveContainer } from '../components/ui';
 import haptics from '../utils/haptics';
 
 const APPOINTMENT_COUNT_KEY = '@spectrum_appointment_count';
@@ -31,8 +31,9 @@ const PaymentSuccessScreen = () => {
   const queryClient = useQueryClient();
   const { t } = useAppTranslation();
   const { appointment, paymentType, transactionId } = route.params || {};
-  const lottieRef = useRef(null);
 
+  const circleAnim = useRef(new Animated.Value(0)).current;
+  const checkmarkAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const isAppointment = paymentType === 'appointment' || appointment;
@@ -45,22 +46,32 @@ const PaymentSuccessScreen = () => {
 
     haptics.success();
 
-    // Fade in content after a short delay (lets Lottie play first)
-    const timer = setTimeout(() => {
-      Animated.timing(fadeAnim, {
+    Animated.sequence([
+      Animated.spring(circleAnim, {
         toValue: 1,
-        duration: 500,
+        tension: 50,
+        friction: 7,
         useNativeDriver: true,
-      }).start();
-    }, 600);
+      }),
+      Animated.parallel([
+        Animated.timing(checkmarkAnim, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
 
     // Trigger app review for appointment bookings
     if (isAppointment) {
       triggerAppReviewIfEligible();
     }
-
-    return () => clearTimeout(timer);
-  }, [queryClient]);
+  }, [queryClient, circleAnim, checkmarkAnim, fadeAnim, isAppointment]);
 
   const handleGoHome = () => {
     navigation.reset({
@@ -86,15 +97,33 @@ const PaymentSuccessScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Lottie success animation */}
-        <LottieView
-          ref={lottieRef}
-          source={require('../assets/animations/payment-success.json')}
-          autoPlay
-          loop={false}
-          style={styles.lottie}
-        />
+      <AdaptiveContainer variant="form" style={styles.content}>
+        {/* Success icon — native Animated (Lottie trim-path checkmark fails on Android) */}
+        <Animated.View
+          style={[
+            styles.successCircle,
+            { transform: [{ scale: circleAnim }] },
+          ]}
+        >
+          <Animated.Text
+            style={[
+              styles.checkmark,
+              {
+                opacity: checkmarkAnim,
+                transform: [
+                  {
+                    scale: checkmarkAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [0.3, 1.15, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            ✓
+          </Animated.Text>
+        </Animated.View>
 
         {/* Animated content fades in after animation starts */}
         <Animated.Text style={[styles.title, { opacity: fadeAnim }]}>
@@ -135,7 +164,7 @@ const PaymentSuccessScreen = () => {
             <Text style={styles.btnText}>{t('paymentSuccess.goToHome')}</Text>
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </AdaptiveContainer>
     </SafeAreaView>
   );
 };
@@ -151,10 +180,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  lottie: {
-    width: 180,
-    height: 180,
+  successCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: COLORS.success,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
+    shadowColor: COLORS.success,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  checkmark: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    marginTop: -4,
   },
   title: {
     fontSize: 26,

@@ -6,6 +6,10 @@ import { setNotificationToken } from '@api/services/User.Service';
 
 const NOTIFY_TOKEN_KEY = 'notifyToken';
 
+const devLog = (...args) => {
+    if (__DEV__) console.log(...args);
+};
+
 async function persistNotifyToken(token) {
     if (!token) return;
     await EncryptedStorage.setItem(NOTIFY_TOKEN_KEY, token);
@@ -69,7 +73,7 @@ async function getToken(role, oldToken) {
                 // Check again
                 const apnsTokenRetry = await messaging().getAPNSToken();
                 if (!apnsTokenRetry) {
-                    scheduleRetry(oldToken, 10000);
+                    scheduleRetry(role, oldToken, 10000);
                     return;
                 }
             }
@@ -79,21 +83,18 @@ async function getToken(role, oldToken) {
 
         if (token) {
             try {
-                if (role === 'patient') {
-                    await setNotificationToken({ notificationToken: token });
-                }
-                // Reset retry counter on success
+                await setNotificationToken({ notificationToken: token });
                 currentRetryAttempt = 0;
             } catch (apiError) {
-                console.log('ERROR updating token on server:', apiError);
+                devLog('ERROR updating token on server:', apiError);
             }
         }
 
         await persistNotifyToken(token);
 
     } catch (error) {
-        console.log('ERROR getting FCM Token:', error);
-        console.log('Error details:', {
+        devLog('ERROR getting FCM Token:', error);
+        devLog('Error details:', {
             message: error.message,
             code: error.code,
             stack: error.stack,
@@ -155,13 +156,13 @@ async function requestNotificationPermission() {
                     return false;
                 }
             } catch (permissionError) {
-                console.log('Error requesting Android notification permission:', permissionError);
+                devLog('Error requesting Android notification permission:', permissionError);
                 const { checkNotifications } = require('react-native-permissions');
                 try {
                     const checkResult = await checkNotifications();
                     return checkResult.status === 'granted';
                 } catch (checkError) {
-                    console.log('Error checking Android notification permission:', checkError);
+                    devLog('Error checking Android notification permission:', checkError);
                     return false;
                 }
             }
@@ -170,7 +171,7 @@ async function requestNotificationPermission() {
             return true;
         }
     } catch (error) {
-        console.log('ERROR in requestNotificationPermission:', error);
+        devLog('ERROR in requestNotificationPermission:', error);
         return false;
     }
 }
@@ -200,8 +201,8 @@ export async function requestUserPermission(role, oldToken) {
                 }
             }
         } catch (error) {
-            console.log('ERROR requesting notification permission:', error);
-            console.log('Permission error details:', {
+            devLog('ERROR requesting notification permission:', error);
+            devLog('Permission error details:', {
                 message: error.message,
                 code: error.code,
                 stack: error.stack,
@@ -228,7 +229,7 @@ export async function checkNotificationPermission() {
                     return messaging.AuthorizationStatus.NOT_DETERMINED;
                 }
             } catch (permissionError) {
-                console.log('Error checking Android notification permission:', permissionError);
+                devLog('Error checking Android notification permission:', permissionError);
                 // Fallback to messaging permission check
                 const authStatus = await messaging().hasPermission();
                 return authStatus;
@@ -239,7 +240,7 @@ export async function checkNotificationPermission() {
             return authStatus;
         }
     } catch (error) {
-        console.log('ERROR checking notification permission:', error);
+        devLog('ERROR checking notification permission:', error);
         return null;
     }
 }
@@ -247,15 +248,15 @@ export async function checkNotificationPermission() {
 // Function to get current FCM token with retry logic
 export async function getCurrentToken() {
     try {
-        console.log('Getting current FCM token...');
+        devLog('Getting current FCM token...');
 
         // On iOS, ensure APNS token is available first
         if (Platform.OS === 'ios') {
             const apnsToken = await messaging().getAPNSToken();
-            console.log('APNS token check:', apnsToken ? 'Available' : 'Not available');
+            devLog('APNS token check:', apnsToken ? 'Available' : 'Not available');
 
             if (!apnsToken) {
-                console.log('APNS token not available, cannot get FCM token yet');
+                devLog('APNS token not available, cannot get FCM token yet');
                 return null;
             }
         }
@@ -263,7 +264,7 @@ export async function getCurrentToken() {
         const token = await messaging().getToken();
         return token;
     } catch (error) {
-        console.log('ERROR getting current FCM token:', error);
+        devLog('ERROR getting current FCM token:', error);
         return null;
     }
 }
@@ -294,7 +295,7 @@ export async function checkNotificationServiceStatus() {
             fcmToken,
         };
     } catch (error) {
-        console.log('ERROR checking notification service status:', error);
+        devLog('ERROR checking notification service status:', error);
         return null;
     }
 }
@@ -302,7 +303,7 @@ export async function checkNotificationServiceStatus() {
 // Function specifically for Android notification permission handling
 export async function requestAndroidNotificationPermission() {
     if (Platform.OS !== 'android') {
-        console.log('This function is only for Android');
+        devLog('This function is only for Android');
         return false;
     }
 
@@ -329,7 +330,7 @@ export async function requestAndroidNotificationPermission() {
             return false;
         }
     } catch (error) {
-        console.log('ERROR requesting Android notification permission:', error);
+        devLog('ERROR requesting Android notification permission:', error);
         return false;
     }
 }
@@ -345,7 +346,7 @@ export async function openAndroidNotificationSettings() {
         await openSettings();
         return true;
     } catch (error) {
-        console.log('ERROR opening Android notification settings:', error);
+        devLog('ERROR opening Android notification settings:', error);
         return false;
     }
 }
@@ -391,7 +392,7 @@ export async function getNotificationPermissionStatus() {
             };
         }
     } catch (error) {
-        console.log('ERROR getting notification permission status:', error);
+        devLog('ERROR getting notification permission status:', error);
         return {
             platform: Platform.OS,
             status: 'error',

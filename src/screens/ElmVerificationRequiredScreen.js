@@ -9,15 +9,19 @@ import {
   ActivityIndicator,
   TextInput,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
+import { fullLogout } from '../utils/fullLogout';
 import { verifyElmIdentity } from '../api/services/Elm.Service';
 import { updateElmVerification, useGetUserData, UpdateProfile } from '../api/services/User.Service';
 import Header from '../components/Header';
 import COLORS from '../constants/colors';
+import ICONS from '../constants/icons';
+import { AppText, AppCard } from '../components/ui';
 
 const parseUserDob = (dobValue) => {
   if (!dobValue) return null;
@@ -34,7 +38,7 @@ const INTERNATIONAL_NATIONALITIES = [
 const ElmVerificationRequiredScreen = ({ navigation }) => {
   const { t, isRTL } = useLanguage();
   const ev = t.elmVerification || {};
-  const { user, setAuth, logout, setElmVerificationDeferred } = useAuthStore();
+  const { user, setAuth, setElmVerificationDeferred } = useAuthStore();
   const { data: userData } = useGetUserData();
   const profile = userData || user;
 
@@ -67,14 +71,12 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
     }
   }, [profile?.nationalId, profile?.dob, nationalId, dob]);
 
+  // Defer ELM gate only while the international form step is active (not after leaving the screen).
   useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', () => {
-      if (step !== 'success') {
-        setElmVerificationDeferred(true);
-      }
-    });
-    return unsubscribe;
-  }, [navigation, setElmVerificationDeferred, step]);
+    setElmVerificationDeferred(step === 'international');
+  }, [step, setElmVerificationDeferred]);
+
+  useEffect(() => () => setElmVerificationDeferred(false), [setElmVerificationDeferred]);
 
   const formatDate = (date) => {
     if (!date) return '';
@@ -268,10 +270,14 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
   const handleConfirm = async () => {
     setLoading(true);
     try {
+      const formattedDob = dobFormat === 'hijri'
+        ? (hijriDob || null)
+        : (dob ? formatDate(dob) : null);
+
       const payload = {
         nationalId,
-        dob: dob ? formatDate(dob) : null,
-        hijriDob: hijriDob || null,
+        dob: formattedDob,
+        hijriDob: dobFormat === 'hijri' ? (hijriDob || null) : null,
         elmVerified: true,
         elmData,
       };
@@ -324,8 +330,8 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
         {
           text: isRTL ? 'تسجيل الخروج' : 'Logout',
           style: 'destructive',
-          onPress: () => {
-            logout();
+          onPress: async () => {
+            await fullLogout();
             navigation.reset({
               index: 0,
               routes: [{ name: 'LoginScreen' }],
@@ -350,7 +356,6 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
 
     if (step === 'success') return;
 
-    setElmVerificationDeferred(true);
     if (navigation.canGoBack()) {
       navigation.goBack();
       return;
@@ -530,7 +535,7 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
                 minimumDate={new Date(1940, 0, 1)}
                 style={{ height: 180 }}
                 themeVariant="light"
-                textColor="#333333"
+                textColor={COLORS.textPrimary}
               />
               {Platform.OS === 'ios' && (
                 <TouchableOpacity style={styles.pickerDoneBtn} onPress={confirmDate}>
@@ -718,16 +723,16 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.iconContainer}>
-            <Text style={styles.shieldIcon}>🛡️</Text>
+            <Image source={ICONS.shield} style={styles.shieldIcon} resizeMode="contain" />
           </View>
-          <Text style={styles.title}>
+          <AppText variant="h2" align="center" style={styles.title}>
             {step === 'international'
               ? (ev.internationalTitle || (isRTL ? 'بيانات المقيم خارج السعودية' : 'International resident details'))
               : step === 'residency'
                 ? (ev.residencyTitle || (isRTL ? 'اختر نوع الإقامة' : 'Choose residency type'))
                 : (ev.heroTitle || (isRTL ? 'التحقق من الهوية مطلوب' : 'Identity Verification Required'))}
-          </Text>
-          <Text style={styles.subtitle}>
+          </AppText>
+          <AppText variant="bodySmall" align="center" color={COLORS.textSecondary} style={styles.subtitle}>
             {step === 'international'
               ? (ev.internationalSubtitle || (isRTL ? 'أدخل بياناتك للمتابعة بدون تحقق علم' : 'Enter your details to continue without ELM verification'))
               : step === 'residency'
@@ -735,24 +740,24 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
                 : (ev.heroSubtitle || (isRTL
                   ? 'لحماية سجلاتك الطبية، يرجى التحقق من هويتك عبر نظام ELM'
                   : 'To protect your medical records, please verify your identity via ELM'))}
-          </Text>
+          </AppText>
         </View>
 
         {/* Main Card */}
-        <View style={styles.card}>
+        <AppCard style={styles.card}>
           {step === 'residency' && renderResidencyStep()}
           {step === 'international' && renderInternationalStep()}
           {step === 'input' && renderInputStep()}
           {step === 'confirm' && renderConfirmStep()}
           {step === 'success' && renderSuccessStep()}
-        </View>
+        </AppCard>
 
         {/* Logout Link */}
         {step !== 'success' && (
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>
+            <AppText variant="bodySmall" color={COLORS.danger} style={styles.logoutText}>
               {isRTL ? 'تسجيل الخروج' : 'Logout'}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -763,7 +768,7 @@ const ElmVerificationRequiredScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F4F8',
+    backgroundColor: COLORS.primaryLight,
   },
   scrollContent: {
     flexGrow: 1,
@@ -784,30 +789,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   shieldIcon: {
-    fontSize: 40,
+    width: 40,
+    height: 40,
+    tintColor: COLORS.white,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.dark,
     marginBottom: 10,
-    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.gray500,
-    textAlign: 'center',
     paddingHorizontal: 20,
   },
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    marginBottom: 0,
   },
   inputGroup: {
     marginBottom: 20,
@@ -953,12 +946,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verifiedContainer: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.secureBg,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: COLORS.secureBorder,
   },
   verifiedHeader: {
     flexDirection: 'row',
@@ -967,20 +960,20 @@ const styles = StyleSheet.create({
   },
   verifiedIcon: {
     fontSize: 20,
-    color: '#16A34A',
+    color: COLORS.success,
     marginRight: 8,
   },
   verifiedTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#16A34A',
+    color: COLORS.success,
   },
   dataRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: COLORS.border,
   },
   dataLabel: {
     fontSize: 14,
@@ -1005,14 +998,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.secureBg,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   successIconText: {
     fontSize: 40,
-    color: '#16A34A',
+    color: COLORS.success,
   },
   successTitle: {
     fontSize: 22,

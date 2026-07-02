@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Switch, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import ReactNativeBiometrics from 'react-native-biometrics';
 import { useLanguage } from '../../store/LanguageContext';
 import { useAuthStore } from '../../store/authStore';
 import { useGetUserData } from '../../api/services/User.Service';
@@ -11,10 +12,73 @@ import ICONS from '../../constants/icons';
 const ProfileMenu = ({ onEditPress, onLogout }) => {
    const navigation = useNavigation();
    const { t, isRTL, toggleLang, lang } = useLanguage();
-   const { user, isAuthenticated } = useAuthStore();
+   const { user, isAuthenticated, biometricsEnabled, setBiometricsEnabled } = useAuthStore();
    const { data: userData } = useGetUserData();
 
    const [profileImageUrl, setProfileImageUrl] = useState(null);
+   const [biometryLabel, setBiometryLabel] = useState(null);
+
+   useEffect(() => {
+      if (!isAuthenticated) {
+         setBiometryLabel(null);
+         return;
+      }
+
+      let cancelled = false;
+      const rnBiometrics = new ReactNativeBiometrics();
+      rnBiometrics.isSensorAvailable()
+         .then(({ available, biometryType }) => {
+            if (cancelled || !available || !biometryType) return;
+            const label = biometryType === 'FaceID'
+               ? (t.biometric?.faceId || 'Face ID')
+               : biometryType === 'TouchID'
+                  ? (t.biometric?.touchId || 'Touch ID')
+                  : (t.biometric?.biometrics || 'Biometrics');
+            setBiometryLabel(label);
+         })
+         .catch(() => {
+            if (!cancelled) setBiometryLabel(null);
+         });
+
+      return () => {
+         cancelled = true;
+      };
+   }, [isAuthenticated, t.biometric]);
+
+   const handleBiometricToggle = useCallback(async (nextValue) => {
+      if (!nextValue) {
+         setBiometricsEnabled(false);
+         return;
+      }
+
+      try {
+         const rnBiometrics = new ReactNativeBiometrics();
+         const { available } = await rnBiometrics.isSensorAvailable();
+         if (!available) {
+            Alert.alert(
+               t.common?.error || 'Error',
+               t.biometric?.authFailed || 'Biometric authentication failed. Please try again.',
+            );
+            return;
+         }
+
+         const label = biometryLabel || (t.biometric?.biometrics || 'Biometrics');
+         const { success } = await rnBiometrics.simplePrompt({
+            promptMessage: (t.biometric?.verifyPrompt || 'Verify with {{label}} to continue').replace('{{label}}', label),
+            cancelButtonText: t.common?.cancel || 'Cancel',
+            fallbackPromptMessage: t.biometric?.verifyToContinue || 'Verify your identity to continue',
+         });
+
+         if (success) {
+            setBiometricsEnabled(true);
+         }
+      } catch {
+         Alert.alert(
+            t.common?.error || 'Error',
+            t.biometric?.authFailed || 'Biometric authentication failed. Please try again.',
+         );
+      }
+   }, [biometryLabel, setBiometricsEnabled, t.biometric, t.common]);
 
    useEffect(() => {
       const loadImage = async () => {
@@ -114,6 +178,33 @@ const ProfileMenu = ({ onEditPress, onLogout }) => {
          {/* Group C: Settings */}
          <Text style={[styles.sectionHeader, alignText]}>{t.moreOptions?.appSettings || 'App Settings'}</Text>
          <View style={styles.menuGroup}>
+            {isAuthenticated && biometryLabel ? (
+               <>
+                  <View style={[styles.menuItem, rowStyle]}>
+                     <View style={[rowStyle, { alignItems: 'center', flex: 1 }]}>
+                        <View style={styles.menuIconBox}>
+                           <Image source={ICONS.lock} style={styles.menuIcon} />
+                        </View>
+                        <View style={{ flex: 1, marginHorizontal: 12 }}>
+                           <Text style={[styles.menuLabel, alignText]}>
+                              {t.biometric?.settingsLabel || 'App Lock'}
+                           </Text>
+                           <Text style={[styles.menuSubLabel, alignText]}>
+                              {(t.biometric?.settingsSubtitle || '{{label}} after 5 min away').replace('{{label}}', biometryLabel)}
+                           </Text>
+                        </View>
+                     </View>
+                     <Switch
+                        value={biometricsEnabled}
+                        onValueChange={handleBiometricToggle}
+                        trackColor={{ false: COLORS.gray300, true: COLORS.primaryLight }}
+                        thumbColor={biometricsEnabled ? COLORS.primary : COLORS.gray400}
+                        accessibilityLabel={t.biometric?.settingsLabel || 'App Lock'}
+                     />
+                  </View>
+                  <View style={styles.divider} />
+               </>
+            ) : null}
             <MenuItem label={isRTL ? 'اللغة' : 'Language'} icon={ICONS.globe} value={lang === 'en' ? 'English' : 'العربية'} onPress={toggleLang} />
             <View style={styles.divider} />
             <MenuItem label={t.moreOptions?.termsConditions || "Terms & Conditions"} icon={ICONS.info} onPress={() => navigation.navigate('TermsScreen')} />
@@ -149,6 +240,7 @@ const styles = StyleSheet.create({
    menuIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.gray100, alignItems: 'center', justifyContent: 'center', marginHorizontal: 12 },
    menuIcon: { width: 20, height: 20, tintColor: COLORS.primary },
    menuLabel: { fontSize: 15, color: COLORS.textPrimary, fontWeight: '500' },
+   menuSubLabel: { fontSize: 12, color: COLORS.gray600, marginTop: 2 },
    menuValue: { fontSize: 13, color: COLORS.gray600, marginHorizontal: 8 },
    chevron: { width: 12, height: 12, tintColor: COLORS.disabled },
    divider: { height: 1, backgroundColor: COLORS.gray100, marginHorizontal: 20 },

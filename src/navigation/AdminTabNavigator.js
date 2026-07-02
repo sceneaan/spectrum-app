@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
 import AdminAppointmentsScreen from '../screens/admin/AdminAppointmentsScreen';
 import AdminClinicBookingsScreen from '../screens/admin/AdminClinicBookingsScreen';
@@ -9,11 +8,11 @@ import { useAuthStore } from '../store/authStore';
 import { useGetUserData } from '../api/services/User.Service';
 import { hasAdminPermission } from '../utils/adminPermissions';
 import { SHELL_ICONS } from '../components/ui/AppIcon';
-import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
 import { ShellTabIcon } from './shellTabBar';
 import haptics from '../utils/haptics';
+import createSwipeTabNavigator from './createSwipeTabNavigator';
 
-const Tab = createBottomTabNavigator();
+const Tab = createSwipeTabNavigator();
 
 const ADMIN_TAB_ICONS = {
   AdminHomeTab: SHELL_ICONS.home,
@@ -36,7 +35,6 @@ const TabAdminUsers = () => <AdminUsersScreen showBack={false} />;
 
 const AdminTabNavigator = () => {
   const { t, isRTL } = useLanguage();
-  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const ad = t.adminDashboard || {};
   const user = useAuthStore((state) => state.user);
   const { data: userData } = useGetUserData();
@@ -80,9 +78,6 @@ const AdminTabNavigator = () => {
 
   return (
     <Tab.Navigator
-      detachInactiveScreens
-      tabBar={(props) => <GlassShellTabBar {...props} />}
-      screenOptions={shellTabOptions}
       screenListeners={{
         tabPress: () => haptics.light(),
       }}

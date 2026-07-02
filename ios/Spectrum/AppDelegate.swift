@@ -83,6 +83,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   // MARK: - URL Scheme Handling (Deep Linking)
 
+  private func isPaymentReturnURL(_ url: URL) -> Bool {
+    if url.scheme == "com.spectrum.payments" { return true }
+
+    let value = url.absoluteString.lowercased()
+    if value.contains("payment/success") || value.contains("payment/redirect") {
+      return true
+    }
+
+    if url.scheme == "spectrum" && value.contains("payment") {
+      return true
+    }
+
+    return false
+  }
+
   // For iOS 9+
   func application(
     _ app: UIApplication,
@@ -91,11 +106,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   ) -> Bool {
     print("🔄 Application opened with URL: \(url.absoluteString)")
 
-    // Check if the URL uses your scheme
-    if url.scheme == "spectrum" {
-      print("✅ URL matches our scheme: \(url.absoluteString)")
-
-      // Post notification to inform the HyperpayModule
+    if isPaymentReturnURL(url) {
       NotificationCenter.default.post(
         name: NSNotification.Name("PaymentRedirectCompleted"),
         object: nil,
@@ -104,7 +115,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       return true
     }
 
-    return false
+    return SpectrumOpenURL(url)
   }
 
   // Handle Universal Links
@@ -113,26 +124,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     continue userActivity: NSUserActivity,
     restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
   ) -> Bool {
-    if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-      if let url = userActivity.webpageURL {
-        print("🔄 Universal Link opened: \(url.absoluteString)")
+    if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+       let url = userActivity.webpageURL {
+      print("🔄 Universal Link opened: \(url.absoluteString)")
 
-        // Check if this is a payment return URL
-        if url.absoluteString.contains("payment/success") {
-          print("✅ Universal Link for payment detected")
-
-          // Post notification to inform the HyperpayModule
-          NotificationCenter.default.post(
-            name: NSNotification.Name("PaymentRedirectCompleted"),
-            object: nil,
-            userInfo: ["url": url]
-          )
-          return true
-        }
+      if isPaymentReturnURL(url) {
+        NotificationCenter.default.post(
+          name: NSNotification.Name("PaymentRedirectCompleted"),
+          object: nil,
+          userInfo: ["url": url]
+        )
+        return true
       }
+
+      return SpectrumContinueUserActivity(userActivity)
     }
 
-    return true
+    return false
   }
 
   // MARK: - Remote Notifications (APNS)

@@ -1,23 +1,26 @@
 import React, { useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert, ActivityIndicator, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { canAuthenticatedUserJoinMobileVideo, isProviderRole, isAdminRole } from '../utils/videoAccess';
 import i18n from '../config/i18n';
+import COLORS from '../constants/colors';
 
 /**
  * Redirect unauthenticated users before rendering protected screens.
  * Optional loginParams (e.g. targetScreen) are passed to LoginScreen for post-login return.
  */
 export const RequireAuth = ({ ScreenComponent, loginParams, ...screenProps }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
   const navigation = useNavigation();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (isAuthenticated) return;
 
     const timer = setTimeout(() => {
-      if (useAuthStore.getState().isAuthenticated) return;
+      const state = useAuthStore.getState();
+      if (!state._hasHydrated || state.isAuthenticated) return;
 
       if (loginParams?.targetScreen) {
         navigation.reset({
@@ -33,7 +36,15 @@ export const RequireAuth = ({ ScreenComponent, loginParams, ...screenProps }) =>
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, navigation, loginParams]);
+  }, [_hasHydrated, isAuthenticated, navigation, loginParams]);
+
+  if (!_hasHydrated) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   if (!isAuthenticated) return null;
   return <ScreenComponent {...screenProps} />;
@@ -108,12 +119,15 @@ export const navigateToLogin = (navigation, targetScreen, targetParams = {}) => 
 export const PatientOnlyVideo = ({ ScreenComponent, ...screenProps }) => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
   const meetingRoomId = route.params?.meetingRoomId;
 
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     const timer = setTimeout(() => {
-      const { isAuthenticated: authed, user: currentUser } = useAuthStore.getState();
+      const { isAuthenticated: authed, user: currentUser, _hasHydrated: hydrated } = useAuthStore.getState();
+      if (!hydrated) return;
 
       if (route.params?.isGuest === true) {
         navigation.replace('LoginScreen', {
@@ -141,7 +155,15 @@ export const PatientOnlyVideo = ({ ScreenComponent, ...screenProps }) => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, user, navigation, route.params, meetingRoomId]);
+  }, [_hasHydrated, isAuthenticated, user, navigation, route.params, meetingRoomId]);
+
+  if (!_hasHydrated) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   if (
     route.params?.isGuest === true

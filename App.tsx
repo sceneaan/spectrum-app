@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, DeviceEventEmitter } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/api/queryClient';
@@ -13,6 +13,8 @@ import { initPushNotificationHandlers } from './src/utils/pushNotificationHandle
 import { ensureAppointmentNotificationChannel } from './src/utils/pushNotifications';
 import * as Sentry from '@sentry/react-native';
 import { SessionTimeoutProvider } from './src/components/SessionTimeoutProvider';
+import AppErrorBoundary from './src/components/AppErrorBoundary';
+import { fullLogout } from './src/utils/fullLogout';
 import './src/config/i18n';
 import socketService from './src/utils/socket';
 
@@ -54,6 +56,14 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    const authErrorSub = DeviceEventEmitter.addListener('socket:authError', async () => {
+      await fullLogout({ callServer: false });
+      DeviceEventEmitter.emit('auth:sessionExpired');
+    });
+    return () => authErrorSub.remove();
+  }, []);
+
+  useEffect(() => {
     const createNotificationChannel = async () => {
       try {
         await notifee.createChannel({
@@ -76,9 +86,11 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <LanguageProvider>
-          <SessionTimeoutProvider>
-            <AppNavigator />
-          </SessionTimeoutProvider>
+          <AppErrorBoundary>
+            <SessionTimeoutProvider>
+              <AppNavigator />
+            </SessionTimeoutProvider>
+          </AppErrorBoundary>
         </LanguageProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

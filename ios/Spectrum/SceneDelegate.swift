@@ -13,7 +13,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   ) {
     guard let windowScene = scene as? UIWindowScene else { return }
 
-    // Get the AppDelegate to access React Native factory
     guard let appDelegate = UIApplication.shared.delegate as? AppDelegate,
           let factory = appDelegate.reactNativeFactory else {
       return
@@ -34,76 +33,74 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     window?.makeKeyAndVisible()
 
-    // Handle URL if app was launched from a URL
     if let urlContext = connectionOptions.urlContexts.first {
       handleURL(urlContext.url)
     }
   }
 
-  func sceneDidDisconnect(_ scene: UIScene) {
-    // Called when the scene is released by the system
-  }
+  func sceneDidDisconnect(_ scene: UIScene) {}
 
-  func sceneDidBecomeActive(_ scene: UIScene) {
-    // Called when the scene moves from inactive to active state
-  }
+  func sceneDidBecomeActive(_ scene: UIScene) {}
 
-  func sceneWillResignActive(_ scene: UIScene) {
-    // Called when the scene moves from active to inactive state
-  }
+  func sceneWillResignActive(_ scene: UIScene) {}
 
-  func sceneWillEnterForeground(_ scene: UIScene) {
-    // Called when the scene moves from background to foreground
-  }
+  func sceneWillEnterForeground(_ scene: UIScene) {}
 
-  func sceneDidEnterBackground(_ scene: UIScene) {
-    // Called when the scene moves from foreground to background
-  }
-
-  // MARK: - URL Handling
+  func sceneDidEnterBackground(_ scene: UIScene) {}
 
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
     guard let url = URLContexts.first?.url else { return }
     handleURL(url)
   }
 
+  private func isPaymentReturnURL(_ url: URL) -> Bool {
+    if url.scheme == "com.spectrum.payments" { return true }
+
+    let value = url.absoluteString.lowercased()
+    if value.contains("payment/success") || value.contains("payment/redirect") {
+      return true
+    }
+
+    if url.scheme == "spectrum" && value.contains("payment") {
+      return true
+    }
+
+    return false
+  }
+
   private func handleURL(_ url: URL) {
     print("🔄 Scene opened with URL: \(url.absoluteString)")
 
-    // Check if the URL uses your scheme
-    if url.scheme == "spectrum" || url.scheme == "com.spectrum.payments" {
-      print("✅ URL matches our scheme: \(url.absoluteString)")
-
-      // Post notification to inform the HyperpayModule
+    if isPaymentReturnURL(url) {
       NotificationCenter.default.post(
         name: NSNotification.Name("PaymentRedirectCompleted"),
         object: nil,
         userInfo: ["url": url]
       )
+      return
     }
+
+    _ = SpectrumOpenURL(url)
   }
 
-  // Handle Universal Links
   func scene(
     _ scene: UIScene,
     continue userActivity: NSUserActivity
   ) {
-    if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-      if let url = userActivity.webpageURL {
-        print("🔄 Universal Link opened: \(url.absoluteString)")
+    if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+       let url = userActivity.webpageURL {
+      print("🔄 Universal Link opened: \(url.absoluteString)")
 
-        // Check if this is a payment return URL
-        if url.absoluteString.contains("payment/success") {
-          print("✅ Universal Link for payment detected")
-
-          // Post notification to inform the HyperpayModule
-          NotificationCenter.default.post(
-            name: NSNotification.Name("PaymentRedirectCompleted"),
-            object: nil,
-            userInfo: ["url": url]
-          )
-        }
+      if isPaymentReturnURL(url) {
+        NotificationCenter.default.post(
+          name: NSNotification.Name("PaymentRedirectCompleted"),
+          object: nil,
+          userInfo: ["url": url]
+        )
+        return
       }
+
+      _ = SpectrumContinueUserActivity(userActivity)
     }
   }
 }

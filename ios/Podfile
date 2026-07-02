@@ -26,7 +26,7 @@ setup_permissions([
   # 'CalendarsWriteOnly',
   'Camera',
   # 'Contacts',
-  # 'FaceID',
+  'FaceID',
   # 'LocationAccuracy',
   # 'LocationAlways',
   # 'LocationWhenInUse',

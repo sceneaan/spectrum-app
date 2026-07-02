@@ -187,6 +187,7 @@ export function useRescheduleAppointment() {
 export function useGetAppointmentStatus(id) {
     return useQuery({
         queryKey: ['appointmentStatus', id],
+        enabled: !!id,
         queryFn: async () => {
             try {
                 const result = await getRequest(`${MODEL_NAME}/status/${id}`);

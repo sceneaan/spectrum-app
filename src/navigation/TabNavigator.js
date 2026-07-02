@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
@@ -13,12 +12,12 @@ import TabBarButton from '../components/TabBarButton';
 import TabShortcutSheet from '../components/TabShortcutSheet';
 import TabRadialShortcuts from '../components/TabRadialShortcuts';
 import { SHELL_ICONS } from '../components/ui/AppIcon';
-import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
 import { ShellTabIcon } from './shellTabBar';
 import ICONS from '../constants/icons';
 import haptics from '../utils/haptics';
+import createSwipeTabNavigator from './createSwipeTabNavigator';
 
-const Tab = createBottomTabNavigator();
+const Tab = createSwipeTabNavigator();
 
 const ProtectedAppointmentsScreen = makeProtected(AppointmentsScreen, {
   targetScreen: 'AppointmentsTab',
@@ -49,7 +48,6 @@ const TabNavigator = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
   const { isAuthenticated } = useAuthStore();
-  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const [shortcutSheet, setShortcutSheet] = useState(null);
   const [appointmentRadial, setAppointmentRadial] = useState(null);
 
@@ -172,9 +170,6 @@ const TabNavigator = () => {
   return (
     <>
       <Tab.Navigator
-        detachInactiveScreens
-        tabBar={(props) => <GlassShellTabBar {...props} />}
-        screenOptions={shellTabOptions}
         screenListeners={{
           tabPress: () => haptics.light(),
         }}

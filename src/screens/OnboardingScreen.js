@@ -4,29 +4,28 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Dimensions,
+  useWindowDimensions,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
-import { AppText, AppButton } from '../components/ui';
+import { AppText, AppButton, AdaptiveContainer } from '../components/ui';
 import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS, SHADOWS } from '../theme';
 import { createScrollToIndexFailedHandler } from '../utils/scrollToIndex';
 
-const { width } = Dimensions.get('window');
-
 const OnboardingScreen = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
+  const { width: screenWidth } = useWindowDimensions();
   const flatListRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const handleScrollToIndexFailed = useCallback(
-    createScrollToIndexFailedHandler(flatListRef, width),
-    [],
+    createScrollToIndexFailedHandler(flatListRef, screenWidth),
+    [screenWidth],
   );
 
   const SLIDES = [
@@ -76,7 +75,8 @@ const OnboardingScreen = () => {
   const isLast = currentIndex === SLIDES.length - 1;
 
   const renderSlide = ({ item }) => (
-    <View style={[styles.slide, { width }]}>
+    <View style={[styles.slide, { width: screenWidth }]}>
+      <AdaptiveContainer variant="form" style={styles.slideInner}>
       <View style={styles.decorCircle} />
       <View style={[styles.decorCircleSmall, { backgroundColor: `${item.tint}22` }]} />
       <View style={[styles.iconCircle, { backgroundColor: `${item.tint}18` }]}>
@@ -88,6 +88,7 @@ const OnboardingScreen = () => {
       <AppText variant="body" align={alignText} color={COLORS.textSecondary} style={styles.slideSubtitle}>
         {item.subtitle}
       </AppText>
+      </AdaptiveContainer>
     </View>
   );
 
@@ -115,7 +116,7 @@ const OnboardingScreen = () => {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
         inverted={isRTL}
-        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
         onScrollToIndexFailed={handleScrollToIndexFailed}
       />
 
@@ -130,14 +131,14 @@ const OnboardingScreen = () => {
         ))}
       </View>
 
-      <View style={styles.footer}>
+      <AdaptiveContainer variant="form" style={styles.footer}>
         <AppButton
           title={isLast ? (t.onboarding?.getStarted || 'Get Started') : (t.onboarding?.next || 'Next')}
           onPress={isLast ? handleFinish : handleNext}
           size="lg"
           variant="primary"
         />
-      </View>
+      </AdaptiveContainer>
     </SafeAreaView>
   );
 };
@@ -149,8 +150,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SPACING.huge,
     paddingBottom: SPACING.huge,
+  },
+  slideInner: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   decorCircle: {
     position: 'absolute',
@@ -188,7 +194,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray300,
   },
   dotActive: { width: 28, backgroundColor: COLORS.primary },
-  footer: { paddingHorizontal: SPACING.xxxl, paddingBottom: SPACING.xl },
+  footer: { paddingBottom: SPACING.xl },
 });
 
 export default OnboardingScreen;

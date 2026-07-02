@@ -3,8 +3,7 @@ import { View, DeviceEventEmitter, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSessionTimeout } from '../hooks/useSessionTimeout';
 import SessionTimeoutWarning from './SessionTimeoutWarning';
-import { useAuthStore } from '../store/authStore';
-import socketService from '../utils/socket';
+import { fullLogout } from '../utils/fullLogout';
 
 // Context for session timeout functionality
 const SessionTimeoutContext = createContext(null);
@@ -43,9 +42,6 @@ export function SessionTimeoutProvider({ children, navigation }) {
     // Navigation will be handled by the auth:sessionTimeout event listener in AppNavigator
   };
 
-  // Get logout from auth store for force logout
-  const authLogout = useAuthStore((state) => state.logout);
-
   // Listen for force logout when user logs in from another device
   useEffect(() => {
     const forceLogoutSubscription = DeviceEventEmitter.addListener('socket:forceLogout', (data) => {
@@ -56,9 +52,9 @@ export function SessionTimeoutProvider({ children, navigation }) {
           {
             text: 'OK',
             onPress: () => {
-              authLogout();
-              socketService.disconnect();
-              DeviceEventEmitter.emit('auth:sessionExpired');
+              fullLogout({ callServer: false }).finally(() => {
+                DeviceEventEmitter.emit('auth:sessionExpired');
+              });
             },
           },
         ],
@@ -69,7 +65,7 @@ export function SessionTimeoutProvider({ children, navigation }) {
     return () => {
       forceLogoutSubscription?.remove();
     };
-  }, [authLogout, t]);
+  }, [t]);
 
   const contextValue = {
     recordActivity,

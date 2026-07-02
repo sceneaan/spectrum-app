@@ -6,11 +6,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
 import Skeleton from '../components/Skeleton';
-import { EmptyState, SegmentedTabs } from '../components/ui';
+import { EmptyState, SegmentedTabs, AdaptiveContainer } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 import moment from 'moment-timezone';
+import { formatLocalizedDate, formatLocalizedTime } from '../utils/formatLocaleDate';
 import {
   useGetUpcomingAppointments,
   useGetPendingAppointmentsGroupedByDoctor,
@@ -495,20 +496,18 @@ const AppointmentsScreen = () => {
 
     if (isUpcoming && item?.startTime) {
       // Use UTC for date to prevent timezone shift
-      formattedDate = moment.utc(item.startTime).format('MMM D, YYYY');
+      formattedDate = formatLocalizedDate(item.startTime, 'MMM D, YYYY', isRTL);
 
-      // Backend already converts times to user's current timezone
-      const startTime = moment(item.startTime).format('h:mm A');
-      const endTime = moment(item.endTime).format('h:mm A');
+      const startTime = formatLocalizedTime(item.startTime, 'h:mm A', isRTL);
+      const endTime = formatLocalizedTime(item.endTime, 'h:mm A', isRTL);
       formattedTime = `${startTime} - ${endTime}`;
     } else if (!isUpcoming && item?.appointments?.[0]) {
       // For pending appointments
       const firstAppointment = item.appointments[0];
 
       // Use UTC for date to prevent timezone shift
-      formattedDate = moment.utc(firstAppointment.startTime).format('MMM D, YYYY');
-      // Backend already converts times to user's current timezone
-      formattedTime = moment(firstAppointment.startTime).format('h:mm A');
+      formattedDate = formatLocalizedDate(firstAppointment.startTime, 'MMM D, YYYY', isRTL);
+      formattedTime = formatLocalizedTime(firstAppointment.startTime, 'h:mm A', isRTL);
     }
 
     // Video call logic for upcoming appointments
@@ -776,10 +775,10 @@ const AppointmentsScreen = () => {
                   <View key={appointment.appointmentId || appointment._id || appointment.id || index} style={[styles.pendingApptRow, rowStyle]}>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.pendingApptDate, { textAlign: isRTL ? 'right' : 'left' }]}>
-                        {moment.utc(appointment.startTime).format('MMM D, YYYY')}
+                        {formatLocalizedDate(appointment.startTime, 'MMM D, YYYY', isRTL)}
                       </Text>
                       <Text style={[styles.pendingApptTime, { textAlign: isRTL ? 'right' : 'left' }]}>
-                        {moment(appointment.startTime).format('h:mm A')}
+                        {formatLocalizedTime(appointment.startTime, 'h:mm A', isRTL)}
                         {appointment.reason ? ` • ${appointment.reason}` : ''}
                       </Text>
                     </View>
@@ -838,7 +837,7 @@ const AppointmentsScreen = () => {
   const showLoading = isLoading && !refreshing;
 
   const listKeyExtractor = useCallback(
-    (item, index) => item._id?.toString() || item.id?.toString() || `item-${index}`,
+    (item, index) => item.providerId?.toString() || item._id?.toString() || item.id?.toString() || `item-${index}`,
     []
   );
 
@@ -846,7 +845,7 @@ const AppointmentsScreen = () => {
     <View style={styles.container}>
       <Header title={t.appointments?.myAppointments || 'My Appointments'} showProfile />
       <View style={styles.body}>
-
+        <AdaptiveContainer>
         <SegmentedTabs
           isRTL={isRTL}
           activeKey={activeTab}
@@ -856,6 +855,7 @@ const AppointmentsScreen = () => {
             { key: 'pending', label: t.appointments?.pending || 'Pending' },
           ]}
         />
+        </AdaptiveContainer>
 
         {showLoading ? (
           <View style={styles.listPad}>
@@ -929,9 +929,22 @@ const AppointmentsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  body: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, flex: 1 },
-  listPad: { paddingTop: SPACING.sm },
-  listContent: { paddingTop: SPACING.sm, flexGrow: 1 },
+  body: { paddingTop: SPACING.lg, flex: 1 },
+  listPad: {
+    paddingTop: SPACING.sm,
+    paddingHorizontal: SPACING.xl,
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+  },
+  listContent: {
+    paddingTop: SPACING.sm,
+    paddingHorizontal: SPACING.xl,
+    flexGrow: 1,
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+  },
   skeletonCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -995,7 +1008,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.primary,
   },
   pendingPayBtnText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1034,7 +1047,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtnText: {
-    color: COLORS.danger || '#ef4444',
+    color: COLORS.danger,
     fontSize: 13,
     fontWeight: '600'
   },
@@ -1051,7 +1064,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rescheduleBtnText: {
-    color: COLORS.secondary || '#65BED6',
+    color: COLORS.secondary,
     fontSize: 13,
     fontWeight: '600'
   },
@@ -1122,12 +1135,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#FFF3CD',
+    backgroundColor: COLORS.statusWarningBg,
     borderRadius: 8,
     alignItems: 'center'
   },
   countdownText: {
-    color: '#FF9800',
+    color: COLORS.statusWarningText,
     fontSize: 12,
     fontWeight: '600'
   },

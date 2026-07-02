@@ -10,7 +10,12 @@ import socketService from '../utils/socket';
 import InAppToast from '../components/InAppToast';
 import OfflineBanner from '../components/OfflineBanner';
 import BiometricLockModal from '../components/BiometricLockModal';
+import BiometricEnrollmentPrompt from '../components/BiometricEnrollmentPrompt';
 import { makeProtected, makeProviderProtected, makeAdminProtected } from './authGuards';
+import {
+  parseNotificationParams,
+  sanitizeNotificationTarget,
+} from '../utils/notificationScreenAccess';
 
 // Shared ref for imperative navigation outside React context (toasts, deep links, etc.)
 export const navigationRef = createNavigationContainerRef();
@@ -77,130 +82,41 @@ import COLORS from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
 
-// Screens that FCM may deep-link to (allowlist only — prevents open redirect)
-const ALLOWED_NOTIFICATION_SCREENS = new Set([
-  'Main',
-  'Notifications',
-  'ChatDetails',
-  'VideoConsultation',
-  'GuestVideoInvite',
-  'DoctorProfile',
-  'TherapistProfile',
-  'Checkout',
-  'RescheduleAppointment',
-  'CancelAppointment',
-  'Profile',
-  'FindTherapist',
-  'SearchResults',
-  'WalletScreen',
-  'BillingScreen',
-  'RefillRequestScreen',
-  'MedicalReportsScreen',
-  'MedicalRecordScreen',
-  'PaymentSuccessScreen',
-  'PaymentFailureScreen',
-  'ProviderRefills',
-  'ProviderRevenue',
-  'ProviderPerformance',
-  'ProviderReferralDetail',
-  'ProviderNewMessage',
-  'ProviderReportDetail',
-  'ProviderEncounterDetail',
-  'ProviderProfile',
-  'ProviderPatients',
-  'ProviderPatientDetail',
-  'ProviderDiscounts',
-  'AdminProfile',
-  'AdminNotifications',
-  'AdminDiscounts',
-  'AdminAppointments',
-  'AdminClinicBookings',
-  'AdminRefunds',
-  'AdminFinancial',
-  'AdminWalletLookup',
-  'PromoDetail',
-]);
+const pendingNotificationMessages = [];
 
-// Require login before navigating to these targets
-const PROTECTED_NOTIFICATION_SCREENS = new Set([
-  'Notifications',
-  'ChatDetails',
-  'VideoConsultation',
-  'Checkout',
-  'RescheduleAppointment',
-  'CancelAppointment',
-  'Profile',
-  'WalletScreen',
-  'BillingScreen',
-  'RefillRequestScreen',
-  'MedicalReportsScreen',
-  'MedicalRecordScreen',
-  'PaymentSuccessScreen',
-  'PaymentFailureScreen',
-  'ProviderRefills',
-  'ProviderRevenue',
-  'ProviderPerformance',
-  'ProviderReferralDetail',
-  'ProviderNewMessage',
-  'ProviderReportDetail',
-  'ProviderEncounterDetail',
-  'ProviderProfile',
-  'ProviderPatients',
-  'ProviderPatientDetail',
-  'ProviderDiscounts',
-  'AdminProfile',
-  'AdminNotifications',
-  'AdminDiscounts',
-  'AdminAppointments',
-  'AdminClinicBookings',
-  'AdminRefunds',
-  'AdminFinancial',
-  'AdminWalletLookup',
-  'PromoDetail',
-]);
+const flushPendingNotifications = () => {
+  const { _hasHydrated } = useAuthStore.getState();
+  if (!_hasHydrated || !navigationRef.isReady() || pendingNotificationMessages.length === 0) return;
 
-const parseNotificationParams = (raw) => {
-  if (!raw) return undefined;
-  try {
-    const params = JSON.parse(raw);
-    if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
-    return params;
-  } catch {
-    return undefined;
-  }
+  const queue = [...pendingNotificationMessages];
+  pendingNotificationMessages.length = 0;
+  queue.forEach((msg) => navigateFromNotification(msg));
 };
 
 export const navigateFromNotification = (remoteMessage) => {
-  if (!remoteMessage || !navigationRef.isReady()) return;
+  if (!remoteMessage) return;
 
-  const screen = remoteMessage.data?.screen;
-  const targetScreen = ALLOWED_NOTIFICATION_SCREENS.has(screen) ? screen : 'Notifications';
-  const params = parseNotificationParams(remoteMessage.data?.params);
-
-  if (PROTECTED_NOTIFICATION_SCREENS.has(targetScreen)) {
-    const { isAuthenticated } = useAuthStore.getState();
-    if (!isAuthenticated) {
-      navigationRef.navigate('LoginScreen', { targetScreen, targetParams: params });
-      return;
-    }
+  const { _hasHydrated, user } = useAuthStore.getState();
+  if (!_hasHydrated || !navigationRef.isReady()) {
+    pendingNotificationMessages.push(remoteMessage);
+    return;
   }
 
-  navigationRef.navigate(targetScreen, params);
+  const screen = remoteMessage.data?.screen;
+  const params = parseNotificationParams(remoteMessage.data?.params);
+  const { screen: targetScreen, params: targetParams } = sanitizeNotificationTarget(screen, params, user);
+
+  navigationRef.navigate(targetScreen, targetParams);
 };
 
 // Wrapper component that checks ELM verification
 const ElmVerifiedTabNavigator = ({ navigation }) => {
-  const { user, isAuthenticated, elmVerificationDeferred } = useAuthStore();
+  const { user, isAuthenticated, elmVerificationDeferred, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (user?.elmDisabled) return;
     if (elmVerificationDeferred) return;
-
-    const nationality = user?.nationality;
-    const isNonKsa = typeof nationality === 'string'
-      && nationality.trim() !== ''
-      && nationality !== 'Saudi Arabia';
-    if (isNonKsa) return;
 
     if (isAuthenticated && user?.role === 'patient' && !user?.elmVerified) {
       const state = navigation.getState();
@@ -210,7 +126,7 @@ const ElmVerifiedTabNavigator = ({ navigation }) => {
 
       navigation.navigate('ElmVerificationRequired');
     }
-  }, [isAuthenticated, user, navigation, elmVerificationDeferred]);
+  }, [isAuthenticated, user, navigation, elmVerificationDeferred, _hasHydrated]);
 
   return <PreSessionJoinProvider><RoleTabNavigator /></PreSessionJoinProvider>;
 };
@@ -272,12 +188,28 @@ const linking = {
 const AppNavigator = () => {
   const [initialRoute, setInitialRoute] = useState(null);
   const [navigationReady, setNavigationReady] = useState(false);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
+
+  useEffect(() => {
+    const hydrationFallback = setTimeout(() => {
+      if (!useAuthStore.getState()._hasHydrated) {
+        useAuthStore.getState().setHasHydrated(true);
+      }
+    }, 5000);
+    return () => clearTimeout(hydrationFallback);
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem('@spectrum_onboarding_done').then((done) => {
       setInitialRoute(done === 'true' ? 'Main' : 'Onboarding');
     });
   }, []);
+
+  useEffect(() => {
+    if (navigationReady && hasHydrated) {
+      flushPendingNotifications();
+    }
+  }, [navigationReady, hasHydrated]);
 
   useEffect(() => {
     if (navigationReady) {
@@ -290,7 +222,7 @@ const AppNavigator = () => {
     const unsubscribe = messaging().onNotificationOpenedApp(navigateFromNotification);
 
     messaging().getInitialNotification().then((msg) => {
-      if (msg) setTimeout(() => navigateFromNotification(msg), 1200);
+      if (msg) navigateFromNotification(msg);
     });
 
     return unsubscribe;
@@ -317,7 +249,7 @@ const AppNavigator = () => {
     };
   }, []);
 
-  if (!initialRoute) {
+  if (!initialRoute || !hasHydrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background }}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -330,7 +262,10 @@ const AppNavigator = () => {
       <NavigationContainer
         ref={navigationRef}
         linking={linking}
-        onReady={() => setNavigationReady(true)}
+        onReady={() => {
+          setNavigationReady(true);
+          flushPendingNotifications();
+        }}
       >
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -390,8 +325,9 @@ const AppNavigator = () => {
       </NavigationContainer>
 
       {/* Global overlays — rendered above the NavigationContainer */}
-      <InAppToast navigationRef={navigationRef} />
+      <InAppToast />
       <OfflineBanner />
+      <BiometricEnrollmentPrompt />
       <BiometricLockModal />
     </View>
   );

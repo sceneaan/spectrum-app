@@ -213,6 +213,17 @@ export function createGlassTabNavigatorOptions() {
   };
 }
 
+/** Material top tabs + TabView — enables horizontal swipe between tabs. */
+export function createSwipeTabNavigatorOptions() {
+  return {
+    ...createGlassTabNavigatorOptions(),
+    swipeEnabled: true,
+    animationEnabled: true,
+    lazy: true,
+    lazyPreloadDistance: 1,
+  };
+}
+
 const styles = StyleSheet.create({
   shell: {
     position: 'absolute',

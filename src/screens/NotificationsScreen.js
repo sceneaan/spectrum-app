@@ -33,6 +33,7 @@ import { FCM_FOREGROUND_EVENT } from '../utils/fcmEvents';
 import { useLanguage } from '../store/LanguageContext';
 import { daysAgo } from '../utils/timeFormatter';
 import { resolveNotificationNavigation } from '../utils/notificationNavigation';
+import { navigateToNotificationTarget } from '../utils/notificationScreenAccess';
 import Skeleton from '../components/Skeleton';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 
@@ -145,7 +146,7 @@ const NotificationsScreen = () => {
     if (!target?.screen) return;
 
     try {
-      navigation.navigate(target.screen, target.params);
+      navigateToNotificationTarget(navigation, target.screen, target.params);
     } catch (error) {
       console.warn('Notification navigation failed:', error);
     }

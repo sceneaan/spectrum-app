@@ -18,9 +18,9 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { AppText } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import {
@@ -30,6 +30,7 @@ import {
   checkSupportCardStatus,
 } from '../api/services/Payment.Service';
 import * as Sentry from '@sentry/react-native';
+import logger from '../utils/logger';
 
 const { Hyperpay: HyperPayModule } = NativeModules;
 const HyperPayModuleFinal = HyperPayModule;
@@ -144,7 +145,6 @@ const PaymentFormScreen = () => {
 
       const callbacks = {
         onSuccess: (data) => {
-          console.log('Checkout session created:', data);
           if (data.id) {
             setCheckoutId(data.id);
           } else {
@@ -153,7 +153,7 @@ const PaymentFormScreen = () => {
           setIsCheckoutLoading(false);
         },
         onError: (err) => {
-          console.error('Error creating checkout session:', err);
+          logger.error('Error creating checkout session:', err);
           setCheckoutError(err.message || t('payment.failedToCreateSession') || "Failed to create session");
           setIsCheckoutLoading(false);
         },
@@ -277,8 +277,6 @@ const PaymentFormScreen = () => {
       return;
     }
 
-    console.log('🍎 [Apple Pay] Starting Apple Pay flow...');
-
     // Start Sentry transaction for Apple Pay
     const transaction = Sentry.startSpan({
       name: 'apple_pay_payment',
@@ -299,7 +297,6 @@ const PaymentFormScreen = () => {
     InteractionManager.runAfterInteractions(async () => {
       try {
         // Step 1: Create Checkout Session for Apple Pay with timeout
-        console.log('🍎 [Apple Pay] Creating checkout session...');
         const newCheckoutId = await Promise.race([
           new Promise((resolve, reject) => {
             const commonCheckoutPayload = {
@@ -323,7 +320,7 @@ const PaymentFormScreen = () => {
                 }
               },
               onError: (err) => {
-                console.error('🍎 [Apple Pay] Checkout session creation failed:', err);
+                logger.error('[Apple Pay] Checkout session creation failed:', err);
                 Sentry.captureException(err, {
                   tags: { payment_method: 'apple_pay', stage: 'checkout_creation' },
                   extra: { paymentType, amount, payload },
@@ -362,9 +359,6 @@ const PaymentFormScreen = () => {
         }
 
         // Step 2: Call HyperPay SDK with the new checkoutId
-        console.log('🍎 [Apple Pay] Checkout ID received:', newCheckoutId);
-        console.log('🍎 [Apple Pay] Setting up HyperPay SDK event listener...');
-
         // Use pre-initialized event emitter to avoid freeze
         const eventEmitter = getHyperPayEventEmitter();
         if (!eventEmitter) {
@@ -373,8 +367,6 @@ const PaymentFormScreen = () => {
         let timeoutId = null;
 
         const subscription = eventEmitter.addListener('PaymentStatusEvent', async (event) => {
-          console.log('🍎 [Apple Pay] PaymentStatusEvent received:', JSON.stringify(event, null, 2));
-
           if (timeoutId) clearTimeout(timeoutId);
           subscription.remove();
           if (!isMountedRef.current) return;
@@ -390,8 +382,6 @@ const PaymentFormScreen = () => {
                 paymentMethod: 'apple_pay', // Apple Pay always uses apple_pay payment method
                 ...payload,
               };
-
-              console.log('[PaymentForm] Apple Pay status check payload:', JSON.stringify(statusPayload, null, 2));
 
               let statusResult;
               switch (paymentType) {
@@ -436,8 +426,6 @@ const PaymentFormScreen = () => {
 
         // Add timeout for HyperPay SDK response (90 seconds - Apple Pay needs more time)
         timeoutId = setTimeout(() => {
-          console.log('🍎 [Apple Pay] Timeout reached - no response from HyperPay SDK');
-
           // Capture timeout error in Sentry
           Sentry.captureMessage('Apple Pay SDK Timeout - No response from HyperPay', {
             level: 'error',
@@ -470,7 +458,6 @@ const PaymentFormScreen = () => {
         try {
           // Ensure amount is a number (NSNumber) - not a string
           const numericAmount = parseFloat(amount) || 0;
-          console.log('🍎 [Apple Pay] Calling HyperPay ApplepayPayments with checkoutId:', newCheckoutId, 'amount:', numericAmount);
 
           Sentry.addBreadcrumb({
             category: 'payment',
@@ -481,7 +468,7 @@ const PaymentFormScreen = () => {
 
           HyperPayModuleFinal.ApplepayPayments(newCheckoutId, numericAmount);
         } catch (sdkError) {
-          console.error('🍎 [Apple Pay] HyperPay SDK error:', sdkError);
+          logger.error('[Apple Pay] HyperPay SDK error:', sdkError);
 
           Sentry.captureException(sdkError, {
             tags: { payment_method: 'apple_pay', stage: 'sdk_call' },
@@ -493,7 +480,7 @@ const PaymentFormScreen = () => {
           throw sdkError;
         }
       } catch (error) {
-        console.error('🍎 [Apple Pay] Error in Apple Pay flow:', error);
+        logger.error('[Apple Pay] Error in Apple Pay flow:', error);
 
         Sentry.captureException(error, {
           tags: { payment_method: 'apple_pay', stage: 'flow_error' },
@@ -506,7 +493,7 @@ const PaymentFormScreen = () => {
         setIsStatusChecking(false);
 
         const errorMessage = error instanceof Error ? error.message : t('payment.paymentFailed');
-        console.error('🍎 [Apple Pay] Showing error to user:', errorMessage);
+        logger.debug('[Apple Pay] Showing error to user:', errorMessage);
 
         Alert.alert(
           t('alerts.error') || "Error",
@@ -616,8 +603,6 @@ const PaymentFormScreen = () => {
       let timeoutId = null;
 
       const subscription = eventEmitter.addListener('PaymentStatusEvent', async (event) => {
-        console.log('🟡 [PaymentForm] PaymentStatusEvent received:', event);
-
         if (timeoutId) clearTimeout(timeoutId);
         subscription.remove();
         if (!isMountedRef.current) return;
@@ -633,12 +618,9 @@ const PaymentFormScreen = () => {
               backendPaymentMethodForStatus = 'VISA_MASTERCARD';
             }
 
-            // Extract checkout ID if contained in resourcePath
-            let extractedCheckoutId = event.resourcePath || newCheckoutId;
-            // Basic extraction logic if needed, though backend often handles raw paths
-
+            // Always use the checkout session ID for status verification — not resourcePath.
             const statusPayload = {
-              checkoutId: extractedCheckoutId,
+              checkoutId: newCheckoutId,
               paymentMethod: backendPaymentMethodForStatus.toLowerCase(), 
               ...payload,
             };
@@ -703,8 +685,6 @@ const PaymentFormScreen = () => {
           );
         }
       }, 60000);
-
-      console.log('Calling HyperPay SDK with checkoutId:', newCheckoutId);
 
       Sentry.addBreadcrumb({
         category: 'payment',
@@ -802,9 +782,9 @@ const PaymentFormScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>
+          <AppText variant="body" color={COLORS.primary} style={styles.loadingText}>
              {isCheckoutLoading ? (t('payment.creatingCheckoutSession') || "Creating session...") : (t('payment.verifying') || "Verifying...")}
-          </Text>
+          </AppText>
         </View>
       </SafeAreaView>
     );
@@ -822,7 +802,7 @@ const PaymentFormScreen = () => {
           <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
             <Image source={ICONS.back} style={styles.backIcon} />
           </TouchableOpacity>
-          <Text style={styles.title}>{t('payment.enterCardDetails') || "Enter Card Details"}</Text>
+          <AppText variant="h3" style={styles.title}>{t('payment.enterCardDetails') || "Enter Card Details"}</AppText>
           <View style={{ width: 40 }} />
         </View>
 
@@ -845,12 +825,12 @@ const PaymentFormScreen = () => {
                     disabled={isSubmitting}
                     accessibilityLabel="Pay with Apple Pay"
                   >
-                    <Text style={styles.applePayText}> Pay</Text>
+                    <AppText variant="button" style={styles.applePayText}> Pay</AppText>
                   </TouchableOpacity>
 
                   <View style={styles.dividerContainer}>
                     <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>{t('payment.orPayWith') || "Or pay with"}</Text>
+                    <AppText variant="label" color={COLORS.gray700} style={styles.dividerText}>{t('payment.orPayWith') || "Or pay with"}</AppText>
                     <View style={styles.dividerLine} />
                   </View>
                 </>
@@ -891,7 +871,7 @@ const PaymentFormScreen = () => {
               {/* Card Number */}
               <View style={styles.fieldContainer}>
                 <View style={[styles.labelRow, isRTL && { flexDirection: 'row-reverse' }]}>
-                  <Text style={styles.fieldLabel}>{t('payment.cardNumber') || "Card Number"}</Text>
+                  <AppText variant="label" color={COLORS.gray700} style={styles.fieldLabel}>{t('payment.cardNumber') || "Card Number"}</AppText>
                   {detectedBrand && (
                     <View style={styles.detectedBrandBadge}>
                       <Image
@@ -922,13 +902,13 @@ const PaymentFormScreen = () => {
                   textAlign={isRTL ? 'right' : 'left'}
                   keyboardType="number-pad"
                   placeholder="0000 0000 0000 0000"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={COLORS.gray500}
                 />
               </View>
 
               {/* Card Holder */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>{t('payment.cardHolder') || "Card Holder"}</Text>
+                <AppText variant="label" color={COLORS.gray700} style={styles.fieldLabel}>{t('payment.cardHolder') || "Card Holder"}</AppText>
                 <TextInput
                   ref={cardHolderRef}
                   style={[
@@ -951,7 +931,7 @@ const PaymentFormScreen = () => {
               {/* Expiry & CVV */}
               <View style={[styles.row, styles.expiryRow, isRTL && styles.rowRTL]}>
                 <View style={[styles.fieldContainer, styles.expiryFieldContainer, { flex: 1, marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }]}>
-                  <Text style={[styles.fieldLabel, styles.expiryLabel]}>{t('payment.expiryMonth') || "Expiry\nMonth"}</Text>
+                  <AppText variant="label" color={COLORS.gray700} style={[styles.fieldLabel, styles.expiryLabel]}>{t('payment.expiryMonth') || "Expiry\nMonth"}</AppText>
                   <TextInput
                     ref={expiryMonthRef}
                     style={[styles.textInput, isRTL && styles.textInputRTL]}
@@ -972,7 +952,7 @@ const PaymentFormScreen = () => {
                 </View>
 
                 <View style={[styles.fieldContainer, styles.expiryFieldContainer, { flex: 1, marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }]}>
-                  <Text style={[styles.fieldLabel, styles.expiryLabel]}>{t('payment.expiryYear') || "Expiry\nYear"}</Text>
+                  <AppText variant="label" color={COLORS.gray700} style={[styles.fieldLabel, styles.expiryLabel]}>{t('payment.expiryYear') || "Expiry\nYear"}</AppText>
                   <TextInput
                     ref={expiryYearRef}
                     style={[styles.textInput, isRTL && styles.textInputRTL]}
@@ -993,7 +973,7 @@ const PaymentFormScreen = () => {
                 </View>
 
                 <View style={[styles.fieldContainer, styles.expiryFieldContainer, { flex: 1 }]}>
-                  <Text style={[styles.fieldLabel, styles.expiryLabel]}>{t('payment.cvv') || "CVV"}</Text>
+                  <AppText variant="label" color={COLORS.gray700} style={[styles.fieldLabel, styles.expiryLabel]}>{t('payment.cvv') || "CVV"}</AppText>
                   <TextInput
                     ref={cvvRef}
                     style={[styles.textInput, isRTL && styles.textInputRTL]}
@@ -1018,8 +998,8 @@ const PaymentFormScreen = () => {
 
             {/* Amount */}
             <View style={styles.amountContainer}>
-              <Text style={styles.amountLabel}>{t('payment.totalAmount') || "Total Amount"}:</Text>
-              <Text style={{fontSize: 20, color: COLORS.primary, fontWeight: 'bold'}}>{amount} SAR</Text>
+              <AppText variant="label" color={COLORS.gray700} style={styles.amountLabel}>{t('payment.totalAmount') || "Total Amount"}:</AppText>
+              <AppText variant="h3" color={COLORS.primary} style={{ fontWeight: 'bold' }}>{amount} SAR</AppText>
             </View>
 
             {/* Submit Button */}
@@ -1033,13 +1013,13 @@ const PaymentFormScreen = () => {
               disabled={!isFormReady || isSubmitting || isStatusChecking}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={COLORS.white} />
               ) : isStatusChecking ? (
-                <Text style={styles.submitButtonText}>{t('payment.verifying') || "Verifying..."}</Text>
+                <AppText variant="button" style={styles.submitButtonText}>{t('payment.verifying') || "Verifying..."}</AppText>
               ) : (
-                <Text style={styles.submitButtonText}>
+                <AppText variant="button" style={styles.submitButtonText}>
                   {t('payment.submitPayment') || "Pay Now"}
-                </Text>
+                </AppText>
               )}
             </TouchableOpacity>
           </View>
@@ -1053,7 +1033,7 @@ const PaymentFormScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.gray100,
   },
   loadingContainer: {
     flex: 1,
@@ -1062,8 +1042,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 20,
-    fontSize: 16,
-    color: COLORS.primary,
   },
   content: {
     flex: 1,
@@ -1082,8 +1060,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
+    borderBottomColor: COLORS.gray200,
+    backgroundColor: COLORS.white,
   },
   headerRTL: {
     flexDirection: 'row-reverse',
@@ -1096,11 +1074,7 @@ const styles = StyleSheet.create({
     height: 24,
     tintColor: COLORS.gray700
   },
-  title: {
-    fontSize: 20,
-    color: '#333',
-    fontWeight: 'bold'
-  },
+  title: {},
   form: {
     padding: 20,
   },
@@ -1108,10 +1082,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   fieldLabel: {
-    fontSize: 16,
-    color: '#555',
     marginBottom: 2,
-    fontWeight: '600'
   },
   labelRow: {
     flexDirection: 'row',
@@ -1120,7 +1091,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   detectedBrandBadge: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1134,25 +1105,25 @@ const styles = StyleSheet.create({
   textInput: {
     width: '100%',
     height: 50,
-    borderColor: '#ccc',
+    borderColor: COLORS.gray400,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
     fontSize: 16,
-    backgroundColor: '#fff',
-    color: '#000',
+    backgroundColor: COLORS.white,
+    color: COLORS.gray900,
   },
   textInputRTL: {
     textAlign: 'right',
   },
   errorField: {
-    borderColor: '#ef4444',
+    borderColor: COLORS.danger,
     borderWidth: 2,
-    backgroundColor: '#fef2f2',
+    backgroundColor: COLORS.errorBg,
   },
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
+    color: COLORS.danger,
     marginTop: 4,
   },
   row: {
@@ -1174,17 +1145,15 @@ const styles = StyleSheet.create({
   },
   amountContainer: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     borderRadius: 10,
     padding: 15,
     marginTop: 5,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: COLORS.gray200,
   },
   amountLabel: {
-    fontSize: 16,
-    color: '#555',
     marginBottom: 5,
   },
   submitButton: {
@@ -1197,15 +1166,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   submitButtonReady: {
-    backgroundColor: '#22c55e', // Green color when form is ready
+    backgroundColor: COLORS.success,
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold'
+    color: COLORS.white,
   },
   brandContainer: {
     flexDirection: 'row',
@@ -1216,11 +1183,11 @@ const styles = StyleSheet.create({
   brandButton: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: COLORS.gray400,
     height: 55,
     flex: 1,
     marginHorizontal: 5,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 3,
@@ -1239,15 +1206,13 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   applePayText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '600',
+    color: COLORS.white,
     letterSpacing: 0.5,
   },
   applePayButton: {
     width: '100%',
     height: 60,
-    backgroundColor: '#000',
+    backgroundColor: COLORS.gray900,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1262,12 +1227,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#ccc',
+    backgroundColor: COLORS.gray400,
   },
   dividerText: {
     marginHorizontal: 10,
-    color: '#666',
-    fontWeight: '600'
   },
 });
 

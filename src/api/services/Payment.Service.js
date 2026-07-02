@@ -3,6 +3,7 @@ import { HttpStatusCode } from 'axios';
 import { postRequest } from '@api';
 import { throwServerError } from '@api/messages/error';
 import { ErrorMessages } from '@api/messages/generic';
+import logger from '../../utils/logger';
 
 const MODEL_NAME = '/payment';
 
@@ -27,7 +28,7 @@ export function useCreateCheckoutWithoutShopperUrl() {
     return useMutation({
         mutationFn: async (body) => {
             try {
-                console.log('Mobile app: paymentMethod passed to /app/checkout:', body.paymentMethod);
+                logger.debug('Mobile app: paymentMethod passed to /app/checkout:', body.paymentMethod);
                 const result = await postRequest(`${MODEL_NAME}/app/checkout`, body);
                 if (result.status === HttpStatusCode.Ok) {
                     return result.data.data;
@@ -45,23 +46,23 @@ export function useCreateSupportCardCheckout() {
     return useMutation({
         mutationFn: async (body) => {
             try {
-                console.log('🔵 [Support Card Checkout] Request payload:', JSON.stringify(body, null, 2));
+                logger.debug('[Support Card Checkout] Request payload:', JSON.stringify(body, null, 2));
                 const result = await postRequest(`${MODEL_NAME}/app/support-card/checkout`, body);
 
-                console.log('🔵 [Support Card Checkout] Response status:', result.status);
-                console.log('🔵 [Support Card Checkout] Response data:', JSON.stringify(result.data, null, 2));
+                logger.debug('[Support Card Checkout] Response status:', result.status);
+                logger.debug('[Support Card Checkout] Response data:', JSON.stringify(result.data, null, 2));
 
                 if (result.status === HttpStatusCode.Ok) {
                     const checkoutData = result.data.data;
-                    console.log('🔵 [Support Card Checkout] Checkout ID:', checkoutData?.id);
+                    logger.debug('[Support Card Checkout] Checkout ID:', checkoutData?.id);
                     return checkoutData;
                 } else {
-                    console.error('🔴 [Support Card Checkout] Unexpected status:', result.status);
+                    logger.error('[Support Card Checkout] Unexpected status:', result.status);
                     throw new Error(ErrorMessages.generalMessage);
                 }
             } catch (err) {
-                console.error('🔴 [Support Card Checkout] Error:', err.message);
-                console.error('🔴 [Support Card Checkout] Error response:', JSON.stringify(err.response?.data, null, 2));
+                logger.error('[Support Card Checkout] Error:', err.message);
+                logger.debug('[Support Card Checkout] Error response:', JSON.stringify(err.response?.data, null, 2));
                 throwServerError(err);
             }
         },
@@ -70,7 +71,7 @@ export function useCreateSupportCardCheckout() {
 
 export async function checkSupportCardStatus(payload) {
     try {
-        console.log('🟢 [Support Card Status] Request payload:', JSON.stringify(payload, null, 2));
+        logger.debug('[Support Card Status] Request payload:', JSON.stringify(payload, null, 2));
 
         if (!payload.checkoutId || !payload.supportCardId) {
             throw new Error('Checkout ID and Support Card ID are required for status check');
@@ -78,18 +79,18 @@ export async function checkSupportCardStatus(payload) {
 
         const result = await postRequest(`${MODEL_NAME}/app/support-card/check-status`, payload);
 
-        console.log('🟢 [Support Card Status] Response status:', result.status);
-        console.log('🟢 [Support Card Status] Response data:', JSON.stringify(result.data, null, 2));
+        logger.debug('[Support Card Status] Response status:', result.status);
+        logger.debug('[Support Card Status] Response data:', JSON.stringify(result.data, null, 2));
 
         if (result.status === HttpStatusCode.Ok) {
-            console.log('🟢 [Support Card Status] Success!');
+            logger.debug('[Support Card Status] Success!');
             return {
                 success: true,
                 data: result.data.data,
                 message: result.data.message,
             };
         } else {
-            console.error('🔴 [Support Card Status] Unexpected status:', result.status);
+            logger.error('[Support Card Status] Unexpected status:', result.status);
             return {
                 success: false,
                 message: result.data?.message || ErrorMessages.generalMessage,
@@ -97,8 +98,8 @@ export async function checkSupportCardStatus(payload) {
             };
         }
     } catch (err) {
-        console.error('🔴 [Support Card Status] Error:', err.message);
-        console.error('🔴 [Support Card Status] Error response:', JSON.stringify(err.response?.data, null, 2));
+        logger.error('[Support Card Status] Error:', err.message);
+        logger.debug('[Support Card Status] Error response:', JSON.stringify(err.response?.data, null, 2));
         return {
             success: false,
             message: err.response?.data?.message || err.message || 'Support card status check failed',
@@ -167,14 +168,14 @@ export async function CheckPaymentStatus(payload) {
             };
         }
     } catch (err) {
-        console.error('[Payment Service] Error checking payment status:', err);
+        logger.error('[Payment Service] Error checking payment status:', err);
 
-        // 🔥 FIXED: Handle HTTP 400 responses from backend with payment failure details
+        // Handle HTTP 400 responses from backend with payment failure details
         // Backend returns 400 when payment fails, but includes useful error details
         if (err.response?.status === 400) {
             const backendError = err.response?.data;
 
-            console.log('🔍 [Payment Service] Backend error structure:', JSON.stringify(backendError, null, 2));
+            logger.debug('[Payment Service] Backend error structure:', JSON.stringify(backendError, null, 2));
 
             // 🔥 FIXED: Extract the actual error message from HyperPay result
             // Backend sends the entire HyperPay result object in 'description' field
@@ -212,7 +213,7 @@ export async function CheckPaymentStatus(payload) {
                 errorMessage = 'Payment verification failed. Please try again.';
             }
 
-            console.log('🔍 [Payment Service] Extracted error message:', errorMessage);
+            logger.debug('[Payment Service] Extracted error message:', errorMessage);
 
             return {
                 success: false,

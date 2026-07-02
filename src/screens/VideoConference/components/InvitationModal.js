@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Modal,
@@ -13,9 +12,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
+import { AppText } from '../../../components/ui';
 import COLORS from '../../../constants/colors';
-
-const PRIMARY_COLOR = '#65bed6';
 
 const COUNTRY_CODES = [
   { code: '+966', country: 'SA', label: 'Saudi Arabia' },
@@ -73,35 +71,35 @@ const InvitationModal = ({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>
-              {t('video_conference.send_invitation', 'Send Invitation')}
-            </Text>
+            <AppText variant="h3" color={COLORS.slateText} style={styles.headerTitle}>
+              {t('videoConsultation.sendInvitation', 'Send Invitation')}
+            </AppText>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Icon name="close" size={24} color="#1E293B" />
+              <Icon name="close" size={24} color={COLORS.slateText} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Phone Number */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                {t('video_conference.phone_number', 'Phone Number')}
-              </Text>
+              <AppText variant="label" color={COLORS.slateText} style={styles.inputLabel}>
+                {t('videoConsultation.phoneNumber', 'Phone Number')}
+              </AppText>
               <View style={styles.phoneInputRow}>
                 {/* Country Code Selector */}
                 <TouchableOpacity
                   style={styles.countrySelector}
                   onPress={() => setShowCountryPicker(!showCountryPicker)}
                 >
-                  <Text style={styles.countryCode}>{selectedCountry.code}</Text>
-                  <Icon name="arrow-drop-down" size={20} color="#64748B" />
+                  <AppText variant="bodyMedium" color={COLORS.slateText} style={styles.countryCode}>{selectedCountry.code}</AppText>
+                  <Icon name="arrow-drop-down" size={20} color={COLORS.slateTextMuted} />
                 </TouchableOpacity>
 
                 {/* Phone Input */}
                 <TextInput
                   style={styles.phoneInput}
-                  placeholder="5XXXXXXXX"
-                  placeholderTextColor="#94A3B8"
+                  placeholder={t('videoConsultation.phonePlaceholder', '5XXXXXXXX')}
+                  placeholderTextColor={COLORS.gray500}
                   keyboardType="phone-pad"
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
@@ -125,8 +123,8 @@ const InvitationModal = ({
                           setShowCountryPicker(false);
                         }}
                       >
-                        <Text style={styles.countryOptionCode}>{country.code}</Text>
-                        <Text style={styles.countryOptionLabel}>{country.label}</Text>
+                        <AppText variant="label" color={COLORS.slateText} style={styles.countryOptionCode}>{country.code}</AppText>
+                        <AppText variant="bodySmall" color={COLORS.slateTextMuted} style={styles.countryOptionLabel}>{country.label}</AppText>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -136,16 +134,16 @@ const InvitationModal = ({
 
             {/* Message (Optional) */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                {t('video_conference.invitation_message', 'Message (Optional)')}
-              </Text>
+              <AppText variant="label" color={COLORS.slateText} style={styles.inputLabel}>
+                {t('videoConsultation.invitationMessage', 'Message (Optional)')}
+              </AppText>
               <TextInput
                 style={styles.messageInput}
                 placeholder={t(
-                  'video_conference.invitation_message_placeholder',
+                  'videoConsultation.invitationMessagePlaceholder',
                   'Add a personal message to the invitation...'
                 )}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={COLORS.gray500}
                 multiline
                 numberOfLines={3}
                 value={message}
@@ -164,13 +162,13 @@ const InvitationModal = ({
               activeOpacity={0.8}
             >
               {isLoading ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color={COLORS.white} />
               ) : (
                 <>
-                  <Icon name="send" size={20} color="white" />
-                  <Text style={styles.sendButtonText}>
-                    {t('video_conference.send_invitation', 'Send Invitation')}
-                  </Text>
+                  <Icon name="send" size={20} color={COLORS.white} />
+                  <AppText variant="button" color={COLORS.white} style={styles.sendButtonText}>
+                    {t('videoConsultation.sendInvitation', 'Send Invitation')}
+                  </AppText>
                 </>
               )}
             </TouchableOpacity>
@@ -184,13 +182,13 @@ const InvitationModal = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   container: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     borderRadius: 20,
     width: '100%',
     maxWidth: 400,
@@ -203,13 +201,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: COLORS.slateBorder,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
+  headerTitle: {},
   closeButton: {
     padding: 4,
   },
@@ -220,9 +214,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
     marginBottom: 8,
   },
   phoneInputRow: {
@@ -232,36 +223,32 @@ const styles = StyleSheet.create({
   countrySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORS.slateMuted,
     paddingHorizontal: 12,
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.slateBorder,
   },
-  countryCode: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
+  countryCode: {},
   phoneInput: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORS.slateMuted,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     fontSize: 16,
-    color: '#1E293B',
+    color: COLORS.slateText,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.slateBorder,
   },
   countryDropdown: {
     marginTop: 8,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
+    borderColor: COLORS.slateBorder,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -276,56 +263,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.slateMuted,
     gap: 12,
   },
   countryOptionSelected: {
-    backgroundColor: 'rgba(101, 190, 214, 0.1)',
+    backgroundColor: COLORS.primaryLight,
   },
   countryOptionCode: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
     width: 50,
   },
-  countryOptionLabel: {
-    fontSize: 14,
-    color: '#64748B',
-  },
+  countryOptionLabel: {},
   messageInput: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORS.slateMuted,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     fontSize: 14,
-    color: '#1E293B',
+    color: COLORS.slateText,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.slateBorder,
     minHeight: 100,
     textAlignVertical: 'top',
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: COLORS.slateBorder,
   },
   sendButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: COLORS.primary,
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: COLORS.gray500,
   },
-  sendButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  sendButtonText: {},
 });
 
 export default InvitationModal;

@@ -1,6 +1,8 @@
 // src/machines/paymentMachine.js
 import { useState, useMemo, useCallback } from 'react';
 
+const resolveAppointmentId = (appointment) => appointment?._id || appointment?.id;
+
 export const usePaymentMachine = ({
   createTransaction,
   createCheckout,
@@ -41,31 +43,55 @@ export const usePaymentMachine = ({
           payableAmount: pricing.payableAmount,
         }),
       executePayment: () => {
-        setContext(prevContext => {
+        setContext((prevContext) => {
+          if (prevContext.state === 'processing' || prevContext.isLoading) {
+            return prevContext;
+          }
+
+          const appointmentId = resolveAppointmentId(prevContext.appointment);
+
+          if (!appointmentId) {
+            return { ...prevContext, state: 'error', isLoading: false };
+          }
+
           if (prevContext.paymentMethod === 'Wallet') {
-            if (prevContext.wallet.availableBalance < prevContext.payableAmount) {
+            if (!prevContext.wallet) {
+              return { ...prevContext, state: 'error', isLoading: false };
+            }
+
+            const availableBalance = prevContext.wallet.availableBalance ?? 0;
+            if (availableBalance < prevContext.payableAmount) {
               return { ...prevContext, state: 'insufficient_funds', isLoading: false };
             }
+
             createTransaction(
               {
-                appointmentId: prevContext.appointment.id,
+                appointmentId,
                 paymentMethod: 'Wallet',
                 walletId: prevContext.wallet._id,
                 walletAmount: prevContext.payableAmount,
+                discountId: prevContext.discount?._id,
+                supportCardId: prevContext.supportCard?.supportCardId,
+                supportCardAmount: prevContext.supportCard?.amount,
                 status: 'Completed',
               },
               {
                 onSuccess: (data) => {
+                  const transactionId = data?.transaction?._id || data?.transaction?.id;
+                  if (!transactionId) {
+                    setState({ state: 'error', isLoading: false });
+                    return;
+                  }
                   setState({
                     state: 'success',
                     isLoading: false,
-                    transactionId: data.transaction._id,
+                    transactionId,
                   });
                 },
                 onError: () => {
                   setState({ state: 'error', isLoading: false });
                 },
-              }
+              },
             );
           } else {
             let paymentBrand;
@@ -76,37 +102,39 @@ export const usePaymentMachine = ({
             } else {
               paymentBrand = prevContext.paymentMethod;
             }
-            console.log('Calling createCheckout with paymentMethod:', paymentBrand);
+
             createCheckout(
               {
                 amount: prevContext.payableAmount,
                 paymentMethod: paymentBrand,
-                appointmentId: prevContext.appointment.id,
+                appointmentId,
+                discountId: prevContext.discount?._id,
+                supportCardId: prevContext.supportCard?.supportCardId,
+                supportCardAmount: prevContext.supportCard?.amount,
               },
               {
                 onSuccess: (data) => {
-                  console.log('createCheckout success:', data);
                   setState({ checkoutId: data.id });
                 },
-                onError: (error) => {
-                  console.log('createCheckout error:', error);
+                onError: () => {
                   setState({ state: 'error', isLoading: false });
                 },
-              }
+              },
             );
           }
-          
+
           return { ...prevContext, state: 'processing', isLoading: true };
         });
       },
       handlePaymentCompleted: () => {
         setState({ state: 'processing' });
       },
-      verifyPayment: async (checkoutId) => {
+      verifyPayment: async (checkoutId, appointment) => {
         try {
+          const appointmentId = appointment?._id || appointment?.id;
           const statusResult = await checkPaymentStatus({
             checkoutId,
-            appointmentId: context.appointment?.id,
+            appointmentId,
           });
           if (statusResult.success) {
             setState({
@@ -117,7 +145,7 @@ export const usePaymentMachine = ({
           } else {
             setState({ state: 'error', isLoading: false });
           }
-        } catch (error) {
+        } catch {
           setState({ state: 'error', isLoading: false });
         }
       },
@@ -125,7 +153,7 @@ export const usePaymentMachine = ({
         setState({ state: 'idle', checkoutId: null, isLoading: false });
       },
     };
-  }, [createTransaction, createCheckout, checkPaymentStatus, setState, context.appointment?.id]);
+  }, [createTransaction, createCheckout, checkPaymentStatus, setState]);
 
   return { context, actions };
 };

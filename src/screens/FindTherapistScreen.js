@@ -11,16 +11,17 @@ import { useProviderSearch } from '../hooks/useProviderSearch';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { SPACING, RADIUS, cardBorder } from '../theme';
-import { AppText, EmptyState } from '../components/ui';
+import { AppText, EmptyState, AdaptiveContainer } from '../components/ui';
 import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
+import { useResponsive } from '../utils/responsive';
 
 const FILTER_META = [
-    { key: 'issues', icon: 'brain', color: '#8B5CF6', labelKey: 'issues' },
-    { key: 'approaches', icon: 'therapy', color: '#EC4899', labelKey: 'approaches' },
-    { key: 'sessionType', icon: 'session', color: '#3B82F6', labelKey: 'sessionType' },
-    { key: 'language', icon: 'language', color: '#10B981', labelKey: 'language' },
-    { key: 'gender', icon: 'gender', color: '#F59E0B', labelKey: 'gender' },
-    { key: 'advanced', icon: 'sliders', color: '#6366F1', labelKey: 'advanced' },
+    { key: 'issues', icon: 'brain', color: COLORS.filterPurple, labelKey: 'issues' },
+    { key: 'approaches', icon: 'therapy', color: COLORS.filterPink, labelKey: 'approaches' },
+    { key: 'sessionType', icon: 'session', color: COLORS.filterBlue, labelKey: 'sessionType' },
+    { key: 'language', icon: 'language', color: COLORS.filterGreen, labelKey: 'language' },
+    { key: 'gender', icon: 'gender', color: COLORS.filterOrange, labelKey: 'gender' },
+    { key: 'advanced', icon: 'sliders', color: COLORS.filterIndigo, labelKey: 'advanced' },
 ];
 
 const SORT_META = [
@@ -37,6 +38,7 @@ const FindTherapistScreen = () => {
     const { t, isRTL } = useLanguage();
     const headerMode = useScreenHeaderMode();
     const tabBarInset = useGlassTabBarInset();
+    const { listColumns, isTablet } = useResponsive();
 
     const preSelectedIssue = route.params?.preSelectedIssue;
 
@@ -64,7 +66,6 @@ const FindTherapistScreen = () => {
     }, [preSelectedIssue, updateFilters]);
 
     const [activeFilterSheet, setActiveFilterSheet] = useState(null);
-    const [showSortMenu, setShowSortMenu] = useState(false);
 
     const filterTypes = useMemo(() => FILTER_META.map((item) => ({
         ...item,
@@ -134,8 +135,9 @@ const FindTherapistScreen = () => {
             isRTL={isRTL}
             t={t}
             onPress={() => handleCardPress(item)}
+            style={isTablet ? styles.tabletCard : undefined}
         />
-    ), [isRTL, t, handleCardPress]);
+    ), [isRTL, t, handleCardPress, isTablet]);
 
     const renderEmpty = () => (
         <View style={styles.emptyContainer}>
@@ -190,6 +192,7 @@ const FindTherapistScreen = () => {
             />
 
             {/* Search bar */}
+            <AdaptiveContainer>
             <View style={[styles.searchBar, rowStyle]}>
                 <Image source={ICONS.search} style={styles.searchIcon} />
                 <TextInput
@@ -281,14 +284,15 @@ const FindTherapistScreen = () => {
                     {loading ? (t?.common?.loading || 'Loading...') : `${pagination?.total || providers.length} ${t?.findTherapist?.results || 'results'}`}
                 </Text>
             </View>
+            </AdaptiveContainer>
 
             {/* Results */}
             {loading ? (
-                <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: tabBarInset }}>
+                <ScrollView contentContainerStyle={[styles.listContent, { paddingBottom: tabBarInset }]}>
                     {[1, 2, 3, 4].map(i => <TherapistCardSkeleton key={i} />)}
                 </ScrollView>
             ) : isError ? (
-                <View style={{ padding: 20, paddingBottom: tabBarInset }}>
+                <View style={[styles.listContent, { paddingBottom: tabBarInset }]}>
                     <EmptyState
                         title={t?.findTherapist?.loadError || 'Could not load therapists'}
                         subtitle={error?.message}
@@ -298,11 +302,14 @@ const FindTherapistScreen = () => {
                 </View>
             ) : (
                 <FlatList
+                    key={`therapist-list-${listColumns}`}
                     data={providers}
                     keyExtractor={(item, index) => (item.id || item._id || index).toString()}
                     renderItem={renderItem}
+                    numColumns={listColumns}
+                    columnWrapperStyle={listColumns > 1 ? styles.columnWrapper : undefined}
                     style={styles.resultsList}
-                    contentContainerStyle={{ padding: 20, paddingBottom: tabBarInset }}
+                    contentContainerStyle={[styles.listContent, { paddingBottom: tabBarInset }]}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={renderFooter}
                     showsVerticalScrollIndicator={false}
@@ -335,7 +342,6 @@ const styles = StyleSheet.create({
     searchBar: {
         backgroundColor: COLORS.surface,
         borderRadius: RADIUS.pill,
-        marginHorizontal: SPACING.xl,
         marginTop: SPACING.sm,
         paddingHorizontal: SPACING.lg,
         alignItems: 'center',
@@ -548,6 +554,20 @@ const styles = StyleSheet.create({
     pageInfo: {
         fontSize: 13,
         color: COLORS.textSecondary,
+    },
+    listContent: {
+        padding: SPACING.xl,
+        width: '100%',
+        maxWidth: 960,
+        alignSelf: 'center',
+    },
+    columnWrapper: {
+        gap: SPACING.md,
+        marginBottom: SPACING.md,
+    },
+    tabletCard: {
+        flex: 1,
+        marginBottom: 0,
     },
 });
 

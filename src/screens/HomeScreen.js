@@ -1,11 +1,10 @@
 
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Dimensions, Alert, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Linking, FlatList, Alert, Pressable } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '../store/LanguageContext';
-import { getDynamicData } from '../utils/dataHelper';
 import { useGetAllPromotions } from '../api/services/Public.Service';
 import { useGetSearchFilters, useSearchProviders } from '../api/services/Search.Service';
 import { useGetUpcomingAppointments } from '../api/services/Appointment.Service';
@@ -16,7 +15,7 @@ import { formatSarAmount } from '../utils/formatMoney';
 import RiyalText from '../components/RiyalText';
 import Header from '../components/Header';
 import Skeleton from '../components/Skeleton';
-import { SectionHeader, QuickAction, AppButton, AppText, AppCard } from '../components/ui';
+import { SectionHeader, QuickAction, AppButton, AppText, AppCard, AdaptiveContainer } from '../components/ui';
 import { useAuthStore } from '../store/authStore';
 import SessionCountdownHero from '../components/SessionCountdownHero';
 import ProviderThumb from '../components/ProviderThumb';
@@ -26,9 +25,11 @@ import ICONS from '../constants/icons';
 import COLORS from '../constants/colors';
 import { SPACING, RADIUS, SHADOWS, cardBorder } from '../theme';
 import { interpolate } from '../utils/localeHelpers';
+import { formatLocalizedDate, formatLocalizedTime } from '../utils/formatLocaleDate';
 import { createScrollToIndexFailedHandler } from '../utils/scrollToIndex';
 import haptics from '../utils/haptics';
 import useGlassTabBarInset from '../navigation/useGlassTabBarInset';
+import { useResponsive, getGridItemWidth } from '../utils/responsive';
 import moment from 'moment-timezone';
 import { getNearestUpcomingAppointment } from '../utils/appointmentFilters';
 import {
@@ -37,13 +38,12 @@ import {
   handlePromoAction,
 } from '../utils/promotions';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PROMO_CARD_WIDTH = SCREEN_WIDTH - 40;
+const PROMO_GAP = 15;
 
 const PROMO_THEMES = [
-  { bg: '#5DBCD2', icon: ICONS.calendar },
-  { bg: '#4F46E5', icon: ICONS.shield },
-  { bg: '#B45309', icon: ICONS.video },
+  { bg: COLORS.promoHeroTeal, icon: ICONS.calendar },
+  { bg: COLORS.promoHeroIndigo, icon: ICONS.shield },
+  { bg: COLORS.promoHeroAmber, icon: ICONS.video },
 ];
 
 const FEATURED_ISSUES = [
@@ -57,24 +57,44 @@ const FEATURED_ISSUES = [
   { code: 'relationship-issues', iconKey: 'relationships', en: 'Relationships', ar: 'العلاقات' },
 ];
 
-const PROMO_ITEM_LENGTH = PROMO_CARD_WIDTH + 15;
-
 const HomeScreen = () => {
    const navigation = useNavigation();
    const queryClient = useQueryClient();
    const { t, isRTL } = useLanguage();
-   const data = getDynamicData(isRTL);
    const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
    const alignText = { textAlign: isRTL ? 'right' : 'left' };
    const tabBarInset = useGlassTabBarInset();
+   const {
+      width: screenWidth,
+      innerWidth,
+      isTablet,
+      issueColumns,
+      quickActionColumns,
+      providerColumns,
+   } = useResponsive();
+
+   const promoCardWidth = useMemo(
+      () => Math.min(innerWidth, screenWidth - 40),
+      [innerWidth, screenWidth],
+   );
+   const promoItemLength = promoCardWidth + PROMO_GAP;
+   const issueItemWidth = useMemo(
+      () => getGridItemWidth(innerWidth, issueColumns, 12),
+      [innerWidth, issueColumns],
+   );
+   const quickActionCellWidth = `${100 / quickActionColumns}%`;
+   const providerCardWidth = useMemo(
+      () => (providerColumns > 0 ? getGridItemWidth(innerWidth, providerColumns, 12) : 148),
+      [innerWidth, providerColumns],
+   );
 
    const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
    const [nowTick, setNowTick] = useState(0);
    const promoFlatListRef = useRef(null);
    const autoScrollTimer = useRef(null);
    const handlePromoScrollToIndexFailed = useCallback(
-      createScrollToIndexFailedHandler(promoFlatListRef, PROMO_ITEM_LENGTH),
-      [],
+      createScrollToIndexFailedHandler(promoFlatListRef, promoItemLength),
+      [promoItemLength],
    );
 
    // Check if user is logged in
@@ -288,7 +308,7 @@ const HomeScreen = () => {
    // Handle manual scroll
    const handlePromoScroll = (event) => {
       const contentOffsetX = event.nativeEvent.contentOffset.x;
-      const index = Math.round(contentOffsetX / (PROMO_CARD_WIDTH + 15));
+      const index = Math.round(contentOffsetX / promoItemLength);
       if (index !== currentPromoIndex && index >= 0 && index < promoCards.length) {
          setCurrentPromoIndex(index);
       }
@@ -305,6 +325,9 @@ const HomeScreen = () => {
    const handleScrollEndDrag = () => {
       if (promoCards.length > 1) {
          setTimeout(() => {
+            if (autoScrollTimer.current) {
+               clearInterval(autoScrollTimer.current);
+            }
             autoScrollTimer.current = setInterval(() => {
                setCurrentPromoIndex((prevIndex) => {
                   const nextIndex = (prevIndex + 1) % promoCards.length;
@@ -333,18 +356,21 @@ const HomeScreen = () => {
 
       return (
          <Pressable
-            style={[styles.promoCard, { backgroundColor: bg, minHeight: cardHeight, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+            style={[
+               styles.promoCard,
+               { backgroundColor: bg, minHeight: cardHeight, width: promoCardWidth, flexDirection: isRTL ? 'row-reverse' : 'row' },
+            ]}
             onPress={() => onPromoPress(item)}
             android_ripple={{ color: 'rgba(255,255,255,0.12)' }}
          >
             <View style={[styles.promoTextBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-               <Text style={[styles.promoEyebrow, { textAlign: isRTL ? 'right' : 'left' }]}>
+               <AppText variant="caption" color={COLORS.white} align={isRTL ? 'right' : 'left'} style={styles.promoEyebrow}>
                   {(t.home?.promoEyebrow || 'Spectrum Care').toUpperCase()}
-               </Text>
-               <Text style={[styles.promoTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{title}</Text>
-               <Text style={[styles.promoSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{subtitle}</Text>
+               </AppText>
+               <AppText variant="bodyMedium" color={COLORS.white} align={isRTL ? 'right' : 'left'} style={styles.promoTitle} numberOfLines={2}>{title}</AppText>
+               <AppText variant="caption" color="rgba(255,255,255,0.88)" align={isRTL ? 'right' : 'left'} style={styles.promoSub} numberOfLines={2}>{subtitle}</AppText>
                <View style={[styles.promoBtn, rowStyle]}>
-                  <Text style={styles.promoBtnText}>{ctaLabel || t.home?.bookAppointment || 'Book Appointment'}</Text>
+                  <AppText variant="caption" color={COLORS.white} style={styles.promoBtnText}>{ctaLabel || t.home?.bookAppointment || 'Book Appointment'}</AppText>
                   <Image source={ICONS.chevronRight} style={[styles.promoBtnChevron, isRTL && { transform: [{ rotate: '180deg' }] }]} />
                </View>
             </View>
@@ -361,12 +387,13 @@ const HomeScreen = () => {
 
    return (
       <View style={styles.container}>
-         <Header showProfile title={data.user} />
+         <Header showProfile />
          <ScrollView
             showsVerticalScrollIndicator={false}
             style={styles.scroll}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarInset }]}
          >
+         <AdaptiveContainer noPadding>
 
             {isLoggedIn && isPatient && profileCompletion < 100 ? (
                <TouchableOpacity
@@ -434,7 +461,7 @@ const HomeScreen = () => {
             {/* Shortcuts not in the tab bar — therapists, appointments, and messages use bottom tabs */}
             {isLoggedIn && isPatient && (
                <View style={styles.quickActionsGrid}>
-                  <View style={styles.quickActionCell}>
+                  <View style={[styles.quickActionCell, { width: quickActionCellWidth }]}>
                      <QuickAction
                         vectorIcon="video"
                         label={t.home?.quickVideo || 'Video'}
@@ -442,7 +469,7 @@ const HomeScreen = () => {
                         labelLines={1}
                      />
                   </View>
-                  <View style={styles.quickActionCell}>
+                  <View style={[styles.quickActionCell, { width: quickActionCellWidth }]}>
                      <QuickAction
                         vectorIcon="practice"
                         label={t.home?.quickRecords || 'Records'}
@@ -450,7 +477,7 @@ const HomeScreen = () => {
                         labelLines={1}
                      />
                   </View>
-                  <View style={styles.quickActionCell}>
+                  <View style={[styles.quickActionCell, { width: quickActionCellWidth }]}>
                      <QuickAction
                         vectorIcon="wallet"
                         label={t.home?.quickBilling || 'Billing'}
@@ -579,56 +606,58 @@ const HomeScreen = () => {
 
                      {/* Card */}
                      <View style={styles.appointmentCard}>
-                        <View style={styles.appointmentAccent} />
-                        <View style={[styles.appointmentContent, rowStyle]}>
-                           {/* Doctor Image */}
-                           <View style={styles.appointmentDoctorImgContainer}>
-                              <Image
-                                 source={nearestAppointment.provider?.profileImage ? { uri: nearestAppointment.provider.profileImage } : ICONS.defaultAvatar}
-                                 style={styles.appointmentDoctorImg}
-                              />
-                           </View>
+                        <View style={[styles.appointmentCardTop, rowStyle]}>
+                           <View style={styles.appointmentAccent} />
+                           <View style={[styles.appointmentContent, rowStyle, { flex: 1 }]}>
+                              {/* Doctor Image */}
+                              <View style={styles.appointmentDoctorImgContainer}>
+                                 <Image
+                                    source={nearestAppointment.provider?.profileImage ? { uri: nearestAppointment.provider.profileImage } : ICONS.defaultAvatar}
+                                    style={styles.appointmentDoctorImg}
+                                 />
+                              </View>
 
-                           {/* Doctor Info */}
-                           <View style={[styles.appointmentInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-                              <Text style={[styles.appointmentDoctorName, alignText]} numberOfLines={1}>
-                                 {isRTL
-                                    ? (nearestAppointment.provider?.fullNameArabic || nearestAppointment.provider?.fullName || nearestAppointment.providerName)
-                                    : (nearestAppointment.provider?.fullNameEnglish || nearestAppointment.provider?.fullName || nearestAppointment.providerName)}
-                              </Text>
-                              <Text style={[styles.appointmentSpecialty, alignText]} numberOfLines={1}>
-                                 {isRTL
-                                    ? (nearestAppointment.provider?.specialty?.nameArabic || 'طبيب')
-                                    : (nearestAppointment.provider?.specialty?.nameEnglish || 'Doctor')}
-                              </Text>
-                              {/* Date/Time Badges */}
-                              <View style={[styles.appointmentBadges, rowStyle]}>
-                                 <View style={styles.appointmentBadge}>
-                                    <Image source={ICONS.calendar} style={styles.badgeIcon} />
-                                    <Text style={styles.badgeText}>
+                              {/* Doctor Info */}
+                              <View style={[styles.appointmentInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                                 <Text style={[styles.appointmentDoctorName, alignText]} numberOfLines={1}>
+                                    {isRTL
+                                       ? (nearestAppointment.provider?.fullNameArabic || nearestAppointment.provider?.fullName || nearestAppointment.providerName)
+                                       : (nearestAppointment.provider?.fullNameEnglish || nearestAppointment.provider?.fullName || nearestAppointment.providerName)}
+                                 </Text>
+                                 <Text style={[styles.appointmentSpecialty, alignText]} numberOfLines={1}>
+                                    {isRTL
+                                       ? (nearestAppointment.provider?.specialty?.nameArabic || 'طبيب')
+                                       : (nearestAppointment.provider?.specialty?.nameEnglish || 'Doctor')}
+                                 </Text>
+                                 {/* Date/Time Badges */}
+                                 <View style={[styles.appointmentBadges, rowStyle]}>
+                                    <View style={styles.appointmentBadge}>
+                                       <Image source={ICONS.calendar} style={styles.badgeIcon} />
+                                       <Text style={styles.badgeText}>
                                        {moment.utc(nearestAppointment.startTime).isSame(moment(), 'day')
                                           ? (t.home?.today || 'Today')
-                                          : moment.utc(nearestAppointment.startTime).format('DD MMM')}
+                                          : formatLocalizedDate(nearestAppointment.startTime, 'DD MMM', isRTL)}
                                     </Text>
                                  </View>
                                  <View style={styles.appointmentBadge}>
                                     <Image source={ICONS.clock || ICONS.time} style={styles.badgeIcon} />
                                     <Text style={styles.badgeText}>
-                                       {moment(nearestAppointment.startTime).format('hh:mm A')}
-                                    </Text>
+                                       {formatLocalizedTime(nearestAppointment.startTime, 'hh:mm A', isRTL)}
+                                       </Text>
+                                    </View>
                                  </View>
                               </View>
-                           </View>
 
-                           {/* Video Button - Only show 10 minutes before appointment */}
-                           {showVideoButton && (
-                              <TouchableOpacity
-                                 style={styles.videoIconBtn}
-                                 onPress={() => requestJoinSession({ appointment: nearestAppointment })}
-                              >
-                                 <Image source={ICONS.video} style={styles.videoIconImg} />
-                              </TouchableOpacity>
-                           )}
+                              {/* Video Button - Only show 10 minutes before appointment */}
+                              {showVideoButton && (
+                                 <TouchableOpacity
+                                    style={styles.videoIconBtn}
+                                    onPress={() => requestJoinSession({ appointment: nearestAppointment })}
+                                 >
+                                    <Image source={ICONS.video} style={styles.videoIconImg} />
+                                 </TouchableOpacity>
+                              )}
+                           </View>
                         </View>
 
                         {isRescheduledUnpaid && (
@@ -648,7 +677,7 @@ const HomeScreen = () => {
 
                         {/* Status Tag */}
                         <View style={{
-                           backgroundColor: needsApproval ? '#FFF3CD' : '#E8F5E9',
+                           backgroundColor: needsApproval ? COLORS.statusWarningBg : COLORS.statusSuccessBg,
                            paddingHorizontal: 8,
                            paddingVertical: 4,
                            borderRadius: 12,
@@ -658,13 +687,25 @@ const HomeScreen = () => {
                            gap: 4,
                            marginTop: 8,
                            marginStart: 12,
+                           marginBottom: 12,
                         }}>
-                           <Text style={{ fontSize: 10 }}>{needsApproval ? '⏳' : '✓'}</Text>
-                           <Text style={{ color: needsApproval ? '#F57C00' : '#2E7D32', fontSize: 10, fontWeight: '600' }}>
+                           <Image
+                              source={needsApproval ? ICONS.clock : ICONS.checkCircle}
+                              style={{
+                                 width: 12,
+                                 height: 12,
+                                 tintColor: needsApproval ? COLORS.statusWarningText : COLORS.statusSuccessText,
+                              }}
+                           />
+                           <AppText
+                              variant="caption"
+                              color={needsApproval ? COLORS.statusWarningText : COLORS.statusSuccessText}
+                              style={{ fontWeight: '600' }}
+                           >
                               {needsApproval
                                  ? (t.home?.awaitingApproval || 'Awaiting Approval')
                                  : (t.home?.confirmed || 'Confirmed')}
-                           </Text>
+                           </AppText>
                         </View>
                      </View>
                   </View>
@@ -681,10 +722,12 @@ const HomeScreen = () => {
                   style={{ marginBottom: SPACING.md }}
                />
                <ScrollView
-                  horizontal
+                  horizontal={!isTablet}
+                  nestedScrollEnabled
+                  directionalLockEnabled
                   showsHorizontalScrollIndicator={false}
-                  style={styles.docSlider}
-                  contentContainerStyle={styles.docSliderContent}
+                  style={isTablet ? undefined : styles.docSlider}
+                  contentContainerStyle={isTablet ? styles.docGrid : styles.docSliderContent}
                >
                   {isProvidersLoading ? (
                      Array.from({ length: 4 }).map((_, index) => (
@@ -716,7 +759,7 @@ const HomeScreen = () => {
                         const openProfile = () => navigation.navigate('TherapistProfile', { providerId });
 
                         return (
-                           <View key={provider.id} style={styles.docCard}>
+                           <View key={provider.id} style={[styles.docCard, isTablet && { width: providerCardWidth, marginEnd: 0 }]}>
                               <Pressable
                                  style={{ flex: 1 }}
                                  onPress={openProfile}
@@ -768,7 +811,7 @@ const HomeScreen = () => {
                   {isFiltersLoading ? (
                      <>
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                           <View key={i} style={styles.issueItem}>
+                           <View key={i} style={[styles.issueItem, { width: issueItemWidth }]}>
                               <Skeleton width={44} height={44} borderRadius={22} />
                               <Skeleton width={55} height={10} style={{ marginTop: 6 }} />
                            </View>
@@ -778,7 +821,7 @@ const HomeScreen = () => {
                      visibleIssues.map(issue => (
                         <TouchableOpacity
                            key={issue._id || issue.id}
-                           style={styles.issueItem}
+                           style={[styles.issueItem, { width: issueItemWidth }]}
                            onPress={() => navigation.navigate('Main', {
                               screen: 'SearchTab',
                               params: { preSelectedIssue: issue._id || issue.id },
@@ -818,9 +861,11 @@ const HomeScreen = () => {
                      renderItem={renderPromoCard}
                      keyExtractor={(item, index) => String(item._id || item.id || item.titleEnglish || `promo-${index}`)}
                      horizontal
+                     nestedScrollEnabled
+                     directionalLockEnabled
                      pagingEnabled={false}
                      showsHorizontalScrollIndicator={false}
-                     snapToInterval={PROMO_CARD_WIDTH + 15}
+                     snapToInterval={promoItemLength}
                      decelerationRate="fast"
                      contentContainerStyle={styles.slider}
                      onScroll={handlePromoScroll}
@@ -832,8 +877,8 @@ const HomeScreen = () => {
                      windowSize={3}
                      removeClippedSubviews
                      getItemLayout={(data, index) => ({
-                        length: PROMO_ITEM_LENGTH,
-                        offset: PROMO_ITEM_LENGTH * index,
+                        length: promoItemLength,
+                        offset: promoItemLength * index,
                         index,
                      })}
                      onScrollToIndexFailed={handlePromoScrollToIndexFailed}
@@ -885,6 +930,7 @@ const HomeScreen = () => {
                <Image source={ICONS.general} style={{ width: 30, height: 30, tintColor: COLORS.darkSlateBlue }} />
             </TouchableOpacity>
             ) : null}
+         </AdaptiveContainer>
          </ScrollView>
       </View>
    );
@@ -903,7 +949,6 @@ const styles = StyleSheet.create({
       paddingBottom: SPACING.sm,
    },
    quickActionCell: {
-      width: '33.33%',
       paddingHorizontal: SPACING.xs,
       marginBottom: SPACING.lg,
    },
@@ -1087,7 +1132,6 @@ const styles = StyleSheet.create({
    promoContainer: { marginBottom: SPACING.lg, paddingHorizontal: SPACING.xl },
    slider: { paddingHorizontal: 0 },
    promoCard: {
-      width: PROMO_CARD_WIDTH,
       borderRadius: RADIUS.xl,
       paddingHorizontal: 22,
       paddingVertical: 18,
@@ -1104,7 +1148,7 @@ const styles = StyleSheet.create({
       letterSpacing: 1.1,
       marginBottom: 6,
    },
-   promoTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 6, lineHeight: 22 },
+   promoTitle: { marginBottom: 6, lineHeight: 22, fontWeight: '700' },
    promoSub: { fontSize: 12, color: 'rgba(255,255,255,0.88)', marginBottom: 14, lineHeight: 17 },
    promoBtn: {
       flexDirection: 'row',
@@ -1118,8 +1162,8 @@ const styles = StyleSheet.create({
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.35)',
    },
-   promoBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-   promoBtnChevron: { width: 10, height: 10, tintColor: '#FFFFFF' },
+   promoBtnText: { fontWeight: '700' },
+   promoBtnChevron: { width: 10, height: 10, tintColor: COLORS.white },
    promoVisual: {
       width: 104,
       height: 104,
@@ -1145,7 +1189,7 @@ const styles = StyleSheet.create({
    promoIconImg: {
       width: 32,
       height: 32,
-      tintColor: '#FFFFFF',
+      tintColor: COLORS.white,
    },
 
    // Pagination
@@ -1166,7 +1210,13 @@ const styles = StyleSheet.create({
    helpTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary, marginBottom: 4 },
    helpSubtitle: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 16 },
    issueGrid: { flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start' },
-   issueItem: { alignItems: 'center', width: (Dimensions.get('window').width - 40 - 36) / 4 },
+   issueItem: { alignItems: 'center' },
+   docGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      paddingBottom: SPACING.sm,
+   },
    issueIconCircle: {
       width: 56,
       height: 56,
@@ -1204,7 +1254,7 @@ const styles = StyleSheet.create({
    findMoreText: { color: COLORS.primary, fontSize: 15, fontWeight: '700' },
    findMoreIcon: { width: 16, height: 16, tintColor: COLORS.primary },
    findMoreChevron: { width: 12, height: 12, tintColor: COLORS.primary },
-   errorText: { fontSize: 12, color: COLORS.error || '#FF0000', textAlign: 'center' },
+   errorText: { fontSize: 12, color: COLORS.error, textAlign: 'center' },
    errorContainer: { padding: 20, alignItems: 'center', justifyContent: 'center' },
    mainBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: RADIUS.md, alignItems: 'center', ...SHADOWS.primary },
 
@@ -1281,8 +1331,8 @@ const styles = StyleSheet.create({
       fontWeight: '500',
    },
    timeBadgeOngoing: {
-      backgroundColor: '#22C55E',
-      borderColor: '#22C55E',
+      backgroundColor: COLORS.success,
+      borderColor: COLORS.success,
    },
    timeBadgeTextOngoing: {
       color: COLORS.white,
@@ -1290,20 +1340,22 @@ const styles = StyleSheet.create({
    appointmentCard: {
       backgroundColor: COLORS.surface,
       borderRadius: RADIUS.lg,
-      flexDirection: 'row',
       overflow: 'hidden',
       ...SHADOWS.sm,
       ...cardBorder,
    },
+   appointmentCardTop: {
+      flexDirection: 'row',
+   },
    rescheduledPayBanner: {
-      backgroundColor: '#FFF3E0',
+      backgroundColor: COLORS.actionBg,
       marginHorizontal: 12,
       marginBottom: 8,
       padding: 10,
       borderRadius: 8,
    },
    rescheduledPayText: {
-      color: '#E65100',
+      color: COLORS.actionText,
       fontSize: 12,
       fontWeight: '600',
       textAlign: 'center',

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../store/LanguageContext';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
+import Skeleton from '../components/Skeleton';
 import { AppText, EmptyState } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
@@ -75,7 +76,8 @@ const InboxScreen = () => {
 
   useEffect(() => {
     if (userThreads && isAuthenticated) {
-      const threadsList = userThreads.threads || userThreads || [];
+      const raw = userThreads.threads ?? userThreads;
+      const threadsList = Array.isArray(raw) ? raw : [];
       setThreads(threadsList);
       setFilteredThreads(threadsList);
     }
@@ -234,7 +236,7 @@ const InboxScreen = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.fab, { bottom: SPACING.xxxl + insets.bottom }, rtl ? { left: SPACING.xl } : { right: SPACING.xl }]}
+        style={[styles.fab, { bottom: tabBarInset + SPACING.md }, rtl ? { left: SPACING.xl } : { right: SPACING.xl }]}
         onPress={() => navigation.navigate('NewMessage')}
         activeOpacity={0.85}
       >

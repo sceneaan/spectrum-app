@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
-import { Logout } from '../api/services/Auth.Service';
+import { fullLogout } from '../utils/fullLogout';
 import socketService from '../utils/socket';
 import { isSessionTimeoutPaused } from '../utils/sessionPause';
 
@@ -19,7 +19,7 @@ const WARNING_BEFORE_TIMEOUT_MS = 2 * 60 * 1000; // Show warning 2 minutes befor
  * - Logs out after 15 minutes of true inactivity (including time in background)
  */
 export function useSessionTimeout() {
-  const { token, logout: storeLogout } = useAuthStore();
+  const { token } = useAuthStore();
 
   const timeoutRef = useRef(null);
   const warningTimeoutRef = useRef(null);
@@ -40,14 +40,12 @@ export function useSessionTimeout() {
       clearInterval(countdownIntervalRef.current);
     }
     try {
-      await Logout();
+      await fullLogout();
     } catch (error) {
       console.warn('Logout failed during session timeout:', error);
     }
-    await storeLogout();
-    socketService.disconnect();
     DeviceEventEmitter.emit('auth:sessionTimeout', { reason: 'inactivity' });
-  }, [storeLogout]);
+  }, []);
 
   // Reset the inactivity timer
   const resetTimer = useCallback(() => {

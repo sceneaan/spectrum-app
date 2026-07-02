@@ -6,9 +6,7 @@ import { AppText, AppCard, AppButton } from '../../components/ui';
 import AppIcon from '../../components/ui/AppIcon';
 import { useLanguage } from '../../store/LanguageContext';
 import { useAuthStore } from '../../store/authStore';
-import { Logout } from '../../api/services/Auth.Service';
-import socketService from '../../utils/socket';
-import { queryClient } from '../../api/queryClient';
+import { fullLogout } from '../../utils/fullLogout';
 import COLORS from '../../constants/colors';
 import { SPACING, RADIUS } from '../../theme';
 
@@ -24,15 +22,12 @@ const MenuRow = ({ icon, label, subtitle, onPress, isRTL }) => (
 const ProviderProfileScreen = () => {
   const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const pd = t.providerDashboard || {};
 
   const handleLogout = async () => {
     try {
-      socketService.disconnect();
-      await Logout();
-      await logout();
-      queryClient.clear();
+      await fullLogout();
       navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'LoginScreen' }] }));
     } catch {
       Alert.alert(t.common?.error || 'Error', pd.logoutFailed || 'Could not log out');

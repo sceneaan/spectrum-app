@@ -42,6 +42,9 @@ export const useAuthStore = create(
       tokenExpiresAt: null,
       isAuthenticated: false,
       elmVerificationDeferred: false,
+      _hasHydrated: false,
+
+      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
 
       isPatient: () => {
         const user = get().user;
@@ -93,12 +96,17 @@ export const useAuthStore = create(
           tokenExpiresAt: null,
           isAuthenticated: false,
           elmVerificationDeferred: false,
+          biometricsEnabled: false,
+          pendingBiometricOffer: false,
         });
         await EncryptedStorage.removeItem('auth-storage');
       },
 
       biometricsEnabled: false,
       setBiometricsEnabled: (enabled) => set({ biometricsEnabled: enabled }),
+
+      pendingBiometricOffer: false,
+      setPendingBiometricOffer: (value) => set({ pendingBiometricOffer: value }),
 
       initializeAuth: async () => {
         const sessionJson = await EncryptedStorage.getItem('auth-storage');
@@ -127,10 +135,11 @@ export const useAuthStore = create(
         isAuthenticated: state.isAuthenticated,
         biometricsEnabled: state.biometricsEnabled,
       }),
-      onRehydrateStorage: () => (rehydratedState) => {
-        if (rehydratedState && rehydratedState.user && rehydratedState.token) {
+      onRehydrateStorage: () => (rehydratedState, error) => {
+        if (!error && rehydratedState?.user && rehydratedState?.token) {
           rehydratedState.isAuthenticated = true;
         }
+        useAuthStore.getState().setHasHydrated(true);
       },
     }
   )

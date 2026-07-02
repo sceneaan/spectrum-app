@@ -3,16 +3,16 @@ import { View, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingV
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppTranslation } from '../hooks/useAppTranslation';
-import { AppButton, AppCard, AppText } from '../components/ui';
+import { AppButton, AppCard, AppText, AdaptiveContainer } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { SPACING, RADIUS } from '../theme';
 import { useVerifyOtp, useResendOtp } from '../api/services/Auth.Service'; // Import auth service hooks
 import { useCreateAppointment } from '../api/services/Appointment.Service';
-import { useAuthStore } from '../store/authStore'; // Import auth store
+import { useAuthStore } from '../store/authStore';
+import { getUserId } from '../utils/userId'; // Import auth store
 import moment from 'moment-timezone';
 import haptics from '../utils/haptics';
-import ReactNativeBiometrics from 'react-native-biometrics';
 
 const OTPScreen = () => {
   const navigation = useNavigation();
@@ -20,7 +20,7 @@ const OTPScreen = () => {
   const { t, lang, isRTL } = useAppTranslation();
   const { emailOrPhone, targetScreen, targetParams } = route.params || {};
 
-  const { setAuth, biometricsEnabled, setBiometricsEnabled } = useAuthStore();
+  const { setAuth, biometricsEnabled } = useAuthStore();
 
   const [otp, setOtp] = useState(new Array(6).fill(''));
   const [timer, setTimer] = useState(420); // 7 minutes * 60 seconds
@@ -28,6 +28,7 @@ const OTPScreen = () => {
   const [canResend, setCanResend] = useState(false);
 
   const inputRefs = useRef([]); // Ref for OTP input fields
+  const verifySubmittedRef = useRef(false);
 
   const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOtp();
   const { mutate: resendOtp, isPending: isResending } = useResendOtp();
@@ -35,6 +36,13 @@ const OTPScreen = () => {
 
   // Verify OTP function - defined early for use in handleOtpChange
   const handleVerify = useCallback(() => {
+    if (verifySubmittedRef.current || isVerifying || isCreatingAppointment) return;
+
+    if (timer <= 0) {
+      setError(t('auth.otp.expiredOtp') || 'OTP has expired. Please resend a new code.');
+      return;
+    }
+
     // Filter out empty strings and join to get actual entered digits
     const filledDigits = otp.filter(d => d !== '');
     const enteredOtp = filledDigits.join('');
@@ -44,6 +52,7 @@ const OTPScreen = () => {
       return;
     }
     setError('');
+    verifySubmittedRef.current = true;
 
     verifyOtp({ otp: enteredOtp, emailOrPhone }, {
       onSuccess: async (response) => {
@@ -57,28 +66,8 @@ const OTPScreen = () => {
         });
         haptics.success();
 
-        // Offer biometric lock to first-time users on devices that support it
         if (!biometricsEnabled) {
-          (async () => {
-            try {
-              const rnBiometrics = new ReactNativeBiometrics();
-              const { biometryType } = await rnBiometrics.isSensorAvailable();
-              if (biometryType) {
-                const label = biometryType === 'FaceID' ? 'Face ID' :
-                              biometryType === 'TouchID' ? 'Touch ID' : 'Biometrics';
-                setTimeout(() => {
-                  Alert.alert(
-                    `Enable ${label}?`,
-                    `Lock the app with ${label} for added privacy. You can disable this in settings.`,
-                    [
-                      { text: 'Not Now', style: 'cancel' },
-                      { text: 'Enable', onPress: () => setBiometricsEnabled(true) },
-                    ],
-                  );
-                }, 900);
-              }
-            } catch {}
-          })();
+          useAuthStore.getState().setPendingBiometricOffer(true);
         }
 
         // Only brand-new patients with an incomplete profile need the
@@ -116,7 +105,7 @@ const OTPScreen = () => {
                 startTime: targetParams.preSelectedTime?.startTime,
                 endTime: targetParams.preSelectedTime?.endTime,
                 provider: doctor?.id,
-                patient: response?.id,
+                patient: getUserId(response),
                 reason: targetParams.preSelectedReason || '',
                 providerService: doctor?.providerService,
                 currentTime: moment().locale('en').format('YYYY-MM-DD HH:mm:ss'),
@@ -182,6 +171,7 @@ const OTPScreen = () => {
         }
       },
       onError: (err) => {
+        verifySubmittedRef.current = false;
         // Handle rate limit error (429)
         if (err.isRateLimited || err.message === 'RATE_LIMIT_EXCEEDED') {
           Alert.alert(
@@ -198,15 +188,15 @@ const OTPScreen = () => {
         setError(errorMessage);
       }
     });
-  }, [otp, emailOrPhone, verifyOtp, t, navigation, targetScreen, targetParams, setAuth, createAppointment]);
+  }, [otp, emailOrPhone, verifyOtp, t, navigation, targetScreen, targetParams, setAuth, createAppointment, isVerifying, isCreatingAppointment, biometricsEnabled, timer]);
 
   // Auto-submit when all 6 digits are filled (covers paste and SMS auto-fill)
   useEffect(() => {
     const allFilled = otp.every(d => d !== '') && otp.join('').length === 6;
-    if (allFilled && !isVerifying && !isCreatingAppointment) {
+    if (allFilled && !isVerifying && !isCreatingAppointment && !verifySubmittedRef.current) {
       handleVerify();
     }
-  }, [otp]);
+  }, [otp, isVerifying, isCreatingAppointment, handleVerify, timer]);
 
   // Timer useEffect
   useEffect(() => {
@@ -286,7 +276,8 @@ const OTPScreen = () => {
 
     setTimer(420);
     setCanResend(false);
-    setError(''); // Clear any existing errors
+    setError('');
+    verifySubmittedRef.current = false;
 
     const payload = {
       emailOrPhone: emailOrPhone,
@@ -317,7 +308,7 @@ const OTPScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={styles.content}>
+        <AdaptiveContainer variant="form" style={styles.content}>
 
           <View style={styles.logoContainer}>
             <Image
@@ -415,7 +406,7 @@ const OTPScreen = () => {
             </View>
           </TouchableOpacity>
 
-        </View>
+        </AdaptiveContainer>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -425,7 +416,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: {
     flex: 1,
-    padding: SPACING.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },

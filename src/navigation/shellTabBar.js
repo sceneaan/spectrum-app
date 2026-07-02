@@ -23,7 +23,6 @@ export function ShellTabLabel({ color, focused, children }) {
     <Text
       numberOfLines={2}
       ellipsizeMode="tail"
-      allowFontScaling={false}
       style={[
         styles.label,
         { color },
@@ -43,8 +42,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 11,
+    lineHeight: 13,
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 2,

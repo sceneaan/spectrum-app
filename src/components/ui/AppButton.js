@@ -61,6 +61,8 @@ const AppButton = ({
   style,
   textStyle,
   fullWidth = true,
+  accessibilityLabel,
+  ...rest
 }) => {
   const v = VARIANT_STYLES[variant] || VARIANT_STYLES.primary;
   const s = SIZES[size] || SIZES.md;
@@ -70,6 +72,9 @@ const AppButton = ({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.75}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      {...rest}
       style={[
         styles.base,
         v.button,

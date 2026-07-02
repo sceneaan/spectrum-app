@@ -31,7 +31,7 @@ class SocketService {
 
 	_setupSocketHandlers(resolve, reject, connectionTimeout) {
 		this.socket.on('connect', () => {
-			console.log('[Socket] Connected successfully');
+			if (__DEV__) console.log('[Socket] Connected successfully');
 			clearTimeout(connectionTimeout);
 
 			if (this.userId) {
@@ -47,7 +47,7 @@ class SocketService {
 		});
 
 		this.socket.on('reconnect', (attemptNumber) => {
-			console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
+			if (__DEV__) console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
 
 			if (this.userId) {
 				this.socket.emit('join', this.userId);
@@ -69,7 +69,7 @@ class SocketService {
 		});
 
 		this.socket.on('disconnect', (reason) => {
-			console.log('[Socket] Disconnected:', reason);
+			if (__DEV__) console.log('[Socket] Disconnected:', reason);
 		});
 
 		this.socket.on('connect_error', (error) => {
@@ -93,7 +93,7 @@ class SocketService {
 		});
 
 		this.socket.on('forceLogout', (data) => {
-			console.log('[Socket] Force logout received - logged in elsewhere');
+			if (__DEV__) console.log('[Socket] Force logout received - logged in elsewhere');
 			DeviceEventEmitter.emit('socket:forceLogout', data);
 			this.disconnect();
 		});

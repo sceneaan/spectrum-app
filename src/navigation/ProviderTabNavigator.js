@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ProviderHomeScreen from '../screens/provider/ProviderHomeScreen';
 import ProviderAppointmentsScreen from '../screens/provider/ProviderAppointmentsScreen';
 import ProviderInboxScreen from '../screens/provider/ProviderInboxScreen';
@@ -7,11 +6,11 @@ import ProviderPracticeScreen from '../screens/provider/ProviderPracticeScreen';
 import { useLanguage } from '../store/LanguageContext';
 import { makeProtected } from './authGuards';
 import { SHELL_ICONS } from '../components/ui/AppIcon';
-import GlassShellTabBar, { createGlassTabNavigatorOptions } from './GlassShellTabBar';
 import { ShellTabIcon } from './shellTabBar';
 import haptics from '../utils/haptics';
+import createSwipeTabNavigator from './createSwipeTabNavigator';
 
-const Tab = createBottomTabNavigator();
+const Tab = createSwipeTabNavigator();
 
 const ProtectedProviderAppointments = makeProtected(ProviderAppointmentsScreen, {
   targetScreen: 'ProviderAppointmentsTab',
@@ -45,7 +44,6 @@ const TabIcon = ({ tabName, color, focused }) => (
 
 const ProviderTabNavigator = () => {
   const { t, isRTL } = useLanguage();
-  const shellTabOptions = useMemo(() => createGlassTabNavigatorOptions(), []);
   const pd = t.providerDashboard || {};
 
   const orderedTabs = useMemo(() => {
@@ -79,9 +77,6 @@ const ProviderTabNavigator = () => {
 
   return (
     <Tab.Navigator
-      detachInactiveScreens
-      tabBar={(props) => <GlassShellTabBar {...props} />}
-      screenOptions={shellTabOptions}
       screenListeners={{
         tabPress: () => haptics.light(),
       }}

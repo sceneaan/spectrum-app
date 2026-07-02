@@ -1,21 +1,21 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
+import { AppButton, AppText } from '../components/ui';
 import COLORS from '../constants/colors';
+import ICONS from '../constants/icons';
 
 const SupportCardSuccessScreen = () => {
   const navigation = useNavigation();
   const { t } = useLanguage();
 
-  // Animation values
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const checkmarkAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animate in sequence: scale up circle, fade in content, then draw checkmark
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -36,10 +36,9 @@ const SupportCardSuccessScreen = () => {
         }),
       ]),
     ]).start();
-  }, []);
+  }, [scaleAnim, fadeAnim, checkmarkAnim]);
 
   const handleDone = () => {
-    // Navigate to home/main screen
     navigation.reset({
       index: 0,
       routes: [{ name: 'Main' }],
@@ -49,36 +48,28 @@ const SupportCardSuccessScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Animated Success Icon */}
         <Animated.View
           style={[
             styles.iconContainer,
-            {
-              transform: [{ scale: scaleAnim }],
-            },
+            { transform: [{ scale: scaleAnim }] },
           ]}
         >
-          {/* Gift/Card Icon */}
-          <Animated.Text
-            style={[
-              styles.giftIcon,
-              {
-                opacity: checkmarkAnim,
-                transform: [
-                  {
-                    scale: checkmarkAnim.interpolate({
-                      inputRange: [0, 0.5, 1],
-                      outputRange: [0, 1.2, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
+          <Animated.View
+            style={{
+              opacity: checkmarkAnim,
+              transform: [
+                {
+                  scale: checkmarkAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 1.2, 1],
+                  }),
+                },
+              ],
+            }}
           >
-            🎁
-          </Animated.Text>
+            <Image source={ICONS.gift} style={styles.giftIcon} resizeMode="contain" />
+          </Animated.View>
 
-          {/* Success Checkmark Badge */}
           <Animated.View
             style={[
               styles.checkmarkBadge,
@@ -95,27 +86,23 @@ const SupportCardSuccessScreen = () => {
               },
             ]}
           >
-            <Text style={styles.checkmark}>✓</Text>
+            <Image source={ICONS.check} style={styles.checkmarkIcon} resizeMode="contain" />
           </Animated.View>
         </Animated.View>
 
-        {/* Animated Success Title */}
-        <Animated.Text style={[styles.title, { opacity: fadeAnim }]}>
-          {t.supportCard?.successTitle || 'Payment Successful!'}
-        </Animated.Text>
-
-        {/* Animated Success Message */}
-        <Animated.Text style={[styles.subtitle, { opacity: fadeAnim }]}>
-          {t.supportCard?.successMessage || 'The support card has been sent to the recipient via SMS.'}
-        </Animated.Text>
-
-        {/* Animated Done Button */}
-        <Animated.View style={{ opacity: fadeAnim, width: '100%' }}>
-          <TouchableOpacity style={styles.button} onPress={handleDone}>
-            <Text style={styles.buttonText}>
-              {t.supportCard?.done || 'Done'}
-            </Text>
-          </TouchableOpacity>
+        <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', width: '100%' }}>
+          <AppText variant="h2" align="center" style={styles.title}>
+            {t.supportCard?.successTitle || 'Payment Successful!'}
+          </AppText>
+          <AppText variant="body" align="center" color={COLORS.textSecondary} style={styles.subtitle}>
+            {t.supportCard?.successMessage || 'The support card has been sent to the recipient via SMS.'}
+          </AppText>
+          <AppButton
+            title={t.supportCard?.done || 'Done'}
+            onPress={handleDone}
+            size="lg"
+            style={styles.button}
+          />
         </Animated.View>
       </View>
     </SafeAreaView>
@@ -138,7 +125,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: COLORS.promo1 || `${COLORS.primary}15`,
+    backgroundColor: COLORS.promo1,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,
@@ -150,7 +137,9 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   giftIcon: {
-    fontSize: 70,
+    width: 72,
+    height: 72,
+    tintColor: COLORS.primary,
   },
   checkmarkBadge: {
     position: 'absolute',
@@ -159,55 +148,32 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.success || '#10b981',
+    backgroundColor: COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: COLORS.background || COLORS.white,
-    shadowColor: '#000',
+    borderColor: COLORS.background,
+    shadowColor: COLORS.shadow,
     shadowOpacity: 0.2,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
     elevation: 5,
   },
-  checkmark: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.white,
-    marginTop: -2,
+  checkmarkIcon: {
+    width: 22,
+    height: 22,
+    tintColor: COLORS.white,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: COLORS.textPrimary,
     marginBottom: 15,
   },
   subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: COLORS.textSecondary || COLORS.gray600,
     marginBottom: 40,
     lineHeight: 24,
     paddingHorizontal: 10,
   },
   button: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  buttonText: {
-    color: COLORS.white,
-    fontSize: 18,
-    fontWeight: 'bold',
+    marginTop: 4,
   },
 });
 

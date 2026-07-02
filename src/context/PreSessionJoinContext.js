@@ -11,10 +11,12 @@ import haptics from '../utils/haptics';
 import i18n from '../config/i18n';
 
 const PreSessionJoinContext = createContext(null);
+const pendingPreSessionJoinPayloads = [];
 
 export const PreSessionJoinProvider = ({ children }) => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
   const [pendingSession, setPendingSession] = useState(null);
 
   const closePrep = useCallback(() => setPendingSession(null), []);
@@ -22,7 +24,11 @@ export const PreSessionJoinProvider = ({ children }) => {
   const requestJoinSession = useCallback((payload) => {
     if (!payload) return;
 
-    const { isAuthenticated } = useAuthStore.getState();
+    const { isAuthenticated, _hasHydrated } = useAuthStore.getState();
+    if (!_hasHydrated) {
+      pendingPreSessionJoinPayloads.push(payload);
+      return;
+    }
     if (!isAuthenticated) {
       navigation.navigate('LoginScreen', {
         targetScreen: 'VideoConsultation',
@@ -56,7 +62,7 @@ export const PreSessionJoinProvider = ({ children }) => {
       ...params,
       meetingRoomId: roomId,
     });
-  }, [user]);
+  }, [user, navigation]);
 
   const completeJoin = useCallback(() => {
     if (!pendingSession?.meetingRoomId) return;
@@ -71,6 +77,14 @@ export const PreSessionJoinProvider = ({ children }) => {
     haptics.success();
     closePrep();
   }, [closePrep, navigation, pendingSession, user]);
+
+  useEffect(() => {
+    if (!hasHydrated || pendingPreSessionJoinPayloads.length === 0) return;
+
+    const queue = [...pendingPreSessionJoinPayloads];
+    pendingPreSessionJoinPayloads.length = 0;
+    queue.forEach((payload) => requestJoinSession(payload));
+  }, [hasHydrated, requestJoinSession]);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener(PRE_SESSION_JOIN_EVENT, (payload) => {

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppTranslation } from '../hooks/useAppTranslation';
-import { AppButton, AppCard, AppText, TrustBadge, SegmentedTabs } from '../components/ui';
+import { AppButton, AppCard, AppText, TrustBadge, SegmentedTabs, AdaptiveContainer } from '../components/ui';
 import COLORS from '../constants/colors';
 import ICONS from '../constants/icons';
 import { useSendOtp, useResendOtp } from '../api/services/Auth.Service';
@@ -184,7 +184,7 @@ const LoginScreen = () => {
           <Image source={ICONS.back} style={styles.backIcon} />
         </TouchableOpacity>
 
-        <View style={styles.content}>
+        <AdaptiveContainer variant="form" style={styles.content}>
           <View style={styles.logoContainer}>
             <Image
               source={require('../assets/images/spectrum_logo.png')}
@@ -295,7 +295,7 @@ const LoginScreen = () => {
               </AppText>
             </TouchableOpacity>
           </View>
-        </View>
+        </AdaptiveContainer>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -307,7 +307,6 @@ const styles = StyleSheet.create({
   backIcon: { width: 24, height: 24, tintColor: COLORS.textPrimary },
   content: {
     flex: 1,
-    paddingHorizontal: SPACING.xl,
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: SPACING.xxxl,

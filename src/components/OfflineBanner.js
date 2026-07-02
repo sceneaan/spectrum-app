@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, DeviceEventEmitter } from 'react-native';
+import { View, StyleSheet, Animated, DeviceEventEmitter, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// api/index.js emits these events from its response interceptor
-// network:offline → when a request fails with no response (network error)
-// network:online  → when a subsequent request succeeds after an offline period
+import { AppText } from './ui';
+import COLORS from '../constants/colors';
+import ICONS from '../constants/icons';
+import i18n from '../config/i18n';
 
 const OfflineBanner = () => {
   const insets = useSafeAreaInsets();
@@ -43,8 +43,14 @@ const OfflineBanner = () => {
     <Animated.View
       style={[styles.banner, { paddingTop: insets.top, transform: [{ translateY }] }]}
       pointerEvents="none"
+      accessibilityRole="alert"
     >
-      <Text style={styles.text}>⚠️  No internet connection</Text>
+      <View style={styles.row}>
+        <Image source={ICONS.errorCircle} style={styles.icon} resizeMode="contain" />
+        <AppText variant="bodySmall" color={COLORS.white} style={styles.text}>
+          {i18n.t('common.noInternetConnection')}
+        </AppText>
+      </View>
     </Animated.View>
   );
 };
@@ -55,12 +61,23 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#EF4444',
+    backgroundColor: COLORS.danger,
     paddingBottom: 10,
     alignItems: 'center',
     zIndex: 9998,
   },
-  text: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+  },
+  icon: {
+    width: 16,
+    height: 16,
+    tintColor: COLORS.white,
+  },
+  text: { fontWeight: '600' },
 });
 
 export default OfflineBanner;

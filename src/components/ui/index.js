@@ -8,3 +8,4 @@ export { default as QuickAction } from './QuickAction';
 export { default as EmptyState } from './EmptyState';
 export { default as SegmentedTabs } from './SegmentedTabs';
 export { default as AppIcon, SHELL_ICONS, QUICK_ACTION_ICONS } from './AppIcon';
+export { default as AdaptiveContainer } from './AdaptiveContainer';

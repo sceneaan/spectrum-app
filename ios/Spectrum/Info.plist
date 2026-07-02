@@ -83,6 +83,8 @@
 	<string>Spectrum needs camera access to enable video consultations with your healthcare
 		providers. For example, during telemedicine appointments, your doctor can see you via
 		video to provide medical care and consultations.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Spectrum uses Face ID to lock the app and protect your health information when you return after being away.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Spectrum may use your location to help you find nearby healthcare providers and
 		services. Your location data is only used when you are using the app and is never

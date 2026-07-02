@@ -7,7 +7,7 @@ import {
   Text,
   PermissionsAndroid,
   Platform,
-  Dimensions,
+  useWindowDimensions,
   StatusBar,
   ScrollView,
   AppState,
@@ -48,9 +48,9 @@ import {
 
 const PRIMARY_COLOR = COLORS.primary;
 const SESSION_EXIT_GRACE_MINS = 15;
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CustomVideoConferenceScreen = () => {
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
   const navigation = useNavigation();
   const route = useRoute();
   const { t, i18n } = useTranslation();
@@ -1486,6 +1486,7 @@ const CustomVideoConferenceScreen = () => {
         participantCount={participants.length}
         onSendMessage={handleSendMessage}
         currentUserName={userName}
+        currentUserId={activeUserId}
       />
 
       {/* Settings Modal */}

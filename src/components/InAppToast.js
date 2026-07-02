@@ -1,31 +1,51 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
   DeviceEventEmitter,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
 import { emitForegroundMessage } from '../utils/fcmEvents';
 import { navigateFromNotification } from '../navigation/AppNavigator';
 import { displaySpectrumPushNotification, isJoinablePushPayload } from '../utils/pushNotifications';
+import { parseSafeJson } from '../utils/parseSafeJson';
 import { emitPreSessionJoinFromPush } from '../utils/pushNotificationHandlers';
+import { AppText } from './ui';
+import COLORS from '../constants/colors';
+import ICONS from '../constants/icons';
 
 const VARIANTS = {
-  notification: { accent: '#4F46E5', bg: '#EEF2FF', icon: '🔔' },
-  success: { accent: '#059669', bg: '#ECFDF5', icon: '✅' },
-  error: { accent: '#DC2626', bg: '#FEF2F2', icon: '⚠️' },
-  info: { accent: '#0284C7', bg: '#F0F9FF', icon: 'ℹ️' },
+  notification: {
+    accent: COLORS.toastNotificationAccent,
+    bg: COLORS.toastNotificationBg,
+    icon: ICONS.bell,
+  },
+  success: {
+    accent: COLORS.toastSuccessAccent,
+    bg: COLORS.toastSuccessBg,
+    icon: ICONS.checkCircle,
+  },
+  error: {
+    accent: COLORS.toastErrorAccent,
+    bg: COLORS.toastErrorBg,
+    icon: ICONS.errorCircle,
+  },
+  info: {
+    accent: COLORS.toastInfoAccent,
+    bg: COLORS.toastInfoBg,
+    icon: ICONS.info,
+  },
 };
 
 export const showToast = (options) => {
   DeviceEventEmitter.emit('__in_app_toast__', options);
 };
 
-const InAppToast = ({ navigationRef }) => {
+const InAppToast = () => {
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState(null);
   const [visible, setVisible] = useState(false);
@@ -80,7 +100,7 @@ const InAppToast = ({ navigationRef }) => {
           title: n.title || 'New Notification',
           message: n.body || '',
           navigateTo: data.screen,
-          navigateParams: data.params ? JSON.parse(data.params) : undefined,
+          navigateParams: parseSafeJson(data.params),
           joinable,
           pushData: data,
         });
@@ -136,17 +156,17 @@ const InAppToast = ({ navigationRef }) => {
         accessibilityRole="button"
         accessibilityLabel={toast.title || 'Notification'}
       >
-        <Text style={styles.icon}>{variant.icon}</Text>
+        <Image source={variant.icon} style={[styles.icon, { tintColor: variant.accent }]} resizeMode="contain" />
         <View style={styles.textWrap}>
           {toast.title ? (
-            <Text style={[styles.title, { color: variant.accent }]} numberOfLines={1}>
+            <AppText variant="bodySmall" color={variant.accent} numberOfLines={1} style={styles.title}>
               {toast.title}
-            </Text>
+            </AppText>
           ) : null}
           {toast.message ? (
-            <Text style={styles.message} numberOfLines={2}>
+            <AppText variant="caption" color={COLORS.gray800} numberOfLines={2}>
               {toast.message}
-            </Text>
+            </AppText>
           ) : null}
         </View>
         <TouchableOpacity
@@ -154,12 +174,12 @@ const InAppToast = ({ navigationRef }) => {
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityLabel="Dismiss notification"
         >
-          <Text style={[styles.close, { color: variant.accent }]}>✕</Text>
+          <Image source={ICONS.close} style={[styles.closeIcon, { tintColor: variant.accent }]} resizeMode="contain" />
         </TouchableOpacity>
       </TouchableOpacity>
       {toast.joinable ? (
         <TouchableOpacity style={[styles.joinBtn, { backgroundColor: variant.accent }]} onPress={handleJoin}>
-          <Text style={styles.joinBtnText}>Join Session</Text>
+          <AppText variant="button" color={COLORS.white}>Join Session</AppText>
         </TouchableOpacity>
       ) : null}
     </Animated.View>
@@ -174,7 +194,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     borderRadius: 14,
     borderLeftWidth: 4,
-    shadowColor: '#000',
+    shadowColor: COLORS.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -186,22 +206,16 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
   },
-  icon: { fontSize: 20 },
+  icon: { width: 22, height: 22 },
   textWrap: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  message: { fontSize: 13, color: '#374151', lineHeight: 18 },
-  close: { fontSize: 13, fontWeight: '700', paddingLeft: 4 },
+  title: { fontWeight: '700', marginBottom: 2 },
+  closeIcon: { width: 14, height: 14 },
   joinBtn: {
     marginHorizontal: 14,
     marginBottom: 12,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
-  },
-  joinBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
   },
 });
 

@@ -23,7 +23,6 @@ const RiyalText = ({
                     width: size ? size : heightPercentageToDP(1.5),
                 }} />
             <Text
-                allowFontScaling={false}
                 variant={variant}
                 style={textStyle}>
                 {text}

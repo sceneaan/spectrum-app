@@ -6,7 +6,7 @@ import RiyalText from '../RiyalText';
 import { RADIUS, SHADOWS, cardBorder } from '../../theme';
 import { formatNextAvailabilityLabel } from '../../utils/formatAvailability';
 
-const TherapistCard = ({ provider, isRTL, t, onPress }) => {
+const TherapistCard = ({ provider, isRTL, t, onPress, style }) => {
     const rowStyle = { flexDirection: isRTL ? 'row-reverse' : 'row' };
     const alignText = { textAlign: isRTL ? 'right' : 'left' };
 
@@ -52,7 +52,7 @@ const TherapistCard = ({ provider, isRTL, t, onPress }) => {
     };
 
     return (
-        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.card, style]} onPress={onPress} activeOpacity={0.7}>
             {/* Top accent bar */}
             <View style={styles.accentBar} />
 
