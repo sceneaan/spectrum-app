@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Platform, DeviceEventEmitter } from 'react-native';
+import BootSplash from 'react-native-bootsplash';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/api/queryClient';
@@ -29,10 +30,39 @@ Sentry.init({
 });
 
 const App = () => {
-  const { user, token, isAuthenticated } = useAuthStore();
+  const { user, token, isAuthenticated, _hasHydrated } = useAuthStore();
 
   useAuthSessionRefresh();
+
+  useEffect(() => {
+    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
+      useAuthStore.getState().setHasHydrated(true);
+    });
+
+    useAuthStore.persist.rehydrate();
+
+    const hydrationFallback = setTimeout(() => {
+      if (!useAuthStore.getState()._hasHydrated) {
+        useAuthStore.getState().setHasHydrated(true);
+      }
+    }, 2000);
+
+    return () => {
+      unsubFinishHydration?.();
+      clearTimeout(hydrationFallback);
+    };
+  }, []);
+
   useDeviceActivity();
+
+  // Absolute fallback: hide BootSplash even if AppNavigator errors and unmounts
+  // (AppNavigator's own safety timer gets cleared on unmount via its cleanup)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      BootSplash.hide({ fade: true });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -47,11 +77,18 @@ const App = () => {
   }, [isAuthenticated, user?.id, user?._id]);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     const initNotifications = async () => {
-      await requestUserPermission(user?.role || 'patient', token);
+      try {
+        await requestUserPermission(user?.role || 'patient', token);
+      } catch (error) {
+        console.warn('Notification init skipped:', error?.message || error);
+      }
     };
+
     initNotifications();
-  }, [user, token]);
+  }, [_hasHydrated, user?.role, token]);
 
   useEffect(() => {
     initPushNotificationHandlers();

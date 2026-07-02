@@ -11,10 +11,11 @@ const FOREGROUND_HEARTBEAT_MS = 5 * 60 * 1000;
  */
 export function useDeviceActivity() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
   const hasRegisteredRef = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!hasHydrated || !isAuthenticated) {
       hasRegisteredRef.current = false;
       return undefined;
     }
@@ -59,7 +60,7 @@ export function useDeviceActivity() {
       appStateSub.remove();
       clearInterval(intervalId);
     };
-  }, [isAuthenticated]);
+  }, [hasHydrated, isAuthenticated]);
 }
 
 export default useDeviceActivity;

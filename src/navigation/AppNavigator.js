@@ -158,7 +158,8 @@ const linking = {
     const sub = Linking.addEventListener('url', ({ url }) => listener(url));
     return () => sub.remove();
   },
-  getStateFromPath(path, options) {
+  getStateFromPath(path) {
+    if (!path) return undefined;
     const inviteMatch = path.match(/^\/?video-conference\/invite\/([^/?]+)/);
     if (!inviteMatch) {
       return undefined;

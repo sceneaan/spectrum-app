@@ -33,12 +33,13 @@ export function useSessionTimeout() {
 
   // Handle session timeout - logout user
   const handleSessionTimeout = useCallback(async () => {
-    if (isSessionTimeoutPaused()) return;
-
     setShowWarning(false);
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
     }
+
+    if (isSessionTimeoutPaused()) return;
     try {
       await fullLogout();
     } catch (error) {

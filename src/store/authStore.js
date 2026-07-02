@@ -136,7 +136,9 @@ export const useAuthStore = create(
         biometricsEnabled: state.biometricsEnabled,
       }),
       onRehydrateStorage: () => (rehydratedState, error) => {
-        if (!error && rehydratedState?.user && rehydratedState?.token) {
+        if (error) {
+          console.warn('[authStore] Rehydration error — starting fresh:', error);
+        } else if (rehydratedState?.user && rehydratedState?.token) {
           rehydratedState.isAuthenticated = true;
         }
         useAuthStore.getState().setHasHydrated(true);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, DeviceEventEmitter } from 'react-native';
+import BootSplash from 'react-native-bootsplash';
 import COLORS from '../constants/colors';
 import { navigationRef } from '../navigation/AppNavigator';
 import { fullLogout } from '../utils/fullLogout';
@@ -17,6 +18,9 @@ class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[AppErrorBoundary]', error, info?.componentStack);
+    // AppNavigator is now unmounted — its BootSplash safety timer was cleared.
+    // Hide it here so users can see this error screen instead of being stuck on the logo.
+    try { BootSplash.hide({ fade: false }); } catch {}
   }
 
   handleRetry = () => {
