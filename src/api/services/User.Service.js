@@ -80,6 +80,10 @@ export async function setNotificationToken(payload) {
   return handleRequest(putRequest, `${MODEL_NAME}/set-notification-token`, payload);
 }
 
+export async function sendActivityHeartbeat(payload = {}) {
+  return handleRequest(postRequest, `${MODEL_NAME}/activity/heartbeat`, payload);
+}
+
 // Direct function version of updateProfile (used in some components)
 export async function UpdateProfile(payload) {
   return handleRequest(putRequest, `${MODEL_NAME}/update`, payload);

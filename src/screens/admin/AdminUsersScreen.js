@@ -24,6 +24,7 @@ import {
   useAdminUpdateUserStatus,
 } from '../../api/services/Admin.Service';
 import { getPatientDisplayName } from '../../utils/providerAppointments';
+import { getMobileActivityLines } from '../../utils/mobileActivity';
 import COLORS from '../../constants/colors';
 import { SPACING, RADIUS } from '../../theme';
 import useGlassTabBarInset from '../../navigation/useGlassTabBarInset';
@@ -134,6 +135,15 @@ const AdminUsersScreen = ({ showBack = false }) => {
   const renderItem = ({ item }) => {
     const name = getPatientDisplayName(item, isRTL) || item.fullName || item.email || ad.user || 'User';
     const meta = [item.phone, item.email].filter(Boolean).join(' · ');
+    const activityLines = activeTab === 'patients'
+      ? getMobileActivityLines(item, {
+          mobileApp: ad.mobileApp,
+          mobileAppInstalled: ad.mobileAppInstalled,
+          noMobileApp: ad.noMobileApp,
+          lastLogin: ad.lastLogin,
+          lastActive: ad.lastActive,
+        })
+      : [];
 
     return (
       <AppCard style={styles.card} padding={SPACING.lg}>
@@ -141,6 +151,11 @@ const AdminUsersScreen = ({ showBack = false }) => {
           <View style={styles.flex}>
             <AppText variant="bodyMedium">{name}</AppText>
             {meta ? <AppText variant="caption" color={COLORS.textSecondary}>{meta}</AppText> : null}
+            {activityLines.map((line) => (
+              <AppText key={line} variant="caption" color={COLORS.gray600} style={styles.activityLine}>
+                {line}
+              </AppText>
+            ))}
           </View>
           <ProviderStatusBadge status={item.status} />
         </View>
@@ -208,6 +223,7 @@ const styles = StyleSheet.create({
   card: { marginBottom: SPACING.md },
   topRow: { justifyContent: 'space-between', gap: SPACING.sm },
   flex: { flex: 1 },
+  activityLine: { marginTop: 4 },
   activateBtn: { marginTop: SPACING.md, alignSelf: 'flex-start' },
 });
 

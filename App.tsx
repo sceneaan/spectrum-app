@@ -8,6 +8,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { requestUserPermission } from './src/utils/notificationService';
 import { useAuthStore } from './src/store/authStore';
 import { useAuthSessionRefresh } from './src/hooks/useAuthSessionRefresh';
+import { useDeviceActivity } from './src/hooks/useDeviceActivity';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import { initPushNotificationHandlers } from './src/utils/pushNotificationHandlers';
 import { ensureAppointmentNotificationChannel } from './src/utils/pushNotifications';
@@ -31,6 +32,7 @@ const App = () => {
   const { user, token, isAuthenticated } = useAuthStore();
 
   useAuthSessionRefresh();
+  useDeviceActivity();
 
   useEffect(() => {
     if (!isAuthenticated || !user) {

@@ -2,7 +2,7 @@ import EncryptedStorage from 'react-native-encrypted-storage';
 import messaging from '@react-native-firebase/messaging';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setNotificationToken } from '@api/services/User.Service';
+import { registerMobileDevice } from './deviceActivity';
 
 const NOTIFY_TOKEN_KEY = 'notifyToken';
 
@@ -83,7 +83,7 @@ async function getToken(role, oldToken) {
 
         if (token) {
             try {
-                await setNotificationToken({ notificationToken: token });
+                await registerMobileDevice(token);
                 currentRetryAttempt = 0;
             } catch (apiError) {
                 devLog('ERROR updating token on server:', apiError);

@@ -153,6 +153,8 @@ jobs:
           done
 
       - name: Build archive
+        env:
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           xcodebuild \
             -workspace ios/Spectrum.xcworkspace \

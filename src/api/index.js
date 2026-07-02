@@ -6,6 +6,7 @@ import { DeviceEventEmitter } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { refreshAccessToken } from '../utils/tokenRefresh';
 import { fullLogout } from '../utils/fullLogout';
+import { getSpectrumAppUserAgent } from '../utils/deviceActivity';
 import i18n from '../config/i18n';
 
 // ==========================================
@@ -71,6 +72,7 @@ axios.interceptors.request.use(
     }
 
     config.headers['X-Timezone'] = getDeviceTimezone();
+    config.headers['X-Spectrum-App'] = getSpectrumAppUserAgent();
     const language = i18n.language || 'en';
     config.headers['Accept-Language'] = language;
     config.headers['X-Language'] = language;
