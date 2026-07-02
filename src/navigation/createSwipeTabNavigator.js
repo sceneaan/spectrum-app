@@ -24,6 +24,7 @@ export default function createSwipeTabNavigator() {
     );
   }
 
+  SwipeTabNavigator.Navigator = SwipeTabNavigator;
   SwipeTabNavigator.Screen = MaterialTab.Screen;
 
   return SwipeTabNavigator;
