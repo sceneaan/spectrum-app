@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { usePatientGetThreads, useProviderGetThreads } from '@api/services/Thread.Service';
-import { isProviderRole } from './videoAccess';
+import { isProviderRole } from '../utils/videoAccess';
 import { useAuthStore } from '../store/authStore';
 
 const normalizeThreadsList = (data) => {
