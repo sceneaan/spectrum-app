@@ -53,7 +53,7 @@ export function useGetPatientConsent({ language = 'english', version } = {}) {
       }
     },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour (policy doesn't change often)
-    cacheTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours
+    gcTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours
     retry: 2, // Retry failed requests twice
   });
 }
@@ -108,7 +108,7 @@ export function useGetPolicy({ title, language = 'english', version } = {}) {
     },
     enabled: !!title, // Only run query if title is provided
     staleTime: 1000 * 60 * 60,
-    cacheTime: 1000 * 60 * 60 * 24,
+    gcTime: 1000 * 60 * 60 * 24,
     retry: 2,
   });
 }

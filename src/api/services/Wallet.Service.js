@@ -78,7 +78,6 @@ export function useMakePayout() {
         return throwServerError(err);
       }
     },
-    enabled: isAuthenticated,
   });
 }
 
@@ -99,7 +98,7 @@ export function useGetMyWallet() {
       }
     },
     staleTime: 0,
-    cacheTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     enabled: isAuthenticated,
   });
 }

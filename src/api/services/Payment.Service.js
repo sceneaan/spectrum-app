@@ -63,7 +63,7 @@ export function useCreateSupportCardCheckout() {
             } catch (err) {
                 logger.error('[Support Card Checkout] Error:', err.message);
                 logger.debug('[Support Card Checkout] Error response:', JSON.stringify(err.response?.data, null, 2));
-                throwServerError(err);
+                return throwServerError(err);
             }
         },
     });

@@ -121,7 +121,7 @@ export function useGetPatientMedicalReportsPaginated(queryParams = {}) {
         },
         // Enhanced query options to prevent excessive refetching
         staleTime: 30000,
-        cacheTime: 300000,
+        gcTime: 300000,
         keepPreviousData: true,
         refetchOnWindowFocus: false,
         retry: 2,

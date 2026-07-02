@@ -95,7 +95,7 @@ export function useGetAllTransactions(patientId, queryParams = {}) {
     // Enhanced query options
     enabled: !!patientId,
     staleTime: 30000, // 30 seconds - prevents refetching too often
-    cacheTime: 300000, // 5 minutes - keeps data in cache
+    gcTime: 300000, // 5 minutes - keeps data in cache
     keepPreviousData: true, // Keeps previous data while loading new data
     refetchOnWindowFocus: false, // Prevents refetch when window gains focus
     retry: 2, // Retry failed requests twice

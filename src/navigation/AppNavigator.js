@@ -111,7 +111,10 @@ export const navigateFromNotification = (remoteMessage) => {
 
 // Wrapper component that checks ELM verification
 const ElmVerifiedTabNavigator = ({ navigation }) => {
-  const { user, isAuthenticated, elmVerificationDeferred, _hasHydrated } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const elmVerificationDeferred = useAuthStore((s) => s.elmVerificationDeferred);
+  const _hasHydrated = useAuthStore((s) => s._hasHydrated);
 
   useEffect(() => {
     if (!_hasHydrated) return;
@@ -186,7 +189,7 @@ const linking = {
 };
 
 const AppNavigator = () => {
-  const [initialRoute, setInitialRoute] = useState(null);
+  const [initialRoute, setInitialRoute] = useState('Main');
   const [navigationReady, setNavigationReady] = useState(false);
   const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
@@ -195,14 +198,25 @@ const AppNavigator = () => {
       if (!useAuthStore.getState()._hasHydrated) {
         useAuthStore.getState().setHasHydrated(true);
       }
-    }, 5000);
+    }, 2000);
     return () => clearTimeout(hydrationFallback);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem('@spectrum_onboarding_done').then((done) => {
-      setInitialRoute(done === 'true' ? 'Main' : 'Onboarding');
-    });
+    let cancelled = false;
+
+    AsyncStorage.getItem('@spectrum_onboarding_done')
+      .then((done) => {
+        if (cancelled) return;
+        setInitialRoute(done === 'true' ? 'Main' : 'Onboarding');
+      })
+      .catch(() => {
+        if (!cancelled) setInitialRoute('Main');
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -212,10 +226,22 @@ const AppNavigator = () => {
   }, [navigationReady, hasHydrated]);
 
   useEffect(() => {
-    if (navigationReady) {
+    if (!hasHydrated) return undefined;
+
+    const hideTimer = setTimeout(() => {
       BootSplash.hide({ fade: true });
-    }
-  }, [navigationReady]);
+    }, navigationReady ? 0 : 150);
+
+    return () => clearTimeout(hideTimer);
+  }, [hasHydrated, navigationReady]);
+
+  // Never leave the native splash visible if JS recovers slowly or navigation stalls.
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      BootSplash.hide({ fade: true });
+    }, 8000);
+    return () => clearTimeout(safetyTimer);
+  }, []);
 
   // Deep links from push notifications
   useEffect(() => {
@@ -249,7 +275,7 @@ const AppNavigator = () => {
     };
   }, []);
 
-  if (!initialRoute || !hasHydrated) {
+  if (!hasHydrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background }}>
         <ActivityIndicator size="large" color={COLORS.primary} />

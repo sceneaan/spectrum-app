@@ -136,7 +136,7 @@ export function useAdminListDiscounts() {
                 return throwServerError(err);
             }
         },
-        enabled: isAuthenticated && isAdmin,
+        enabled: isAuthenticated && !!user && isAdmin,
     });
 }
 
@@ -196,12 +196,13 @@ export function useApplyDiscountCode() {
 }
 
 // Hook to get discount history
-export function useGetDiscountHistory() {
+export function useGetDiscountHistory(discountId) {
     return useQuery({
-        queryKey: ['discountHistory'],
-        queryFn: async (discount) => {
+        queryKey: ['discountHistory', discountId],
+        queryFn: async ({ queryKey }) => {
+            const [, id] = queryKey;
             try {
-                const result = await getRequest(`${MODEL_NAME}/history/${discount}`);
+                const result = await getRequest(`${MODEL_NAME}/history/${id}`);
                 if (result.status === HttpStatusCode.Ok) {
                     return result.data.data;
                 } else {
@@ -211,6 +212,7 @@ export function useGetDiscountHistory() {
                 return throwServerError(err);
             }
         },
+        enabled: !!discountId,
     });
 }
 

@@ -68,9 +68,9 @@ export const usePaymentMachine = ({
               {
                 appointmentId,
                 paymentMethod: 'Wallet',
-                walletId: prevContext.wallet._id,
+                walletId: prevContext.wallet._id || prevContext.wallet.id,
                 walletAmount: prevContext.payableAmount,
-                discountId: prevContext.discount?._id,
+                discountId: prevContext.discount?._id || prevContext.discount?.id,
                 supportCardId: prevContext.supportCard?.supportCardId,
                 supportCardAmount: prevContext.supportCard?.amount,
                 status: 'Completed',
@@ -108,7 +108,7 @@ export const usePaymentMachine = ({
                 amount: prevContext.payableAmount,
                 paymentMethod: paymentBrand,
                 appointmentId,
-                discountId: prevContext.discount?._id,
+                discountId: prevContext.discount?._id || prevContext.discount?.id,
                 supportCardId: prevContext.supportCard?.supportCardId,
                 supportCardAmount: prevContext.supportCard?.amount,
               },
@@ -140,7 +140,7 @@ export const usePaymentMachine = ({
             setState({
               state: 'success',
               isLoading: false,
-              transactionId: statusResult.data?.transaction?._id,
+              transactionId: statusResult.data?.transaction?._id || statusResult.data?.transaction?.id,
             });
           } else {
             setState({ state: 'error', isLoading: false });

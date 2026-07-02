@@ -154,7 +154,7 @@ const HomeScreen = () => {
 
    const nearestAppointment = useMemo(
       () => getNearestUpcomingAppointment(upcomingAppointments),
-      [upcomingAppointments, nowTick]
+      [upcomingAppointments]
    );
 
    const sessionTiming = useMemo(

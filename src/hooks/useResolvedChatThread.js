@@ -23,8 +23,8 @@ export function useResolvedChatThread(routeParams) {
     providerName: routeProviderName,
   } = routeParams || {};
 
-  const { data: patientThreads, isLoading: patientThreadsLoading } = usePatientGetThreads();
-  const { data: providerThreads, isLoading: providerThreadsLoading } = useProviderGetThreads();
+  const { data: patientThreads, isLoading: patientThreadsLoading } = usePatientGetThreads({ enabled: !isProvider });
+  const { data: providerThreads, isLoading: providerThreadsLoading } = useProviderGetThreads({ enabled: isProvider });
 
   const threadsLoading = isProvider ? providerThreadsLoading : patientThreadsLoading;
 

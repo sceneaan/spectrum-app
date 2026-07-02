@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../store/LanguageContext';
@@ -65,7 +65,7 @@ const RescheduleAppointmentScreen = () => {
     return days;
   };
 
-  const availableDates = getNextTwoWeeks();
+  const availableDates = useMemo(() => getNextTwoWeeks(), [isRTL]);
 
   const handleConfirm = () => {
     if (!selectedDate || !selectedSlot) {

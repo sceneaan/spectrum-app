@@ -62,7 +62,7 @@ const InboxScreen = () => {
     if (typeof item?.unreadCount === 'number') return item.unreadCount > 0;
     if (typeof item?.patientUnreadCount === 'number') return item.patientUnreadCount > 0;
     if (item?.hasUnread) return true;
-    const senderId = item?.lastMessage?.senderId || item?.lastMessage?.sender?._id;
+    const senderId = item?.lastMessage?.senderId || item?.lastMessage?.sender?._id || item?.lastMessage?.sender?.id;
     const patientId = item?.patient?._id || item?.patient?.id;
     if (senderId && patientId && String(senderId) !== String(patientId)) return true;
     return false;

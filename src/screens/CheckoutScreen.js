@@ -24,6 +24,7 @@ import { CheckSupportCard } from '../api/services/SupportCard.Service';
 import { useGetUserProfile } from '../api/services/User.Service';
 import { useAuthStore } from '../store/authStore';
 import { getUserId } from '../utils/userId';
+import { isSaudiUser } from '../utils/generic';
 import { useLanguage } from '../store/LanguageContext';
 import { usePaymentMachine } from '../machines/paymentMachine';
 
@@ -151,7 +152,7 @@ const CheckoutScreen = () => {
 
     const payload = {
       code: promoCodeInput.trim(),
-      service: context.appointment?.providerService?._id,
+      service: context.appointment?.providerService?._id || context.appointment?.providerService?.id,
       payableAmount: context.appointment?.providerService?.slotPrice || priceCalculation.basePrice || 0,
     };
 
@@ -167,8 +168,7 @@ const CheckoutScreen = () => {
                     const discountAmount = data?.amount || 0;
                     const basePrice = context.appointment?.providerService?.slotPrice || priceCalculation.basePrice || 0;
                     const subtotalAfterDiscount = Math.max(0, basePrice - discountAmount);
-                    const isSaudi = user?.nationality === 'Saudi Arabia';
-                    const taxRate = isSaudi ? 0 : 0.15;
+                    const taxRate = isSaudiUser(user?.nationality) ? 0 : 0.15;
                     const taxAmount = subtotalAfterDiscount * taxRate;
                     const newTotalAmount = Number((subtotalAfterDiscount + taxAmount).toFixed(2));
 
@@ -181,7 +181,7 @@ const CheckoutScreen = () => {
                         // Update support card with recalculated amounts
                         actions.applySupportCard({
                             code: supportCardInput,
-                            supportCardId: result.supportCard?._id,
+                            supportCardId: result.supportCard?._id || result.supportCard?.id,
                             amount: result.paymentBreakdown?.supportCardAmount || 0,
                             fullValue: result.supportCard?.value || 0,
                             leftoverToWallet: result.supportCard?.remainingValue || 0,
@@ -231,8 +231,7 @@ const CheckoutScreen = () => {
         try {
             // Calculate new total without discount
             const basePrice = context.appointment?.providerService?.slotPrice || priceCalculation.basePrice || 0;
-            const isSaudi = user?.nationality === 'Saudi Arabia';
-            const taxRate = isSaudi ? 0 : 0.15;
+            const taxRate = isSaudiUser(user?.nationality) ? 0 : 0.15;
             const taxAmount = basePrice * taxRate;
             const newTotalAmount = Number((basePrice + taxAmount).toFixed(2));
 
@@ -323,7 +322,7 @@ const CheckoutScreen = () => {
             paymentMethod: 'Support Card',
             supportCardId: context.supportCard?.supportCardId,
             supportCardAmount: context.supportCard?.amount,
-            discountId: context.discount?._id,
+            discountId: context.discount?._id || context.discount?.id,
             status: 'Completed',
         };
 
@@ -361,7 +360,7 @@ const CheckoutScreen = () => {
             paymentType: 'appointment',
             payload: {
                 appointmentId: context.appointment.id || context.appointment._id,
-                discountId: context.discount?._id,
+                discountId: context.discount?._id || context.discount?.id,
                 supportCardId: context.supportCard?.supportCardId,
                 supportCardAmount: context.supportCard?.amount,
             }
@@ -378,7 +377,7 @@ const CheckoutScreen = () => {
             paymentType: 'appointment',
             payload: {
                 appointmentId: context.appointment.id || context.appointment._id,
-                discountId: context.discount?._id,
+                discountId: context.discount?._id || context.discount?.id,
                 supportCardId: context.supportCard?.supportCardId,
             }
         });
